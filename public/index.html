@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Flugsimulator — Online Flight Simulator</title>
+  <link rel="icon" type="image/png" href="logo.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- ==================== LOGIN SCREEN ==================== -->
+  <div id="login-screen">
+    <div class="menu-bg"></div>
+    <div class="login-box">
+      <img src="logo.png" alt="Flugsimulator" class="login-logo-img">
+      <div class="login-subtitle">ONLINE FLIGHT SIMULATOR</div>
+      <div class="login-form">
+        <label class="login-label">CALLSIGN / PILOTNAME</label>
+        <input type="text" id="login-name" class="login-input" placeholder="z.B. MaxPilot123" maxlength="20" autocomplete="off" spellcheck="false">
+        <div class="login-hint">Mindestens 3 Zeichen</div>
+        <button class="login-btn" id="login-btn" disabled>EINLOGGEN</button>
+      </div>
+      <div class="login-footer">Dein Callsign wird anderen Spielern angezeigt</div>
+    </div>
+  </div>
+
+  <!-- ==================== MAIN MENU ==================== -->
+  <div id="main-menu" class="hidden">
+    <div class="menu-bg"></div>
+    <div class="menu-topbar">
+      <img src="logo.png" alt="Flugsimulator" class="topbar-logo-img">
+      <div class="menu-nav">
+        <button class="nav-tab active" data-panel="fly">WORLD MAP</button>
+        <button class="nav-tab" data-panel="aircraft">AIRCRAFT</button>
+        <button class="nav-tab" data-panel="weather">WEATHER</button>
+        <button class="nav-tab" data-panel="settings">SETTINGS</button>
+      </div>
+      <div class="menu-right-info">
+        <span id="menu-pilot-name"></span>
+        <span id="menu-online">ONLINE</span>
+      </div>
+    </div>
+
+    <!-- === FLY PANEL === -->
+    <div class="panel active" id="panel-fly">
+      <div class="fly-layout">
+        <div class="map-area">
+          <div class="airport-search-bar">
+            <input type="text" id="airport-search" placeholder="Suche Flughafen — ICAO, IATA, Stadt oder Land..." autocomplete="off" spellcheck="false">
+            <div class="search-results hidden" id="search-results"></div>
+          </div>
+          <div class="map-wrap" id="world-map">
+            <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/e/ea/Equirectangular-projection.jpg/1280px-Equirectangular-projection.jpg"
+                 alt="World" class="map-img" crossorigin="anonymous">
+          </div>
+          <div class="airport-count" id="airport-count"></div>
+        </div>
+        <div class="fly-sidebar">
+          <div class="sidebar-card">
+            <div class="card-header">DEPARTURE AIRPORT</div>
+            <div class="dep-icao" id="dep-icao">EDDF</div>
+            <div class="dep-name" id="dep-name">Frankfurt am Main</div>
+            <div class="dep-sub" id="dep-sub">Frankfurt, DE</div>
+            <div class="dep-coords" id="dep-coords">50.03°N 8.57°E</div>
+            <div class="dep-elev" id="dep-elev">111m MSL</div>
+            <div class="dep-rwy" id="dep-rwy">RWY 07/25 — 4000m</div>
+          </div>
+          <div class="sidebar-card">
+            <div class="card-header">AIRCRAFT</div>
+            <div class="dep-aircraft" id="dep-aircraft">Airbus A320</div>
+            <div class="dep-airline" id="dep-airline">Lufthansa</div>
+          </div>
+          <div class="sidebar-card">
+            <div class="card-header">CONDITIONS</div>
+            <div class="cond-grid">
+              <span>Wind</span><span id="cond-wind">5 kt</span>
+              <span>Visibility</span><span id="cond-vis">40 km</span>
+              <span>Ceiling</span><span id="cond-clouds">2000m</span>
+            </div>
+          </div>
+          <button class="btn-fly" id="btn-fly">
+            FLY NOW
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor"><path d="M10 3l7 7-7 7V3z"/></svg>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- === AIRCRAFT PANEL === -->
+    <div class="panel" id="panel-aircraft">
+      <div class="aircraft-layout">
+        <div class="ac-type-list" id="ac-type-list"></div>
+        <div class="ac-detail" id="ac-detail">
+          <div class="ac-preview-3d" id="ac-preview-3d"></div>
+          <div class="ac-detail-header" id="ac-detail-header">Airbus A320</div>
+          <div class="ac-specs" id="ac-specs"></div>
+          <div class="card-header" style="margin-top:16px">SELECT AIRLINE</div>
+          <div class="airline-grid" id="airline-grid"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- === WEATHER PANEL === -->
+    <div class="panel" id="panel-weather">
+      <div class="weather-list">
+        <div class="wx-card selected" data-wx="clear">
+          <div class="wx-icon">&#9728;&#65039;</div>
+          <div class="wx-name">CAVOK</div>
+          <div class="wx-detail">Wind 2kt / Vis 50km / Clear skies</div>
+        </div>
+        <div class="wx-card" data-wx="fewClouds">
+          <div class="wx-icon">&#9925;</div>
+          <div class="wx-name">FEW/SCT</div>
+          <div class="wx-detail">Wind 5kt / Vis 40km / Few clouds at 2000m</div>
+        </div>
+        <div class="wx-card" data-wx="scattered">
+          <div class="wx-icon">&#9729;&#65039;</div>
+          <div class="wx-name">SCT/BKN</div>
+          <div class="wx-detail">Wind 10kt / Vis 25km / Scattered at 1500m</div>
+        </div>
+        <div class="wx-card" data-wx="overcast">
+          <div class="wx-icon">&#127787;&#65039;</div>
+          <div class="wx-name">OVC</div>
+          <div class="wx-detail">Wind 15kt / Vis 12km / Overcast at 800m</div>
+        </div>
+        <div class="wx-card" data-wx="stormy">
+          <div class="wx-icon">&#9889;</div>
+          <div class="wx-name">TS/CB</div>
+          <div class="wx-detail">Wind 30kt / Vis 3km / Thunderstorm</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- === SETTINGS PANEL === -->
+    <div class="panel" id="panel-settings">
+      <div class="settings-layout">
+        <div class="settings-col">
+          <div class="setting-row">
+            <span>Terrain Quality</span>
+            <div class="setting-btns">
+              <button class="set-btn" data-key="terrainZoom" data-val="10">Low</button>
+              <button class="set-btn active" data-key="terrainZoom" data-val="11">Medium</button>
+              <button class="set-btn" data-key="terrainZoom" data-val="12">High</button>
+            </div>
+          </div>
+          <div class="setting-row">
+            <span>Render Distance</span>
+            <div class="setting-btns">
+              <button class="set-btn" data-key="terrainRadius" data-val="2">Short</button>
+              <button class="set-btn active" data-key="terrainRadius" data-val="3">Medium</button>
+              <button class="set-btn" data-key="terrainRadius" data-val="4">Far</button>
+            </div>
+          </div>
+          <div class="setting-row">
+            <span>Shadows</span>
+            <div class="setting-btns">
+              <button class="set-btn" data-key="shadows" data-val="0">Off</button>
+              <button class="set-btn active" data-key="shadows" data-val="1">On</button>
+            </div>
+          </div>
+          <div class="setting-row">
+            <span>Units</span>
+            <div class="setting-btns">
+              <button class="set-btn active" data-key="units" data-val="metric">Metric</button>
+              <button class="set-btn" data-key="units" data-val="imperial">Imperial</button>
+            </div>
+          </div>
+        </div>
+        <div class="settings-col">
+          <div class="kb-title">KEYBINDINGS</div>
+          <div class="kb-list">
+            <div><kbd>W</kbd> <kbd>S</kbd> Pitch</div>
+            <div><kbd>A</kbd> <kbd>D</kbd> Roll</div>
+            <div><kbd>Q</kbd> <kbd>E</kbd> Yaw</div>
+            <div><kbd>Shift</kbd> <kbd>Ctrl</kbd> Throttle</div>
+            <div><kbd>F</kbd> / <kbd>V</kbd> Flaps +/-</div>
+            <div><kbd>G</kbd> Landing Gear</div>
+            <div><kbd>B</kbd> Brakes (hold)</div>
+            <div><kbd>K</kbd> Spoilers</div>
+            <div><kbd>L</kbd> Lights</div>
+            <div><kbd>Tab</kbd> Cockpit Panel</div>
+            <div><kbd>R</kbd> Respawn</div>
+            <div><kbd>Esc</kbd> Pause</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== LOADING ==================== -->
+  <div id="loading-screen" class="hidden">
+    <div class="load-center">
+      <img src="logo.png" alt="Flugsimulator" class="load-logo-img">
+      <div class="load-bar"><div class="load-fill" id="load-fill"></div></div>
+      <div class="load-text" id="load-text">Initializing...</div>
+    </div>
+  </div>
+
+  <!-- ==================== FLIGHT HUD ==================== -->
+  <div id="flight-hud" class="hidden">
+
+    <!-- PFD -->
+    <div class="pfd">
+      <svg class="pfd-adi" viewBox="-100 -100 200 200">
+        <defs><clipPath id="adi-clip"><circle r="90"/></clipPath></defs>
+        <g clip-path="url(#adi-clip)">
+          <g id="adi-pitch-roll">
+            <rect x="-250" y="-350" width="500" height="350" fill="#0a5e9e"/>
+            <rect x="-250" y="0" width="500" height="350" fill="#7a5230"/>
+            <line x1="-250" y1="0" x2="250" y2="0" stroke="#fff" stroke-width="2"/>
+            <line x1="-35" y1="-20" x2="35" y2="-20" stroke="rgba(255,255,255,0.6)" stroke-width="0.8"/>
+            <text x="40" y="-17" fill="rgba(255,255,255,0.5)" font-size="8" font-family="Inter">10</text>
+            <line x1="-35" y1="-40" x2="35" y2="-40" stroke="rgba(255,255,255,0.6)" stroke-width="0.8"/>
+            <text x="40" y="-37" fill="rgba(255,255,255,0.5)" font-size="8" font-family="Inter">20</text>
+            <line x1="-35" y1="20" x2="35" y2="20" stroke="rgba(255,255,255,0.6)" stroke-width="0.8"/>
+            <line x1="-35" y1="40" x2="35" y2="40" stroke="rgba(255,255,255,0.6)" stroke-width="0.8"/>
+            <line x1="-20" y1="-10" x2="20" y2="-10" stroke="rgba(255,255,255,0.3)" stroke-width="0.5"/>
+            <line x1="-20" y1="10" x2="20" y2="10" stroke="rgba(255,255,255,0.3)" stroke-width="0.5"/>
+          </g>
+        </g>
+        <line x1="-40" y1="0" x2="-12" y2="0" stroke="#ffd000" stroke-width="3"/>
+        <line x1="12" y1="0" x2="40" y2="0" stroke="#ffd000" stroke-width="3"/>
+        <rect x="-4" y="-4" width="8" height="8" fill="#ffd000"/>
+        <circle r="90" fill="none" stroke="rgba(255,255,255,0.12)" stroke-width="1"/>
+      </svg>
+      <div class="pfd-strip left">
+        <div class="strip-label">IAS</div>
+        <div class="strip-value" id="pfd-spd">0</div>
+        <div class="strip-unit" id="pfd-spd-unit">km/h</div>
+      </div>
+      <div class="pfd-strip right">
+        <div class="strip-label">ALT</div>
+        <div class="strip-value" id="pfd-alt">0</div>
+        <div class="strip-unit" id="pfd-alt-unit">m</div>
+      </div>
+      <div class="pfd-bottom-row">
+        <div class="pfd-mini"><span class="pfd-mini-lbl">VS</span><span id="pfd-vs">0</span></div>
+        <div class="pfd-mini"><span class="pfd-mini-lbl">HDG</span><span id="pfd-hdg">0</span></div>
+        <div class="pfd-mini"><span class="pfd-mini-lbl">GS</span><span id="pfd-gs">0</span></div>
+      </div>
+    </div>
+
+    <!-- Compass -->
+    <div class="hud-compass">
+      <div class="compass-tape" id="compass-tape"></div>
+      <div class="compass-ptr">&#9660;</div>
+    </div>
+
+    <!-- Right Systems -->
+    <div class="hud-sys">
+      <div class="sys-section">
+        <div class="sys-hdr">ENGINE</div>
+        <div class="sys-bar-row"><span>THR</span><div class="sys-bar"><div class="sys-fill" id="s-thr"></div></div><span id="s-thr-v">0%</span></div>
+        <div class="sys-bar-row"><span>FUEL</span><div class="sys-bar"><div class="sys-fill fuel" id="s-fuel"></div></div><span id="s-fuel-v">100%</span></div>
+        <div class="sys-bar-row"><span>G</span><span class="g-val" id="s-g">1.0</span></div>
+      </div>
+      <div class="sys-section">
+        <div class="sys-hdr">STATUS</div>
+        <div class="status-grid">
+          <div class="st" id="st-gear"><i class="dot on"></i>GEAR</div>
+          <div class="st" id="st-flaps"><i class="dot"></i>FLP 0</div>
+          <div class="st" id="st-brk"><i class="dot"></i>BRK</div>
+          <div class="st" id="st-spl"><i class="dot"></i>SPL</div>
+          <div class="st" id="st-lgt"><i class="dot"></i>LGT</div>
+          <div class="st" id="st-ap"><i class="dot"></i>A/P</div>
+          <div class="st" id="st-park"><i class="dot"></i>PRK</div>
+        </div>
+      </div>
+      <div class="sys-section">
+        <div class="sys-hdr">INFO</div>
+        <div class="info-row" id="info-aircraft">A320</div>
+        <div class="info-row" id="info-airline">Lufthansa</div>
+        <div class="info-row" id="info-players">1 online</div>
+      </div>
+    </div>
+
+    <!-- Bottom -->
+    <div class="hud-bottom">
+      <span id="hud-loc">-</span>
+      <span id="hud-time">00:00</span>
+    </div>
+
+    <!-- Warnings -->
+    <div class="warning stall hidden" id="warn-stall">STALL</div>
+    <div class="warning ovspd hidden" id="warn-ovspd">OVERSPEED</div>
+    <div class="warning gpws hidden" id="warn-gpws">PULL UP</div>
+  </div>
+
+  <!-- ==================== COCKPIT PANEL (Tab) ==================== -->
+  <div id="cockpit-overlay" class="hidden">
+    <div class="cockpit-header">
+      <span>COCKPIT SYSTEMS</span>
+      <button class="cockpit-close" id="cockpit-close">&#10005;</button>
+    </div>
+    <div class="cockpit-body" id="cockpit-body"></div>
+  </div>
+
+  <!-- ==================== PAUSE ==================== -->
+  <div id="pause-menu" class="hidden">
+    <div class="overlay-bg"></div>
+    <div class="pause-box">
+      <img src="logo.png" alt="Flugsimulator" class="pause-logo-img">
+      <div class="pause-title">PAUSED</div>
+      <button class="menu-btn" id="btn-resume">Resume Flight</button>
+      <button class="menu-btn" id="btn-wx-pause">Change Weather</button>
+      <button class="menu-btn" id="btn-respawn-p">Respawn</button>
+      <button class="menu-btn dim" id="btn-quit">Back to Menu</button>
+    </div>
+  </div>
+
+  <!-- ==================== CRASH ==================== -->
+  <div id="crash-screen" class="hidden">
+    <div class="overlay-bg red"></div>
+    <div class="crash-box">
+      <div class="crash-icon">&#9888;&#65039;</div>
+      <div class="crash-title">CRASH</div>
+      <div class="crash-reason" id="crash-reason">-</div>
+      <div class="crash-data">
+        <span>IAS <b id="cr-spd">0</b> km/h</span>
+        <span>ALT <b id="cr-alt">0</b> m</span>
+        <span>G-Force <b id="cr-g">0</b></span>
+      </div>
+      <button class="menu-btn" id="btn-retry">Try Again</button>
+      <button class="menu-btn dim" id="btn-cr-menu">Main Menu</button>
+    </div>
+  </div>
+
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
+      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
+    }
+  }
+  </script>
+  <script type="module" src="game.js"></script>
+</body>
+</html>

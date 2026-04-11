@@ -1,0 +1,273 @@
+/* ============================================================
+   FLUGSIM.COM — MSFS-INSPIRED UI
+   ============================================================ */
+*{margin:0;padding:0;box-sizing:border-box}
+body{overflow:hidden;background:#000;font-family:'Inter',sans-serif;color:#fff;-webkit-font-smoothing:antialiased}
+canvas{display:block}
+.hidden{display:none!important}
+::-webkit-scrollbar{width:4px}
+::-webkit-scrollbar-thumb{background:rgba(255,255,255,.15);border-radius:2px}
+
+/* ---- branding ---- */
+.login-logo-img{width:200px;height:auto;margin-bottom:4px;filter:drop-shadow(0 0 20px rgba(74,158,255,.3))}
+.topbar-logo-img{height:36px;width:auto}
+.load-logo-img{width:140px;height:auto;margin-bottom:20px;filter:drop-shadow(0 0 15px rgba(74,158,255,.25))}
+.pause-logo-img{width:100px;height:auto;margin-bottom:4px;filter:drop-shadow(0 0 12px rgba(74,158,255,.2))}
+
+/* ============================================================
+   LOGIN SCREEN
+   ============================================================ */
+#login-screen{position:fixed;inset:0;z-index:110;display:flex;justify-content:center;align-items:center}
+.login-box{position:relative;z-index:1;display:flex;flex-direction:column;align-items:center;gap:8px;width:360px}
+.login-logo{font-size:32px;font-weight:800;letter-spacing:6px;margin-bottom:2px;display:none}
+.login-subtitle{font-size:10px;letter-spacing:5px;color:rgba(255,255,255,.25);margin-bottom:32px}
+.login-form{width:100%;display:flex;flex-direction:column;gap:10px}
+.login-label{font-size:9px;letter-spacing:2.5px;font-weight:600;color:rgba(255,255,255,.35)}
+.login-input{width:100%;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:14px 18px;color:#fff;font-family:'Inter',sans-serif;font-size:16px;font-weight:500;outline:none;text-align:center;letter-spacing:1px;transition:.2s}
+.login-input:focus{border-color:#4a9eff;box-shadow:0 0 20px rgba(74,158,255,.12)}
+.login-input::placeholder{color:rgba(255,255,255,.15);font-weight:400}
+.login-hint{font-size:10px;color:rgba(255,255,255,.15);text-align:center}
+.login-btn{width:100%;padding:14px;border:none;border-radius:10px;background:rgba(255,255,255,.06);color:rgba(255,255,255,.2);font-family:'Inter',sans-serif;font-size:13px;font-weight:700;letter-spacing:4px;cursor:not-allowed;transition:.3s;margin-top:6px}
+.login-btn:not(:disabled){background:linear-gradient(135deg,#1558b0,#2a7fff);color:#fff;cursor:pointer}
+.login-btn:not(:disabled):hover{box-shadow:0 6px 24px rgba(42,127,255,.3);transform:translateY(-1px)}
+.login-footer{font-size:10px;color:rgba(255,255,255,.12);margin-top:20px;text-align:center}
+
+/* ============================================================
+   MAIN MENU
+   ============================================================ */
+#main-menu{position:fixed;inset:0;z-index:100;display:flex;flex-direction:column}
+.menu-bg{position:absolute;inset:0;background:linear-gradient(160deg,#060a12 0%,#0c1a2e 40%,#091420 100%);z-index:0}
+.menu-bg::after{content:'';position:absolute;inset:0;background:radial-gradient(ellipse at 25% 75%,rgba(30,80,160,.15),transparent 60%),radial-gradient(ellipse at 75% 25%,rgba(20,60,140,.1),transparent 50%)}
+
+/* topbar */
+.menu-topbar{position:relative;z-index:1;display:flex;align-items:center;gap:32px;padding:16px 32px;border-bottom:1px solid rgba(255,255,255,.06)}
+.menu-nav{display:flex;gap:0;margin-left:40px}
+.nav-tab{background:none;border:none;color:rgba(255,255,255,.35);font-family:inherit;font-size:11px;font-weight:600;letter-spacing:3px;padding:14px 24px;cursor:pointer;border-bottom:2px solid transparent;transition:.2s}
+.nav-tab:hover{color:rgba(255,255,255,.6)}
+.nav-tab.active{color:#fff;border-bottom-color:#4a9eff}
+.menu-right-info{margin-left:auto;display:flex;align-items:center;gap:16px;font-size:10px;letter-spacing:2px;color:rgba(255,255,255,.3)}
+#menu-pilot-name{color:#4a9eff;font-weight:600;letter-spacing:1px;font-size:12px}
+
+/* panels */
+.panel{display:none;position:relative;z-index:1;flex:1;overflow:hidden}
+.panel.active{display:flex}
+
+/* ---- FLY PANEL ---- */
+.fly-layout{display:flex;flex:1;gap:0}
+.map-area{flex:1;position:relative;display:flex;flex-direction:column}
+.airport-search-bar{position:relative;padding:8px 12px;z-index:5}
+.airport-search-bar input{width:100%;background:rgba(0,0,0,.5);border:1px solid rgba(255,255,255,.1);border-radius:8px;padding:10px 16px;color:#fff;font-family:'Inter',sans-serif;font-size:13px;outline:none;backdrop-filter:blur(8px)}
+.airport-search-bar input:focus{border-color:#4a9eff;box-shadow:0 0 12px rgba(74,158,255,.15)}
+.airport-search-bar input::placeholder{color:rgba(255,255,255,.25)}
+.search-results{position:absolute;top:100%;left:12px;right:12px;max-height:350px;overflow-y:auto;background:rgba(8,12,20,.97);border:1px solid rgba(255,255,255,.1);border-radius:8px;backdrop-filter:blur(12px);z-index:10}
+.search-result{display:flex;align-items:center;gap:10px;padding:10px 14px;cursor:pointer;transition:.15s;border-bottom:1px solid rgba(255,255,255,.03)}
+.search-result:hover{background:rgba(74,158,255,.08)}
+.search-result.active{background:rgba(74,158,255,.12)}
+.sr-icao{font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:600;color:#4a9eff;min-width:48px}
+.sr-iata{font-family:'JetBrains Mono',monospace;font-size:10px;color:rgba(255,255,255,.3);min-width:30px}
+.sr-name{font-size:12px;color:rgba(255,255,255,.7)}
+.sr-city{font-size:10px;color:rgba(255,255,255,.3);margin-left:auto}
+.airport-count{position:absolute;bottom:8px;left:12px;font-size:10px;color:rgba(255,255,255,.15);z-index:3;pointer-events:none}
+.dep-icao{font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:700;color:#4a9eff;margin-bottom:4px}
+.dep-rwy{font-family:'JetBrains Mono',monospace;font-size:11px;color:rgba(255,255,255,.3);margin-top:6px}
+.map-wrap{flex:1;position:relative;overflow:hidden;min-height:0}
+.map-img{width:100%;height:100%;object-fit:cover;opacity:.5;filter:saturate(.6)brightness(.45)}
+.map-marker{position:absolute;width:12px;height:12px;border-radius:50%;background:rgba(74,158,255,.7);border:2px solid rgba(255,255,255,.7);transform:translate(-50%,-50%);cursor:pointer;transition:.2s;z-index:2}
+.map-marker:hover,.map-marker.active{background:#4a9eff;box-shadow:0 0 10px rgba(74,158,255,.5),0 0 25px rgba(74,158,255,.2);transform:translate(-50%,-50%) scale(1.4)}
+.map-marker-label{position:absolute;top:-22px;left:50%;transform:translateX(-50%);white-space:nowrap;font-size:9px;font-weight:600;letter-spacing:1px;text-shadow:0 1px 6px rgba(0,0,0,.9);opacity:0;transition:.2s;pointer-events:none}
+.map-marker:hover .map-marker-label,.map-marker.active .map-marker-label{opacity:1}
+
+.fly-sidebar{width:280px;background:rgba(0,0,0,.3);border-left:1px solid rgba(255,255,255,.06);display:flex;flex-direction:column;padding:20px;gap:12px;overflow-y:auto}
+.sidebar-card{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);border-radius:10px;padding:16px}
+.card-header{font-size:9px;letter-spacing:2.5px;font-weight:600;color:rgba(255,255,255,.3);margin-bottom:10px}
+.dep-icon{font-size:24px;margin-bottom:8px}
+.dep-name{font-size:16px;font-weight:600}
+.dep-sub{font-size:12px;color:rgba(255,255,255,.4);margin-top:2px}
+.dep-coords,.dep-elev{font-family:'JetBrains Mono',monospace;font-size:11px;color:rgba(255,255,255,.25);margin-top:3px}
+.dep-aircraft{font-size:14px;font-weight:600}
+.dep-airline{font-size:12px;color:rgba(255,255,255,.4);margin-top:2px}
+.cond-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:12px}
+.cond-grid span:nth-child(odd){color:rgba(255,255,255,.4)}
+.cond-grid span:nth-child(even){font-family:'JetBrains Mono',monospace;text-align:right;color:rgba(255,255,255,.7)}
+.btn-fly{margin-top:auto;display:flex;align-items:center;justify-content:center;gap:10px;background:linear-gradient(135deg,#1558b0,#2a7fff);border:none;border-radius:10px;padding:16px;cursor:pointer;font-family:inherit;font-size:13px;font-weight:700;color:#fff;letter-spacing:4px;transition:.3s}
+.btn-fly:hover{background:linear-gradient(135deg,#1e68c4,#3a8fff);box-shadow:0 6px 24px rgba(42,127,255,.3);transform:translateY(-1px)}
+
+/* ---- AIRCRAFT PANEL ---- */
+.aircraft-layout{display:flex;flex:1;gap:0;overflow:hidden}
+.ac-type-list{width:260px;border-right:1px solid rgba(255,255,255,.06);overflow-y:auto;padding:12px}
+.ac-type-item{padding:14px 16px;border-radius:8px;cursor:pointer;transition:.2s;margin-bottom:4px}
+.ac-type-item:hover{background:rgba(255,255,255,.04)}
+.ac-type-item.active{background:rgba(74,158,255,.1);border:1px solid rgba(74,158,255,.3)}
+.ac-type-item .ac-t-name{font-size:13px;font-weight:600}
+.ac-type-item .ac-t-sub{font-size:10px;color:rgba(255,255,255,.35);margin-top:2px}
+
+.ac-detail{flex:1;padding:24px;overflow-y:auto}
+.ac-preview-3d{width:100%;height:280px;border-radius:10px;overflow:hidden;border:1px solid rgba(255,255,255,.06);margin-bottom:16px;background:#0d1524}
+.ac-preview-3d canvas{width:100%!important;height:100%!important;display:block}
+.ac-detail-header{font-size:24px;font-weight:700;margin-bottom:16px}
+.ac-specs{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+.ac-spec{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);border-radius:8px;padding:10px 14px}
+.ac-spec-label{font-size:9px;letter-spacing:1.5px;color:rgba(255,255,255,.3);font-weight:600}
+.ac-spec-val{font-family:'JetBrains Mono',monospace;font-size:14px;font-weight:500;margin-top:2px}
+
+.airline-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:6px;max-height:300px;overflow-y:auto;margin-top:8px}
+.airline-item{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:6px;cursor:pointer;transition:.15s;border:1px solid transparent;font-size:12px}
+.airline-item:hover{background:rgba(255,255,255,.04)}
+.airline-item.active{border-color:rgba(74,158,255,.4);background:rgba(74,158,255,.08)}
+.airline-swatch{width:20px;height:14px;border-radius:3px;flex-shrink:0}
+.airline-name{color:rgba(255,255,255,.7)}
+.airline-iata{font-family:'JetBrains Mono',monospace;font-size:10px;color:rgba(255,255,255,.3);margin-left:auto}
+
+/* ---- WEATHER PANEL ---- */
+.weather-list{display:flex;flex-direction:column;gap:8px;padding:24px;max-width:600px}
+.wx-card{display:flex;align-items:center;gap:16px;padding:16px 20px;border-radius:10px;border:1px solid rgba(255,255,255,.06);cursor:pointer;transition:.2s}
+.wx-card:hover{border-color:rgba(74,158,255,.3);background:rgba(74,158,255,.04)}
+.wx-card.selected{border-color:#4a9eff;background:rgba(74,158,255,.08)}
+.wx-icon{font-size:28px;width:40px;text-align:center}
+.wx-name{font-size:14px;font-weight:600;min-width:80px}
+.wx-detail{font-size:11px;color:rgba(255,255,255,.35)}
+
+/* ---- SETTINGS ---- */
+.settings-layout{display:flex;gap:32px;padding:24px}
+.settings-col{flex:1;max-width:400px}
+.setting-row{display:flex;justify-content:space-between;align-items:center;padding:12px 16px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.05);border-radius:8px;margin-bottom:6px;font-size:13px}
+.setting-btns{display:flex;gap:3px}
+.set-btn{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);color:rgba(255,255,255,.4);font-family:inherit;font-size:11px;font-weight:500;padding:5px 12px;border-radius:5px;cursor:pointer;transition:.15s}
+.set-btn:hover{border-color:rgba(74,158,255,.3)}
+.set-btn.active{background:rgba(74,158,255,.2);border-color:#4a9eff;color:#fff}
+.kb-title{font-size:9px;letter-spacing:2px;font-weight:600;color:rgba(255,255,255,.3);margin-bottom:12px}
+.kb-list{display:flex;flex-direction:column;gap:6px;font-size:12px;color:rgba(255,255,255,.45)}
+.kb-list kbd{background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12);border-radius:3px;padding:1px 6px;font-family:'JetBrains Mono',monospace;font-size:10px;margin-right:2px}
+
+/* ============================================================
+   LOADING
+   ============================================================ */
+#loading-screen{position:fixed;inset:0;z-index:90;background:#060a12;display:flex;justify-content:center;align-items:center}
+.load-center{text-align:center}
+.load-logo{margin-bottom:28px}
+.load-bar{width:280px;height:2px;background:rgba(255,255,255,.06);border-radius:1px;overflow:hidden;margin:0 auto 14px}
+.load-fill{height:100%;width:0%;background:linear-gradient(90deg,#4a9eff,#7abcff);border-radius:1px;transition:width .3s}
+.load-text{font-size:11px;color:rgba(255,255,255,.25);letter-spacing:1px}
+
+/* ============================================================
+   FLIGHT HUD
+   ============================================================ */
+#flight-hud{position:fixed;inset:0;pointer-events:none;z-index:10}
+
+/* PFD */
+.pfd{position:absolute;left:12px;bottom:12px;width:220px;background:rgba(0,0,0,.7);border:1px solid rgba(255,255,255,.08);border-radius:10px;backdrop-filter:blur(10px);padding:10px;display:flex;flex-direction:column;align-items:center}
+.pfd-adi{width:180px;height:180px}
+.pfd-strip{position:absolute;top:60px;width:48px;text-align:center}
+.pfd-strip.left{left:14px}
+.pfd-strip.right{right:14px}
+.strip-label{font-size:8px;letter-spacing:1px;color:rgba(255,255,255,.35);font-weight:600}
+.strip-value{font-family:'JetBrains Mono',monospace;font-size:18px;font-weight:600;line-height:1.2}
+.strip-unit{font-size:8px;color:rgba(255,255,255,.2)}
+.pfd-bottom-row{display:flex;gap:8px;margin-top:6px;width:100%}
+.pfd-mini{flex:1;background:rgba(255,255,255,.04);border-radius:5px;padding:4px 6px;text-align:center;font-family:'JetBrains Mono',monospace;font-size:12px}
+.pfd-mini-lbl{display:block;font-size:8px;color:rgba(255,255,255,.3);letter-spacing:1px;font-weight:600;font-family:'Inter',sans-serif}
+
+/* Compass */
+.hud-compass{position:absolute;top:12px;left:50%;transform:translateX(-50%);width:320px;height:32px;background:rgba(0,0,0,.6);border:1px solid rgba(255,255,255,.08);border-radius:6px;backdrop-filter:blur(8px);overflow:hidden}
+.compass-tape{position:absolute;top:0;height:100%;display:flex;align-items:center;white-space:nowrap}
+.compass-ptr{position:absolute;top:-1px;left:50%;transform:translateX(-50%);color:#4a9eff;font-size:10px}
+
+/* Right Systems */
+.hud-sys{position:absolute;right:12px;bottom:12px;width:150px;display:flex;flex-direction:column;gap:6px}
+.sys-section{background:rgba(0,0,0,.7);border:1px solid rgba(255,255,255,.08);border-radius:8px;padding:10px;backdrop-filter:blur(10px)}
+.sys-hdr{font-size:8px;letter-spacing:2px;font-weight:600;color:rgba(255,255,255,.25);margin-bottom:8px}
+.sys-bar-row{display:flex;align-items:center;gap:6px;font-family:'JetBrains Mono',monospace;font-size:10px;color:rgba(255,255,255,.45);margin-bottom:4px}
+.sys-bar-row span:first-child{width:30px;font-weight:600}
+.sys-bar{flex:1;height:3px;background:rgba(255,255,255,.06);border-radius:2px;overflow:hidden}
+.sys-fill{height:100%;background:#4a9eff;border-radius:2px;transition:width .15s}
+.sys-fill.fuel{background:#4aff7f}
+.g-val{font-size:15px;font-weight:600;margin-left:auto}
+.status-grid{display:flex;flex-wrap:wrap;gap:4px}
+.st{font-size:9px;letter-spacing:.5px;font-weight:600;color:rgba(255,255,255,.3);display:flex;align-items:center;gap:3px}
+.dot{width:5px;height:5px;border-radius:50%;background:rgba(255,255,255,.12);display:inline-block}
+.dot.on{background:#4aff7f}
+.dot.amber{background:#ffaa00}
+.info-row{font-size:11px;color:rgba(255,255,255,.35);margin-bottom:2px}
+.hud-bottom{position:absolute;bottom:12px;left:245px;right:175px;display:flex;justify-content:space-between;font-size:10px;color:rgba(255,255,255,.2)}
+
+/* Warnings */
+.warning{position:absolute;top:52px;left:50%;transform:translateX(-50%);padding:5px 20px;border-radius:4px;font-size:14px;font-weight:700;letter-spacing:4px;animation:blink .5s infinite;z-index:20}
+.warning.stall{background:rgba(255,30,30,.85);border:2px solid #ff1e1e}
+.warning.ovspd{background:rgba(255,150,0,.85);border:2px solid #ff9600;top:80px}
+.warning.gpws{background:rgba(255,0,0,.9);border:2px solid #ff0000;font-size:18px;top:52px}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.25}}
+
+/* ============================================================
+   COCKPIT PANEL
+   ============================================================ */
+#cockpit-overlay{position:fixed;right:0;top:0;bottom:0;width:340px;z-index:30;background:rgba(8,12,20,.95);border-left:1px solid rgba(255,255,255,.08);backdrop-filter:blur(12px);display:flex;flex-direction:column;overflow:hidden;pointer-events:auto}
+.cockpit-header{display:flex;justify-content:space-between;align-items:center;padding:14px 16px;border-bottom:1px solid rgba(255,255,255,.06);font-size:10px;letter-spacing:2px;font-weight:600;color:rgba(255,255,255,.4)}
+.cockpit-close{background:none;border:none;color:rgba(255,255,255,.4);font-size:18px;cursor:pointer;padding:4px 8px}
+.cockpit-close:hover{color:#fff}
+.cockpit-body{flex:1;overflow-y:auto;padding:12px}
+
+/* cockpit components */
+.cockpit-panel{display:flex;flex-direction:column;gap:2px}
+.cpt-section{margin-bottom:8px}
+.cpt-section-title{font-size:8px;letter-spacing:2px;font-weight:600;color:rgba(255,255,255,.2);padding:8px 0 6px;border-bottom:1px solid rgba(255,255,255,.04)}
+.cpt-row{display:flex;gap:6px;padding:6px 0;flex-wrap:wrap}
+
+/* switches */
+.cpt-switch-wrap{display:flex;flex-direction:column;align-items:center;gap:3px;min-width:54px}
+.cpt-switch{width:36px;height:20px;border-radius:10px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.1);cursor:pointer;position:relative;transition:.2s}
+.cpt-switch.on{background:rgba(74,158,255,.4);border-color:#4a9eff}
+.cpt-switch-handle{position:absolute;top:2px;left:2px;width:14px;height:14px;border-radius:50%;background:#888;transition:.2s}
+.cpt-switch.on .cpt-switch-handle{left:18px;background:#fff}
+.cpt-label{font-size:8px;letter-spacing:.5px;color:rgba(255,255,255,.3);font-weight:600;text-align:center}
+
+/* buttons */
+.cpt-btn-wrap{display:flex;flex-direction:column;align-items:center}
+.cpt-btn{width:48px;height:32px;border-radius:6px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);color:rgba(255,255,255,.5);font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:600;cursor:pointer;transition:.15s}
+.cpt-btn:hover{border-color:rgba(74,158,255,.3)}
+.cpt-btn.active{background:rgba(74,158,255,.3);border-color:#4a9eff;color:#fff;box-shadow:0 0 8px rgba(74,158,255,.3)}
+
+/* dials */
+.cpt-dial-wrap{display:flex;flex-direction:column;align-items:center;gap:2px;min-width:64px}
+.cpt-dial-display{font-family:'JetBrains Mono',monospace;font-size:14px;font-weight:600;color:#fff;background:rgba(0,0,0,.4);border:1px solid rgba(255,255,255,.1);border-radius:4px;padding:3px 8px;min-width:56px;text-align:center}
+.cpt-dial-unit{font-size:8px;color:rgba(255,255,255,.25);margin-left:2px}
+.cpt-dial-controls{display:flex;gap:2px}
+.cpt-dial-btn{width:24px;height:20px;border-radius:4px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);color:rgba(255,255,255,.5);font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-family:inherit}
+.cpt-dial-btn:hover{background:rgba(74,158,255,.15);border-color:rgba(74,158,255,.3)}
+
+/* sliders (throttle) */
+.cpt-slider-wrap{display:flex;flex-direction:column;align-items:center;gap:4px;width:40px}
+.cpt-slider-track{width:12px;height:100px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:6px;position:relative;cursor:pointer;touch-action:none}
+.cpt-slider-fill{position:absolute;bottom:0;width:100%;background:linear-gradient(0deg,#4a9eff,#2a6fd4);border-radius:5px;transition:height .05s}
+.cpt-slider-val{font-family:'JetBrains Mono',monospace;font-size:10px;color:rgba(255,255,255,.4)}
+
+/* flap selector */
+.cpt-flap-wrap,.cpt-autobrake-wrap,.cpt-gear-wrap{display:flex;flex-direction:column;align-items:center;gap:4px}
+.cpt-flap-positions{display:flex;flex-direction:column;gap:2px}
+.cpt-flap-btn{width:48px;height:22px;border-radius:4px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);color:rgba(255,255,255,.4);font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:600;cursor:pointer;transition:.15s}
+.cpt-flap-btn:hover{border-color:rgba(74,158,255,.3)}
+.cpt-flap-btn.active{background:rgba(74,158,255,.25);border-color:#4a9eff;color:#fff}
+
+/* gear lever */
+.cpt-gear-lever{width:32px;height:60px;border-radius:6px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);cursor:pointer;position:relative;transition:.2s}
+.cpt-gear-lever.down{border-color:#4aff7f}
+.cpt-gear-lever.up{border-color:#ff4444}
+.cpt-gear-handle{position:absolute;width:28px;height:24px;left:1px;border-radius:4px;display:flex;align-items:center;justify-content:center;font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:700;transition:.2s}
+.cpt-gear-lever.down .cpt-gear-handle{bottom:1px;background:rgba(74,255,127,.2);color:#4aff7f}
+.cpt-gear-lever.up .cpt-gear-handle{top:1px;background:rgba(255,68,68,.2);color:#ff4444}
+
+/* ============================================================
+   PAUSE & CRASH OVERLAYS
+   ============================================================ */
+.overlay-bg{position:absolute;inset:0;background:rgba(0,0,0,.75);backdrop-filter:blur(8px)}
+.overlay-bg.red{background:rgba(100,0,0,.6)}
+#pause-menu,#crash-screen{position:fixed;inset:0;z-index:50;display:flex;justify-content:center;align-items:center}
+.pause-box,.crash-box{position:relative;z-index:1;display:flex;flex-direction:column;align-items:center;gap:10px;min-width:280px}
+.pause-logo{margin-bottom:4px}
+.pause-title{font-size:12px;letter-spacing:4px;color:rgba(255,255,255,.4);margin-bottom:12px}
+.menu-btn{width:100%;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);color:#fff;font-family:inherit;font-size:13px;font-weight:500;padding:13px 24px;border-radius:8px;cursor:pointer;transition:.2s;pointer-events:auto}
+.menu-btn:hover{background:rgba(74,158,255,.12);border-color:rgba(74,158,255,.3)}
+.menu-btn.dim{color:rgba(255,255,255,.35);border-color:rgba(255,255,255,.04)}
+.crash-icon{font-size:48px}
+.crash-title{font-size:28px;font-weight:700;letter-spacing:5px}
+.crash-reason{font-size:14px;color:rgba(255,255,255,.5);margin-bottom:4px}
+.crash-data{display:flex;gap:20px;font-family:'JetBrains Mono',monospace;font-size:11px;color:rgba(255,255,255,.3);margin-bottom:12px}
