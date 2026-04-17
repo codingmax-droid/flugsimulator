@@ -70,8 +70,13 @@ canvas{display:block}
 .airport-count{position:absolute;bottom:8px;left:12px;font-size:10px;color:rgba(255,255,255,.15);z-index:3;pointer-events:none}
 .dep-icao{font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:700;color:#4a9eff;margin-bottom:4px}
 .dep-rwy{font-family:'JetBrains Mono',monospace;font-size:11px;color:rgba(255,255,255,.3);margin-top:6px}
-.map-wrap{flex:1;position:relative;overflow:hidden;min-height:0}
-.map-img{width:100%;height:100%;object-fit:cover;opacity:.5;filter:saturate(.6)brightness(.45)}
+.map-wrap{flex:1;position:relative;overflow:hidden;min-height:0;cursor:grab}
+.map-wrap.dragging{cursor:grabbing}
+.map-inner{position:absolute;inset:0;transform-origin:0 0;will-change:transform}
+.map-img{width:100%;height:100%;object-fit:cover;opacity:.5;filter:saturate(.6)brightness(.45);pointer-events:none;user-select:none;-webkit-user-drag:none}
+.map-zoom-controls{position:absolute;top:12px;right:12px;display:flex;flex-direction:column;gap:4px;z-index:4}
+.map-zoom-btn{width:32px;height:32px;border-radius:6px;background:rgba(0,0,0,.55);border:1px solid rgba(255,255,255,.15);color:#fff;font-size:18px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:.15s;font-family:'JetBrains Mono',monospace}
+.map-zoom-btn:hover{background:rgba(74,158,255,.4);border-color:rgba(74,158,255,.7)}
 .map-marker{position:absolute;width:12px;height:12px;border-radius:50%;background:rgba(74,158,255,.7);border:2px solid rgba(255,255,255,.7);transform:translate(-50%,-50%);cursor:pointer;transition:.2s;z-index:2}
 .map-marker:hover,.map-marker.active{background:#4a9eff;box-shadow:0 0 10px rgba(74,158,255,.5),0 0 25px rgba(74,158,255,.2);transform:translate(-50%,-50%) scale(1.4)}
 .map-marker-label{position:absolute;top:-22px;left:50%;transform:translateX(-50%);white-space:nowrap;font-size:9px;font-weight:600;letter-spacing:1px;text-shadow:0 1px 6px rgba(0,0,0,.9);opacity:0;transition:.2s;pointer-events:none}

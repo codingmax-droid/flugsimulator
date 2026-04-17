@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { TerrainManager } from './terrain.js';
-import { createAircraftForType, createProceduralAirplane, AircraftPreview } from './airplane.js';
+import { createAircraftForType, createProceduralAirplane, AircraftPreview, createGLBInstance } from './airplane.js';
 import { AIRCRAFT_TYPES, AIRLINES, getAirlinesForAircraft } from './airlines.js';
 import { AIRPORTS, searchAirports } from './airports.js';
 import { Cockpit } from './cockpit.js';
@@ -111,13 +111,28 @@ function getPlayerMesh(id, aircraftType, airline) {
       const al = Object.values(AIRLINES).find(a => a.name === airline);
       if (al) { c1 = al.color1; c2 = al.color2; }
     }
-    const mesh = createAircraftForType(aircraftType || 'a320', c1, c2);
-    const acData = AIRCRAFT_TYPES[aircraftType];
+    const type = aircraftType || 'a320';
+    const wrapper = new THREE.Group();
+    // Sofort ein prozedurales Fallback-Mesh, damit etwas sichtbar ist
+    const proc = createAircraftForType(type, c1, c2);
+    wrapper.add(proc);
+    const acData = AIRCRAFT_TYPES[type];
     const s = acData ? acData.scale * 0.45 : 1;
-    mesh.scale.setScalar(s);
-    mesh.userData._key = key;
-    scene.add(mesh);
-    playerMeshes.set(id, mesh);
+    wrapper.scale.setScalar(s);
+    wrapper.userData._key = key;
+    wrapper.userData._hasGLB = false;
+    scene.add(wrapper);
+    playerMeshes.set(id, wrapper);
+
+    // GLB asynchron laden und prozeduralen Fallback ersetzen
+    createGLBInstance(type).then((glb) => {
+      if (!glb) return;
+      const current = playerMeshes.get(id);
+      if (!current || current.userData._key !== key) return; // zwischenzeitlich gewechselt
+      current.remove(proc);
+      current.add(glb);
+      current.userData._hasGLB = true;
+    });
   }
   return playerMeshes.get(id);
 }
@@ -426,16 +441,73 @@ function initMenu() {
 
   // Airport map markers
   const map = document.getElementById('world-map');
+  const mapInner = document.getElementById('world-map-inner');
   AIRPORTS.forEach((ap, i) => {
     const m = document.createElement('div');
     m.className = 'map-marker' + (ap.icao==='EDDF'?' active':'');
     m.style.left = `${((ap.lon+180)/360)*100}%`;
     m.style.top = `${((90-ap.lat)/180)*100}%`;
     m.innerHTML = `<div class="map-marker-label">${ap.iata}</div>`;
-    m.addEventListener('click', () => selectAirport(ap));
-    map.appendChild(m);
+    m.addEventListener('click', (e) => { e.stopPropagation(); selectAirport(ap); });
+    mapInner.appendChild(m);
   });
   document.getElementById('airport-count').textContent = `${AIRPORTS.length} Flughäfen weltweit`;
+
+  // Map zoom + pan
+  const mapState = { scale: 1, tx: 0, ty: 0 };
+  const MIN_SCALE = 1, MAX_SCALE = 8;
+  const applyMapTransform = () => {
+    mapInner.style.transform = `translate(${mapState.tx}px, ${mapState.ty}px) scale(${mapState.scale})`;
+  };
+  const clampPan = () => {
+    const w = map.clientWidth, h = map.clientHeight;
+    const maxX = 0, minX = w - w * mapState.scale;
+    const maxY = 0, minY = h - h * mapState.scale;
+    mapState.tx = Math.min(maxX, Math.max(minX, mapState.tx));
+    mapState.ty = Math.min(maxY, Math.max(minY, mapState.ty));
+  };
+  const zoomAt = (cx, cy, factor) => {
+    const rect = map.getBoundingClientRect();
+    const px = cx - rect.left, py = cy - rect.top;
+    const newScale = Math.min(MAX_SCALE, Math.max(MIN_SCALE, mapState.scale * factor));
+    const ratio = newScale / mapState.scale;
+    mapState.tx = px - (px - mapState.tx) * ratio;
+    mapState.ty = py - (py - mapState.ty) * ratio;
+    mapState.scale = newScale;
+    clampPan();
+    applyMapTransform();
+  };
+  map.addEventListener('wheel', (e) => {
+    e.preventDefault();
+    zoomAt(e.clientX, e.clientY, e.deltaY < 0 ? 1.15 : 1/1.15);
+  }, { passive: false });
+
+  let drag = null;
+  map.addEventListener('mousedown', (e) => {
+    if (e.target.closest('.map-marker') || e.target.closest('.map-zoom-controls')) return;
+    drag = { x: e.clientX, y: e.clientY, tx: mapState.tx, ty: mapState.ty };
+    map.classList.add('dragging');
+  });
+  window.addEventListener('mousemove', (e) => {
+    if (!drag) return;
+    mapState.tx = drag.tx + (e.clientX - drag.x);
+    mapState.ty = drag.ty + (e.clientY - drag.y);
+    clampPan();
+    applyMapTransform();
+  });
+  window.addEventListener('mouseup', () => { drag = null; map.classList.remove('dragging'); });
+
+  document.getElementById('map-zoom-in').addEventListener('click', () => {
+    const r = map.getBoundingClientRect();
+    zoomAt(r.left + r.width/2, r.top + r.height/2, 1.5);
+  });
+  document.getElementById('map-zoom-out').addEventListener('click', () => {
+    const r = map.getBoundingClientRect();
+    zoomAt(r.left + r.width/2, r.top + r.height/2, 1/1.5);
+  });
+  document.getElementById('map-zoom-reset').addEventListener('click', () => {
+    mapState.scale = 1; mapState.tx = 0; mapState.ty = 0; applyMapTransform();
+  });
 
   // Airport search
   const searchInput = document.getElementById('airport-search');

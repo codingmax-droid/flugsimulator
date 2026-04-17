@@ -426,13 +426,52 @@ export function createProceduralAirplane(id) {
   return buildAircraft('a320', '#05164d', '#ffc72c');
 }
 
-export async function loadAircraftModel(type) {
-  try {
-    const gltf = await new Promise((resolve, reject) => {
-      new GLTFLoader().load(`/models/${type}.glb`, resolve, undefined, reject);
-    });
-    return gltf.scene.clone();
-  } catch (e) { return null; }
+const _glbCache = new Map(); // type -> Promise<Group|null>
+const _loader = new GLTFLoader();
+
+// Ziel-Länge des prozeduralen Modells (in Szene-Units) je Typ
+const TARGET_LEN = {
+  a320: 12, a330: 20, a340: 22, a350: 20, a380: 24,
+  b737: 12, b747: 22, b757: 15, b777: 22, b787: 19,
+};
+
+export function loadAircraftModel(type) {
+  if (_glbCache.has(type)) return _glbCache.get(type);
+  const p = new Promise((resolve) => {
+    _loader.load(
+      `/models/${type}.glb`,
+      (gltf) => {
+        const root = gltf.scene;
+        // Bounding Box → Normalisierung auf Ziel-Länge, Zentrierung
+        const box = new THREE.Box3().setFromObject(root);
+        const size = new THREE.Vector3(); box.getSize(size);
+        const center = new THREE.Vector3(); box.getCenter(center);
+        const maxDim = Math.max(size.x, size.y, size.z);
+        if (maxDim === 0) { resolve(null); return; }
+        const target = TARGET_LEN[type] || 15;
+        const s = target / maxDim;
+        // Wrapper-Group, damit Zentrierung + Rotation konsistent sind.
+        // fr24-Modelle: Nase zeigt +X, Spannweite entlang Z — passt zu Szene
+        const wrap = new THREE.Group();
+        root.position.sub(center).multiplyScalar(s);
+        root.scale.setScalar(s);
+        wrap.add(root);
+        // Schatten
+        wrap.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
+        resolve(wrap);
+      },
+      undefined,
+      () => resolve(null),
+    );
+  });
+  _glbCache.set(type, p);
+  return p;
+}
+
+// Liefert einen frischen Clone des geladenen Modells (oder null)
+export async function createGLBInstance(type) {
+  const tmpl = await loadAircraftModel(type);
+  return tmpl ? tmpl.clone(true) : null;
 }
 
 // ============================================================
@@ -488,6 +527,15 @@ export class AircraftPreview {
     this.model = buildAircraft(type, color1, color2);
     this.scene.add(this.model);
     this.resize();
+    // Sobald GLB verfügbar ist, das prozedurale Preview-Mesh ersetzen
+    const reqType = type;
+    createGLBInstance(type).then((glb) => {
+      if (!glb || this._lastType !== reqType) return;
+      this.scene.remove(this.model);
+      this.model = glb;
+      this.scene.add(this.model);
+    });
+    this._lastType = type;
   }
 
   render() {

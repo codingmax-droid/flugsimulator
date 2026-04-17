@@ -53,8 +53,15 @@
             <div class="search-results hidden" id="search-results"></div>
           </div>
           <div class="map-wrap" id="world-map">
-            <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/e/ea/Equirectangular-projection.jpg/1280px-Equirectangular-projection.jpg"
-                 alt="World" class="map-img" crossorigin="anonymous">
+            <div class="map-inner" id="world-map-inner">
+              <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/e/ea/Equirectangular-projection.jpg/1280px-Equirectangular-projection.jpg"
+                   alt="World" class="map-img" crossorigin="anonymous">
+            </div>
+            <div class="map-zoom-controls">
+              <button class="map-zoom-btn" id="map-zoom-in" title="Zoom in">+</button>
+              <button class="map-zoom-btn" id="map-zoom-out" title="Zoom out">&minus;</button>
+              <button class="map-zoom-btn" id="map-zoom-reset" title="Reset">&#8634;</button>
+            </div>
           </div>
           <div class="airport-count" id="airport-count"></div>
         </div>
