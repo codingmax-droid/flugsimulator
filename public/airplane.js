@@ -1787,6 +1787,25 @@ const GLB_FALLBACK = {
   tu154:      'b757',
   dc10:       'a380',
   md11:       'a380',
+  // Supersonic Deltas (4 Triebwerke, lang + schmal) → a340
+  concorde:   'a340',
+  tu144:      'a340',
+  // Historische Props/Trimotoren → narrowbody Platzhalter
+  dc3:        'a320',
+  ju52:       'a320',
+  fordtrimotor: 'a320',
+  constellation: 'a340',
+  // Business Jets → a320 (kleinster verfügbarer Narrowbody)
+  g650:       'a320',
+  global7500: 'a320',
+  falcon7x:   'a320',
+  citation:   'a320',
+  hondajet:   'a320',
+  // Turboprop Regional/Single → a320 Platzhalter
+  atr72:      'a320',
+  dash8:      'a320',
+  do328:      'a320',
+  pc12:       'a320',
 };
 
 export function loadAircraftModel(type) {
