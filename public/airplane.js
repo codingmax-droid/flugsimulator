@@ -1817,18 +1817,12 @@ export class AircraftPreview {
   }
   setAircraft(type, liveryOrColor1, color2) {
     if (this.model) this.scene.remove(this.model);
+    // Immer prozedurales Mesh in der Vorschau: nur so ist die Livery sichtbar.
+    // In-Game wird weiterhin das GLB geladen (siehe game.js).
     this.model = buildAircraft(type, liveryOrColor1, color2);
     this.scene.add(this.model);
     this._realLen = this.model.userData.realLength || 12;
     this.resize();
-    const reqType = type;
-    createGLBInstance(type).then((glb) => {
-      if (!glb || this._lastType !== reqType) return;
-      this.scene.remove(this.model);
-      this.model = glb;
-      this._realLen = glb.userData.realLength || this._realLen;
-      this.scene.add(this.model);
-    });
     this._lastType = type;
   }
   render() {
