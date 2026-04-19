@@ -1783,8 +1783,39 @@ const _loader = new GLTFLoader();
 // Typen mit vorhandenen GLB-Dateien unter /public/models/*.glb
 const GLB_AVAILABLE = new Set(['a320','a330','a340','a350','a380','b747','b757','b787']);
 
+// Mapping „Typ → nächstpassendes vorhandenes GLB" für Jets ohne eigenes Modell.
+// Props/Segler/Amphibien/Bizjets/Concorde bleiben bewusst prozedural, weil kein
+// sinnvolles GLB-Vorbild unter den vorhandenen Dateien existiert.
 const GLB_FALLBACK = {
-  b737: 'a320', b777: 'b787',
+  // Narrow-Body 2-Triebwerk-Jets → a320
+  b737:       'a320',
+  a220:       'a320',
+  a321:       'a320',
+  b717:       'a320',
+  dc9:        'a320',
+  md80:       'a320',
+  e190:       'a320',
+  crj900:     'a320',
+  fokker100:  'a320',
+  c919:       'a320',
+  ssj100:     'a320',
+  mc21:       'a320',
+  caravelle:  'a320',
+  // Wide-Body 2-Triebwerk-Jets
+  a300:       'a330',
+  b767:       'a330',
+  b777:       'b787',
+  // 4-Triebwerk (narrow/wide) → a340
+  b707:       'a340',
+  dc8:        'a340',
+  il62:       'a340',
+  bae146:     'a340',
+  comet:      'a340',
+  // Trijets — Heck-zentraler ist optisch nicht ideal, aber besser als prozedural
+  b727:       'b757',
+  tu154:      'b757',
+  dc10:       'a380',
+  md11:       'a380',
 };
 
 export function loadAircraftModel(type) {
