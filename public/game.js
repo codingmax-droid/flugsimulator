@@ -467,7 +467,120 @@ function showCrash() {
 // MENU LOGIC
 // ============================================================
 
+function initDashboard() {
+  const dashView = document.getElementById('dashboard-view');
+  const flightSetup = document.getElementById('flight-setup');
+
+  const showSetup = (panelId) => {
+    dashView.classList.add('hidden');
+    flightSetup.classList.remove('hidden');
+    if (panelId) {
+      document.querySelectorAll('.nav-tab').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+      document.querySelector(`.nav-tab[data-panel="${panelId}"]`)?.classList.add('active');
+      document.getElementById(`panel-${panelId}`)?.classList.add('active');
+    }
+  };
+  const showDash = () => {
+    flightSetup.classList.add('hidden');
+    dashView.classList.remove('hidden');
+  };
+
+  document.querySelectorAll('.dash-tile').forEach(tile => {
+    tile.addEventListener('click', () => {
+      if (tile.classList.contains('locked')) return;
+      const which = tile.dataset.tile;
+      if (which === 'freeflight') showSetup('fly');
+      else if (which === 'career') showSetup('aircraft');
+      else if (which === 'challenge') showSetup('weather');
+      else if (which === 'worldphoto') showSetup('fly');
+    });
+  });
+
+  document.querySelector('[data-dash-icon="settings"]')?.addEventListener('click', () => showSetup('settings'));
+  document.getElementById('topbar-back')?.addEventListener('click', showDash);
+
+  document.getElementById('dash-pilot-name').textContent = pilotName;
+
+  startGlobe();
+}
+
+function startGlobe() {
+  const canvas = document.getElementById('dash-globe-canvas');
+  if (!canvas || canvas.dataset.init) return;
+  canvas.dataset.init = '1';
+
+  const r = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+  r.setPixelRatio(Math.min(devicePixelRatio, 2));
+  r.outputColorSpace = THREE.SRGBColorSpace;
+  r.toneMapping = THREE.ACESFilmicToneMapping;
+  r.toneMappingExposure = 1.15;
+
+  const sc = new THREE.Scene();
+  const cam = new THREE.PerspectiveCamera(38, 1, 0.1, 100);
+  cam.position.set(0, 0, 3.2);
+
+  const sun = new THREE.DirectionalLight(0xffffff, 2.6);
+  sun.position.set(1.2, 0.6, 3.5); // front-lit so the camera-facing hemisphere is illuminated
+  sc.add(sun);
+  sc.add(new THREE.AmbientLight(0xbfd4ff, 0.45));
+
+  const tl = new THREE.TextureLoader();
+  tl.crossOrigin = 'anonymous';
+  const earthTex = tl.load('https://threejs.org/examples/textures/planets/earth_atmos_2048.jpg');
+  earthTex.colorSpace = THREE.SRGBColorSpace;
+  earthTex.anisotropy = 8;
+  const specTex = tl.load('https://threejs.org/examples/textures/planets/earth_specular_2048.jpg');
+  const normalTex = tl.load('https://threejs.org/examples/textures/planets/earth_normal_2048.jpg');
+
+  const earth = new THREE.Mesh(
+    new THREE.SphereGeometry(1, 96, 96),
+    new THREE.MeshPhongMaterial({
+      map: earthTex,
+      specularMap: specTex,
+      normalMap: normalTex,
+      specular: new THREE.Color(0x333344),
+      shininess: 14,
+    })
+  );
+  // Standard three.js earth texture has the prime meridian opposite the seam; rotating by PI+0.2 centers Europe toward the camera.
+  earth.rotation.y = Math.PI + 0.2;
+  earth.rotation.z = 0.41; // Earth axial tilt
+  sc.add(earth);
+
+  // atmosphere halo (back-side sphere with fresnel shader)
+  const halo = new THREE.Mesh(
+    new THREE.SphereGeometry(1.09, 64, 64),
+    new THREE.ShaderMaterial({
+      side: THREE.BackSide, transparent: true, depthWrite: false,
+      uniforms: { c: { value: 0.55 }, p: { value: 3.2 }, glow: { value: new THREE.Color(0x4a9eff) } },
+      vertexShader: `varying vec3 vN; varying vec3 vP; void main(){vN=normalize(normalMatrix*normal); vec4 mv=modelViewMatrix*vec4(position,1.); vP=mv.xyz; gl_Position=projectionMatrix*mv;}`,
+      fragmentShader: `uniform float c; uniform float p; uniform vec3 glow; varying vec3 vN; varying vec3 vP; void main(){ vec3 vd=normalize(-vP); float intensity = pow(c - dot(vN, vd), p); gl_FragColor = vec4(glow, 1.0) * intensity; }`,
+    })
+  );
+  sc.add(halo);
+
+  const resize = () => {
+    const w = canvas.clientWidth | 0, h = canvas.clientHeight | 0;
+    if (!w || !h) return;
+    r.setSize(w, h, false);
+    cam.aspect = w / h; cam.updateProjectionMatrix();
+  };
+  resize();
+  new ResizeObserver(resize).observe(canvas);
+  window.addEventListener('resize', resize);
+
+  const loop = () => {
+    earth.rotation.y += 0.0012;
+    r.render(sc, cam);
+    requestAnimationFrame(loop);
+  };
+  loop();
+}
+
 function initMenu() {
+  initDashboard();
+
   // Tab navigation
   document.querySelectorAll('.nav-tab').forEach(t => {
     t.addEventListener('click', () => {

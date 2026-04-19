@@ -30,7 +30,93 @@
   <!-- ==================== MAIN MENU ==================== -->
   <div id="main-menu" class="hidden">
     <div class="menu-bg"></div>
+
+    <!-- === DASHBOARD (MSFS-style tile grid + globe) === -->
+    <div id="dashboard-view">
+      <div class="dash-topbar">
+        <img src="logo.png" alt="Flugsimulator" class="topbar-logo-img">
+        <div class="dash-pilot-block">
+          <div class="dash-pilot-label">CALLSIGN</div>
+          <div class="dash-pilot-name" id="dash-pilot-name"></div>
+        </div>
+        <div class="dash-icons">
+          <button class="dash-icon" title="Notifications" data-dash-icon="bell">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>
+          </button>
+          <button class="dash-icon" title="Friends" data-dash-icon="friends">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          </button>
+          <button class="dash-icon" title="Settings" data-dash-icon="settings">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+          </button>
+          <button class="dash-icon chat" title="Chat" data-dash-icon="chat">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+          </button>
+        </div>
+      </div>
+
+      <div class="dash-content">
+        <div class="dash-tiles">
+          <div class="dash-tile hero" data-tile="worldphoto">
+            <div class="tile-art art-worldphoto"></div>
+            <div class="tile-overlay"></div>
+            <div class="tile-caption">
+              <div class="tile-title">World Photographer</div>
+            </div>
+          </div>
+          <div class="dash-grid">
+            <div class="dash-tile locked" data-tile="activities">
+              <div class="tile-art art-activities"></div>
+              <div class="tile-overlay"></div>
+              <div class="tile-caption">
+                <div class="tile-title">Activities <span class="tile-lock">&#128274;</span></div>
+              </div>
+            </div>
+            <div class="dash-tile" data-tile="career">
+              <div class="tile-art art-career"></div>
+              <div class="tile-overlay"></div>
+              <div class="tile-caption">
+                <div class="tile-title">Career</div>
+              </div>
+            </div>
+            <div class="dash-tile" data-tile="challenge">
+              <div class="tile-art art-challenge"></div>
+              <div class="tile-overlay"></div>
+              <div class="tile-caption">
+                <div class="tile-title">Challenge League</div>
+              </div>
+            </div>
+            <div class="dash-tile primary" data-tile="freeflight">
+              <div class="tile-art art-freeflight"></div>
+              <div class="tile-overlay"></div>
+              <div class="tile-caption">
+                <div class="tile-title">Free Flight</div>
+              </div>
+            </div>
+            <div class="dash-tile locked wide" data-tile="marketplace">
+              <div class="tile-art art-marketplace"></div>
+              <div class="tile-overlay"></div>
+              <div class="tile-caption">
+                <div class="tile-title">Marketplace <span class="tile-lock">&#128274;</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="dash-globe">
+          <canvas id="dash-globe-canvas"></canvas>
+          <div class="dash-globe-glow"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- === FLIGHT SETUP (shown after clicking Free Flight) === -->
+    <div id="flight-setup" class="hidden">
     <div class="menu-topbar">
+      <button class="topbar-back" id="topbar-back" title="Back to dashboard">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg>
+        <span>BACK</span>
+      </button>
       <img src="logo.png" alt="Flugsimulator" class="topbar-logo-img">
       <div class="menu-nav">
         <button class="nav-tab active" data-panel="fly">WORLD MAP</button>
@@ -142,7 +228,7 @@
     </div>
 
     <!-- === SETTINGS PANEL === -->
-    <div class="panel" id="panel-settings">
+    <div class="panel" id="panel-settings" data-last>
       <div class="settings-layout">
         <div class="settings-col">
           <div class="setting-row">
@@ -195,6 +281,7 @@
         </div>
       </div>
     </div>
+    </div><!-- /#flight-setup -->
   </div>
 
   <!-- ==================== LOADING ==================== -->
