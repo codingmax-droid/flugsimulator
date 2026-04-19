@@ -1872,12 +1872,19 @@ export class AircraftPreview {
         }
       });
     }
-    // Kamera-Abstand passt sich automatisch an echte Flugzeuglänge an
+    // Abstand passt sich an Spannweite (horizontal) und halbe Länge (vertikal) an, damit das Flugzeug immer vollständig ins Bild passt.
     const len = this._realLen || 12;
-    const dist = Math.max(18, len * 1.6);
+    const span = len * 1.05;          // Spannweite ~ Länge bei Airlinern
+    const diag = len * 0.55;          // Halbdiagonale (in Bildhöhe sichtbar)
+    const aspect = this.camera.aspect || 2;
+    const vFov = (this.camera.fov * Math.PI) / 180;
+    const hFov = 2 * Math.atan(Math.tan(vFov / 2) * aspect);
+    const distH = (span * 0.6) / Math.tan(hFov / 2);
+    const distV = diag / Math.tan(vFov / 2);
+    const dist = Math.max(distH, distV, 18);
     this.camera.position.set(
       Math.sin(this.angle * 0.4) * dist,
-      Math.max(5, len * 0.35) + Math.sin(this.angle * 0.25) * len * 0.08,
+      Math.max(5, len * 0.28) + Math.sin(this.angle * 0.25) * len * 0.06,
       Math.cos(this.angle * 0.4) * dist
     );
     this.camera.lookAt(0, len * 0.05, 0);

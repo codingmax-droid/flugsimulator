@@ -83,73 +83,14 @@ canvas{display:block}
 .dash-tile.hero .tile-title{font-size:22px;font-weight:700}
 .tile-lock{font-size:11px;opacity:.75}
 
-/* tile artwork — SVG + gradient compositions */
-.art-worldphoto{background:
-  radial-gradient(ellipse 70% 55% at 35% 30%,#ffba6a 0%,transparent 60%),
-  radial-gradient(circle at 70% 22%,#ff7d3c 0%,transparent 35%),
-  linear-gradient(180deg,#f4a556 0%,#c46a34 45%,#4d2e1f 100%);
-  background-size:cover}
-.art-worldphoto::before{content:'';position:absolute;inset:0;
-  background:
-    radial-gradient(circle 18px at 26% 30%,#e8464e 0%,#e8464e 55%,transparent 58%),
-    radial-gradient(circle 12px at 41% 25%,#4a9eff 0%,#4a9eff 55%,transparent 58%),
-    radial-gradient(circle 14px at 52% 38%,#f5d35a 0%,#f5d35a 55%,transparent 58%),
-    linear-gradient(to top,#2a1a10 0%,transparent 40%);
-  mix-blend-mode:normal;opacity:.9}
-.art-worldphoto::after{content:'';position:absolute;left:0;right:0;bottom:0;height:35%;
-  background:linear-gradient(180deg,transparent,#3a2416 70%,#1e130a);
-  clip-path:polygon(0 60%,12% 50%,28% 55%,44% 42%,60% 50%,76% 45%,88% 52%,100% 48%,100% 100%,0 100%)}
-
-.art-activities{background:
-  linear-gradient(135deg,#284f3a 0%,#0e241a 100%);
-  background-size:cover}
-.art-activities::before{content:'';position:absolute;inset:0;
-  background:
-    radial-gradient(ellipse 40% 25% at 30% 75%,rgba(90,160,100,.5),transparent 70%),
-    radial-gradient(ellipse 35% 20% at 70% 80%,rgba(70,130,85,.5),transparent 70%);
-  opacity:.7}
-
-.art-career{background:
-  radial-gradient(ellipse at 50% 30%,#7dbee8 0%,#2e5f87 55%,#0e243a 100%)}
-.art-career::before{content:'';position:absolute;left:50%;top:50%;
-  width:220px;height:90px;transform:translate(-50%,-35%);
-  background:
-    linear-gradient(180deg,#e6ecf2 0%,#9aabbd 100%);
-  clip-path:polygon(8% 50%,22% 38%,42% 30%,55% 28%,72% 32%,88% 45%,96% 52%,90% 58%,70% 62%,45% 60%,20% 58%,6% 55%);
-  filter:drop-shadow(0 6px 12px rgba(0,0,0,.35))}
-.art-career::after{content:'';position:absolute;left:0;right:0;bottom:0;height:40%;
-  background:linear-gradient(180deg,transparent,rgba(20,25,30,.85));}
-
-.art-challenge{background:
-  radial-gradient(ellipse at 60% 30%,#ffb878 0%,#d35828 40%,#4a1820 100%)}
-.art-challenge::before{content:'';position:absolute;left:55%;top:50%;
-  width:180px;height:80px;transform:translate(-50%,-30%) rotate(-8deg);
-  background:linear-gradient(180deg,#2a2f3a,#0d1018);
-  clip-path:polygon(5% 50%,18% 42%,45% 36%,70% 40%,90% 48%,88% 56%,70% 60%,45% 58%,18% 54%);
-  filter:drop-shadow(0 4px 8px rgba(0,0,0,.5))}
-.art-challenge::after{content:'';position:absolute;inset:0;
-  background:radial-gradient(circle at 78% 32%,rgba(255,220,120,.55),transparent 40%)}
-
-.art-freeflight{background:
-  radial-gradient(ellipse at 50% 40%,#a5c8e8 0%,#5a87b4 45%,#1a3a60 100%)}
-.art-freeflight::before{content:'';position:absolute;left:50%;top:55%;
-  width:240px;height:70px;transform:translate(-50%,-40%);
-  background:linear-gradient(180deg,#f0f4f8 0%,#8ea2b8 100%);
-  clip-path:polygon(6% 52%,18% 42%,40% 36%,58% 34%,76% 38%,92% 48%,96% 54%,80% 58%,55% 60%,30% 58%,10% 56%);
-  filter:drop-shadow(0 6px 10px rgba(0,0,0,.35))}
-.art-freeflight::after{content:'';position:absolute;left:0;right:0;top:0;height:100%;
-  background:
-    radial-gradient(ellipse 18% 6% at 25% 30%,rgba(255,255,255,.4),transparent 60%),
-    radial-gradient(ellipse 14% 5% at 72% 25%,rgba(255,255,255,.35),transparent 60%),
-    radial-gradient(ellipse 22% 7% at 50% 78%,rgba(255,255,255,.25),transparent 60%);}
-
-.art-marketplace{background:
-  linear-gradient(135deg,#1a1c24 0%,#0a0b10 100%)}
-.art-marketplace::before{content:'';position:absolute;left:50%;top:55%;
-  width:200px;height:38px;transform:translate(-50%,-50%);
-  background:linear-gradient(180deg,#3a3d48,#15171c);
-  clip-path:polygon(0 45%,15% 30%,35% 22%,50% 20%,65% 22%,85% 30%,100% 45%,85% 55%,50% 58%,15% 55%);
-  filter:drop-shadow(0 2px 6px rgba(0,0,0,.6))}
+/* tile artwork — real Unsplash aviation photography */
+.tile-art{background-color:#0a1320;background-size:cover;background-position:center}
+.art-worldphoto{background-image:url('https://images.unsplash.com/photo-1437846972679-9e6e537be46e?w=1200&q=80&fit=crop')}
+.art-activities{background-image:url('https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?w=800&q=75&fit=crop')}
+.art-career{background-image:url('https://images.unsplash.com/photo-1542296332-2e4473faf563?w=800&q=75&fit=crop')}
+.art-challenge{background-image:url('https://images.unsplash.com/photo-1476900543704-4312b78632f8?w=800&q=75&fit=crop')}
+.art-freeflight{background-image:url('https://images.unsplash.com/photo-1569629743817-70d8db6c323b?w=800&q=75&fit=crop')}
+.art-marketplace{background-image:url('https://images.unsplash.com/photo-1569154941061-e231b4725ef1?w=1200&q=75&fit=crop')}
 
 /* globe */
 .dash-globe{position:relative;display:flex;align-items:center;justify-content:center;min-height:0;overflow:hidden}
@@ -231,7 +172,7 @@ canvas{display:block}
 .ac-type-item .ac-t-sub{font-size:10px;color:rgba(255,255,255,.35);margin-top:2px}
 
 .ac-detail{flex:1;padding:24px;overflow-y:auto}
-.ac-preview-3d{width:100%;height:280px;border-radius:10px;overflow:hidden;border:1px solid rgba(255,255,255,.06);margin-bottom:16px;background:#0d1524}
+.ac-preview-3d{width:100%;height:360px;border-radius:10px;overflow:hidden;border:1px solid rgba(255,255,255,.06);margin-bottom:16px;background:#0d1524}
 .ac-preview-3d canvas{width:100%!important;height:100%!important;display:block}
 .ac-detail-header{font-size:24px;font-weight:700;margin-bottom:16px}
 .ac-specs{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
