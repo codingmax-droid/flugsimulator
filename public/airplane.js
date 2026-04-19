@@ -1722,6 +1722,35 @@ const GLB_FALLBACK = {
   b727:       'b757',
 };
 
+// Färbt die hellen Materialien eines GLB mit der Airline-Primärfarbe ein.
+// Weiß/hellgraue Flächen (Rumpf) werden getöntr Lufthansa wird blau, Swiss rot usw.
+// Dunkle Materialien (Triebwerke, Fahrwerk) und Glas bleiben unverändert.
+export function applyLiveryToGLB(root, livery) {
+  if (!root || !livery?.color1) return;
+  const primary = new THREE.Color(livery.color1);
+  const secondary = new THREE.Color(livery.color2 || livery.color1);
+  const belly = new THREE.Color(livery.belly || '#eaeaec');
+  const visited = new WeakSet();
+  root.traverse((o) => {
+    if (!o.isMesh || !o.material) return;
+    const assign = (m) => {
+      if (!m || visited.has(m)) return m;
+      if (!m.color) { visited.add(m); return m; }
+      const hsl = { h: 0, s: 0, l: 0 };
+      m.color.getHSL(hsl);
+      const clone = m.clone();
+      // Helle, wenig gesättigte Flächen (klassisch weißer Rumpf) → Primary
+      if (hsl.l > 0.6 && hsl.s < 0.25 && !m.transparent) {
+        clone.color.copy(primary).lerp(belly, 0.35);
+      }
+      visited.add(clone);
+      return clone;
+    };
+    if (Array.isArray(o.material)) o.material = o.material.map(assign);
+    else o.material = assign(o.material);
+  });
+}
+
 export function loadAircraftModel(type) {
   if (!GLB_AVAILABLE.has(type) && !GLB_FALLBACK[type]) return Promise.resolve(null);
   if (_glbCache.has(type)) return _glbCache.get(type);
@@ -1817,12 +1846,20 @@ export class AircraftPreview {
   }
   setAircraft(type, liveryOrColor1, color2) {
     if (this.model) this.scene.remove(this.model);
-    // Immer prozedurales Mesh in der Vorschau: nur so ist die Livery sichtbar.
-    // In-Game wird weiterhin das GLB geladen (siehe game.js).
     this.model = buildAircraft(type, liveryOrColor1, color2);
     this.scene.add(this.model);
     this._realLen = this.model.userData.realLength || 12;
     this.resize();
+    const reqType = type;
+    const livery = (typeof liveryOrColor1 === 'object') ? liveryOrColor1 : { color1: liveryOrColor1, color2 };
+    createGLBInstance(type).then((glb) => {
+      if (!glb || this._lastType !== reqType) return;
+      applyLiveryToGLB(glb, livery);
+      this.scene.remove(this.model);
+      this.model = glb;
+      this._realLen = glb.userData.realLength || this._realLen;
+      this.scene.add(this.model);
+    });
     this._lastType = type;
   }
   render() {

@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { TerrainManager } from './terrain.js';
-import { createAircraftForType, createProceduralAirplane, AircraftPreview, createGLBInstance } from './airplane.js';
+import { createAircraftForType, createProceduralAirplane, AircraftPreview, createGLBInstance, applyLiveryToGLB } from './airplane.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { AIRCRAFT_TYPES, AIRLINES, getAirlinesForAircraft, getLivery } from './airlines.js';
 import { AIRPORTS, searchAirports } from './airports.js';
@@ -137,6 +137,7 @@ function getPlayerMesh(id, aircraftType, airline) {
       if (!glb) return;
       const current = playerMeshes.get(id);
       if (!current || current.userData._key !== key) return; // zwischenzeitlich gewechselt
+      applyLiveryToGLB(glb, livery);
       current.remove(proc);
       current.add(glb);
       current.userData._hasGLB = true;
