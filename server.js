@@ -148,37 +148,7 @@ const AIRCRAFT_PHYSICS = {
   dash8:  { mass: 17200, wingArea: 63.1, liftCoeff: 1.5, dragCoeff: 0.035, thrustMax: 34000, stallSpeed: 42, pitchRate: 1.7, rollRate: 2.0, yawRate: 0.9 },
   do328:  { mass: 8400,  wingArea: 40,   liftCoeff: 1.5, dragCoeff: 0.036, thrustMax: 15600, stallSpeed: 38, pitchRate: 1.8, rollRate: 2.2, yawRate: 1.0 },
 
-  // --- GENERAL AVIATION ---
-  c172:     { mass: 770,  wingArea: 16.2, liftCoeff: 1.5, dragCoeff: 0.045, thrustMax: 2500, stallSpeed: 24, pitchRate: 2.2, rollRate: 2.4, yawRate: 1.2 },
-  c208:     { mass: 2100, wingArea: 25.9, liftCoeff: 1.5, dragCoeff: 0.045, thrustMax: 5500, stallSpeed: 28, pitchRate: 2.0, rollRate: 2.2, yawRate: 1.1 },
-  pa28:     { mass: 700,  wingArea: 15.1, liftCoeff: 1.45, dragCoeff: 0.045, thrustMax: 2300, stallSpeed: 24, pitchRate: 2.2, rollRate: 2.5, yawRate: 1.2 },
-  supercub: { mass: 460,  wingArea: 16.6, liftCoeff: 1.5,  dragCoeff: 0.050, thrustMax: 1500, stallSpeed: 18, pitchRate: 2.4, rollRate: 2.5, yawRate: 1.3 },
-  sr22:     { mass: 900,  wingArea: 13.6, liftCoeff: 1.4,  dragCoeff: 0.038, thrustMax: 3000, stallSpeed: 28, pitchRate: 2.3, rollRate: 2.7, yawRate: 1.2 },
-  da40:     { mass: 750,  wingArea: 13.5, liftCoeff: 1.4,  dragCoeff: 0.040, thrustMax: 2200, stallSpeed: 26, pitchRate: 2.3, rollRate: 2.6, yawRate: 1.2 },
   pc12:     { mass: 2700, wingArea: 25.8, liftCoeff: 1.5,  dragCoeff: 0.034, thrustMax: 7800, stallSpeed: 32, pitchRate: 2.0, rollRate: 2.3, yawRate: 1.1 },
-
-  // --- AEROBATIC ---
-  extra300: { mass: 660,  wingArea: 10.7, liftCoeff: 1.4, dragCoeff: 0.042, thrustMax: 2900, stallSpeed: 28, pitchRate: 4.5, rollRate: 6.0, yawRate: 2.5 },
-  pitts:    { mass: 520,  wingArea: 9.3,  liftCoeff: 1.5, dragCoeff: 0.050, thrustMax: 2100, stallSpeed: 26, pitchRate: 4.2, rollRate: 5.8, yawRate: 2.4 },
-  yak52:    { mass: 1000, wingArea: 15,   liftCoeff: 1.45, dragCoeff: 0.048, thrustMax: 2800, stallSpeed: 30, pitchRate: 3.5, rollRate: 4.5, yawRate: 2.0 },
-
-  // --- BUSH / UTILITY ---
-  dhc2: { mass: 1200, wingArea: 23.2, liftCoeff: 1.55, dragCoeff: 0.048, thrustMax: 3500, stallSpeed: 22, pitchRate: 2.0, rollRate: 2.1, yawRate: 1.1 },
-  an2:  { mass: 3500, wingArea: 71.5, liftCoeff: 1.7,  dragCoeff: 0.055, thrustMax: 7500, stallSpeed: 20, pitchRate: 1.5, rollRate: 1.5, yawRate: 0.9 },
-
-  // --- SEGELFLUGZEUGE (kein Schub) ---
-  ask21:  { mass: 360, wingArea: 17.95, liftCoeff: 1.4, dragCoeff: 0.018, thrustMax: 0, stallSpeed: 18, pitchRate: 1.8, rollRate: 1.8, yawRate: 0.9 },
-  asw28:  { mass: 310, wingArea: 10.5,  liftCoeff: 1.4, dragCoeff: 0.014, thrustMax: 0, stallSpeed: 20, pitchRate: 2.0, rollRate: 2.1, yawRate: 0.9 },
-  ventus: { mass: 320, wingArea: 10.16, liftCoeff: 1.4, dragCoeff: 0.013, thrustMax: 0, stallSpeed: 20, pitchRate: 2.0, rollRate: 2.2, yawRate: 1.0 },
-  dg1000: { mass: 430, wingArea: 16.72, liftCoeff: 1.4, dragCoeff: 0.016, thrustMax: 0, stallSpeed: 20, pitchRate: 1.8, rollRate: 1.9, yawRate: 0.9 },
-
-  // --- AMPHIBIEN ---
-  cl415:  { mass: 12900, wingArea: 100.3, liftCoeff: 1.5, dragCoeff: 0.045, thrustMax: 15900, stallSpeed: 36, pitchRate: 1.5, rollRate: 1.7, yawRate: 0.9 },
-  icona5: { mass: 440,   wingArea: 14,    liftCoeff: 1.5, dragCoeff: 0.050, thrustMax: 740,   stallSpeed: 20, pitchRate: 2.3, rollRate: 2.4, yawRate: 1.2 },
-
-  // --- EXPERIMENTAL ---
-  varieze:      { mass: 420, wingArea: 4.5, liftCoeff: 1.2, dragCoeff: 0.025, thrustMax: 800, stallSpeed: 28, pitchRate: 2.5, rollRate: 3.0, yawRate: 1.3 },
-  solarimpulse: { mass: 2300, wingArea: 269.5, liftCoeff: 1.8, dragCoeff: 0.018, thrustMax: 400, stallSpeed: 16, pitchRate: 0.8, rollRate: 0.8, yawRate: 0.4 },
 };
 const DEFAULT_PHYSICS = AIRCRAFT_PHYSICS.a320;
 

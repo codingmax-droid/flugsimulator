@@ -318,49 +318,7 @@ export const AIRCRAFT_TYPES = {
   dash8: { name: 'Bombardier Dash 8 Q400', manufacturer: 'Bombardier', type: 'turboprop', engines: 2, maxSpeed: 667, cruiseSpeed: 667, stallSpeed: 150, maxAlt: 27000, range: 2040, wingspan: 28.42, length: 32.83, mtow: 29257, thrust: 34000, fuelCapacity: 6526, passengers: '68-90', scale: 2.0, liftCoeff: 1.5, dragCoeff: 0.035, mass: 17200, wingArea: 63.1, color: 0xf0f0f0 },
   do328: { name: 'Dornier 328', manufacturer: 'Dornier', type: 'turboprop', engines: 2, maxSpeed: 620, cruiseSpeed: 620, stallSpeed: 140, maxAlt: 31000, range: 1850, wingspan: 20.98, length: 21.28, mtow: 13990, thrust: 15600, fuelCapacity: 3430, passengers: '30-33', scale: 1.7, liftCoeff: 1.5, dragCoeff: 0.036, mass: 8400, wingArea: 40, color: 0xf0f0f0 },
 
-  // ==================================================
-  // GENERAL AVIATION
-  // ==================================================
-  c172: { name: 'Cessna 172 Skyhawk', manufacturer: 'Cessna', type: 'ga', engines: 1, maxSpeed: 302, cruiseSpeed: 226, stallSpeed: 88, maxAlt: 14000, range: 1272, wingspan: 11, length: 8.28, mtow: 1157, thrust: 2500, fuelCapacity: 212, passengers: '1-3', scale: 1.1, liftCoeff: 1.5, dragCoeff: 0.045, mass: 770, wingArea: 16.2, color: 0xffffff },
-  c208: { name: 'Cessna 208 Caravan', manufacturer: 'Cessna', type: 'ga', engines: 1, maxSpeed: 344, cruiseSpeed: 344, stallSpeed: 110, maxAlt: 25000, range: 1982, wingspan: 15.88, length: 12.68, mtow: 3969, thrust: 5500, fuelCapacity: 1257, passengers: '9-14', scale: 1.3, liftCoeff: 1.5, dragCoeff: 0.045, mass: 2100, wingArea: 25.9, color: 0xffffff },
-  pa28: { name: 'Piper PA-28 Cherokee', manufacturer: 'Piper', type: 'ga', engines: 1, maxSpeed: 259, cruiseSpeed: 240, stallSpeed: 88, maxAlt: 14000, range: 1040, wingspan: 10.67, length: 7.25, mtow: 1157, thrust: 2300, fuelCapacity: 189, passengers: '1-3', scale: 1.1, liftCoeff: 1.45, dragCoeff: 0.045, mass: 700, wingArea: 15.1, color: 0xffffff },
-  supercub: { name: 'Piper PA-18 Super Cub', manufacturer: 'Piper', type: 'ga', engines: 1, maxSpeed: 209, cruiseSpeed: 185, stallSpeed: 65, maxAlt: 19000, range: 740, wingspan: 10.74, length: 6.83, mtow: 794, thrust: 1500, fuelCapacity: 136, passengers: '1', scale: 1.0, liftCoeff: 1.5, dragCoeff: 0.050, mass: 460, wingArea: 16.6, color: 0xffd12f },
-  sr22: { name: 'Cirrus SR22', manufacturer: 'Cirrus', type: 'ga', engines: 1, maxSpeed: 340, cruiseSpeed: 340, stallSpeed: 110, maxAlt: 17500, range: 2065, wingspan: 11.68, length: 7.92, mtow: 1633, thrust: 3000, fuelCapacity: 348, passengers: '1-4', scale: 1.1, liftCoeff: 1.4, dragCoeff: 0.038, mass: 900, wingArea: 13.6, color: 0xffffff },
-  da40: { name: 'Diamond DA40 NG', manufacturer: 'Diamond', type: 'ga', engines: 1, maxSpeed: 279, cruiseSpeed: 279, stallSpeed: 100, maxAlt: 16400, range: 1593, wingspan: 11.94, length: 8.1, mtow: 1310, thrust: 2200, fuelCapacity: 148, passengers: '1-3', scale: 1.1, liftCoeff: 1.4, dragCoeff: 0.040, mass: 750, wingArea: 13.5, color: 0xffffff },
   pc12: { name: 'Pilatus PC-12 NGX', manufacturer: 'Pilatus', type: 'turboprop', engines: 1, maxSpeed: 528, cruiseSpeed: 528, stallSpeed: 120, maxAlt: 30000, range: 3417, wingspan: 16.28, length: 14.4, mtow: 4740, thrust: 7800, fuelCapacity: 1538, passengers: '6-9', scale: 1.4, liftCoeff: 1.5, dragCoeff: 0.034, mass: 2700, wingArea: 25.8, color: 0xffffff },
-
-  // ==================================================
-  // AEROBATIC
-  // ==================================================
-  extra300: { name: 'Extra 300', manufacturer: 'Extra Aircraft', type: 'aerobatic', engines: 1, maxSpeed: 407, cruiseSpeed: 352, stallSpeed: 106, maxAlt: 16000, range: 1000, wingspan: 8, length: 6.96, mtow: 950, thrust: 2900, fuelCapacity: 177, passengers: '1-2', scale: 1.0, liftCoeff: 1.4, dragCoeff: 0.042, mass: 660, wingArea: 10.7, color: 0xff3030 },
-  pitts: { name: 'Pitts Special S-2C', manufacturer: 'Aviat', type: 'aerobatic', engines: 1, maxSpeed: 291, cruiseSpeed: 283, stallSpeed: 92, maxAlt: 20000, range: 523, wingspan: 6.1, length: 5.36, mtow: 770, thrust: 2100, fuelCapacity: 114, passengers: '1-2', scale: 0.9, liftCoeff: 1.5, dragCoeff: 0.050, mass: 520, wingArea: 9.3, color: 0xff0000 },
-  yak52: { name: 'Yakovlev Yak-52', manufacturer: 'Yakovlev', type: 'aerobatic', engines: 1, maxSpeed: 285, cruiseSpeed: 230, stallSpeed: 105, maxAlt: 13000, range: 465, wingspan: 9.3, length: 7.75, mtow: 1305, thrust: 2800, fuelCapacity: 122, passengers: '1-2', scale: 1.1, liftCoeff: 1.45, dragCoeff: 0.048, mass: 1000, wingArea: 15, color: 0xffffff },
-
-  // ==================================================
-  // BUSH / UTILITY
-  // ==================================================
-  dhc2: { name: 'DHC-2 Beaver', manufacturer: 'de Havilland Canada', type: 'bush', engines: 1, maxSpeed: 254, cruiseSpeed: 225, stallSpeed: 80, maxAlt: 18000, range: 732, wingspan: 14.64, length: 9.24, mtow: 2313, thrust: 3500, fuelCapacity: 360, passengers: '1-6', scale: 1.3, liftCoeff: 1.55, dragCoeff: 0.048, mass: 1200, wingArea: 23.2, color: 0xe8d32a },
-  an2: { name: 'Antonov An-2', manufacturer: 'Antonov', type: 'bush', engines: 1, maxSpeed: 258, cruiseSpeed: 185, stallSpeed: 65, maxAlt: 14425, range: 845, wingspan: 18.18, length: 12.4, mtow: 5500, thrust: 7500, fuelCapacity: 1200, passengers: '1-12', scale: 1.5, liftCoeff: 1.7, dragCoeff: 0.055, mass: 3500, wingArea: 71.5, color: 0x5a8f3a },
-
-  // ==================================================
-  // SEGELFLUGZEUGE (keine Triebwerke)
-  // ==================================================
-  ask21: { name: 'Schleicher ASK 21', manufacturer: 'Schleicher', type: 'glider', engines: 0, maxSpeed: 280, cruiseSpeed: 110, stallSpeed: 65, maxAlt: 30000, range: 400, wingspan: 17, length: 8.35, mtow: 600, thrust: 0, fuelCapacity: 0, passengers: '1-2', scale: 1.5, liftCoeff: 1.4, dragCoeff: 0.018, mass: 360, wingArea: 17.95, color: 0xffffff },
-  asw28: { name: 'Schleicher ASW 28', manufacturer: 'Schleicher', type: 'glider', engines: 0, maxSpeed: 280, cruiseSpeed: 110, stallSpeed: 68, maxAlt: 30000, range: 500, wingspan: 18, length: 6.55, mtow: 525, thrust: 0, fuelCapacity: 0, passengers: '1', scale: 1.5, liftCoeff: 1.4, dragCoeff: 0.014, mass: 310, wingArea: 10.5, color: 0xffffff },
-  ventus: { name: 'Schempp-Hirth Ventus 3', manufacturer: 'Schempp-Hirth', type: 'glider', engines: 0, maxSpeed: 285, cruiseSpeed: 120, stallSpeed: 68, maxAlt: 30000, range: 600, wingspan: 18, length: 6.84, mtow: 600, thrust: 0, fuelCapacity: 0, passengers: '1', scale: 1.5, liftCoeff: 1.4, dragCoeff: 0.013, mass: 320, wingArea: 10.16, color: 0xffffff },
-  dg1000: { name: 'DG Flugzeugbau DG-1000', manufacturer: 'DG Flugzeugbau', type: 'glider', engines: 0, maxSpeed: 270, cruiseSpeed: 120, stallSpeed: 68, maxAlt: 30000, range: 450, wingspan: 18, length: 8.66, mtow: 750, thrust: 0, fuelCapacity: 0, passengers: '1-2', scale: 1.5, liftCoeff: 1.4, dragCoeff: 0.016, mass: 430, wingArea: 16.72, color: 0xffffff },
-
-  // ==================================================
-  // AMPHIBIEN
-  // ==================================================
-  cl415: { name: 'Canadair CL-415', manufacturer: 'Bombardier', type: 'amphibian', engines: 2, maxSpeed: 376, cruiseSpeed: 333, stallSpeed: 150, maxAlt: 14700, range: 2443, wingspan: 28.63, length: 19.82, mtow: 19890, thrust: 15900, fuelCapacity: 5808, passengers: '1-11', scale: 1.7, liftCoeff: 1.5, dragCoeff: 0.045, mass: 12900, wingArea: 100.3, color: 0xffcc00 },
-  icona5: { name: 'ICON A5', manufacturer: 'ICON Aircraft', type: 'amphibian', engines: 1, maxSpeed: 176, cruiseSpeed: 160, stallSpeed: 70, maxAlt: 4600, range: 685, wingspan: 10.36, length: 7.01, mtow: 686, thrust: 740, fuelCapacity: 76, passengers: '1-2', scale: 1.1, liftCoeff: 1.5, dragCoeff: 0.050, mass: 440, wingArea: 14, color: 0xf0f0f0 },
-
-  // ==================================================
-  // EXPERIMENTAL
-  // ==================================================
-  varieze: { name: 'Rutan VariEze', manufacturer: 'Rutan Aircraft', type: 'experimental', engines: 1, maxSpeed: 314, cruiseSpeed: 298, stallSpeed: 98, maxAlt: 6000, range: 1550, wingspan: 6.76, length: 4.29, mtow: 488, thrust: 800, fuelCapacity: 100, passengers: '1-2', scale: 0.9, liftCoeff: 1.2, dragCoeff: 0.025, mass: 420, wingArea: 4.5, color: 0xffffff },
-  solarimpulse: { name: 'Solar Impulse 2', manufacturer: 'Solar Impulse', type: 'experimental', engines: 4, maxSpeed: 140, cruiseSpeed: 90, stallSpeed: 50, maxAlt: 8500, range: 40000, wingspan: 71.9, length: 22.4, mtow: 2300, thrust: 400, fuelCapacity: 0, passengers: '1', scale: 2.6, liftCoeff: 1.8, dragCoeff: 0.018, mass: 2300, wingArea: 269.5, color: 0xffffff },
 };
 
 // ============================================================
