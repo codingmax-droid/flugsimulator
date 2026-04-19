@@ -10,6 +10,18 @@ export function latLonToTile(lat, lon, zoom) {
   return { x, y, z: zoom };
 }
 
+// Bruchteil-Position innerhalb des Base-Tiles (0..1, top-left origin)
+export function latLonToTileFrac(lat, lon, zoom) {
+  const n = Math.pow(2, zoom);
+  const xFrac = (lon + 180) / 360 * n;
+  const yFrac = (1 - Math.log(Math.tan(lat * Math.PI / 180) + 1 / Math.cos(lat * Math.PI / 180)) / Math.PI) / 2 * n;
+  return {
+    tile: { x: Math.floor(xFrac), y: Math.floor(yFrac), z: zoom },
+    u: xFrac - Math.floor(xFrac),
+    v: yFrac - Math.floor(yFrac),
+  };
+}
+
 export function tileToBounds(x, y, z) {
   const n = Math.pow(2, z);
   const lonLeft = x / n * 360 - 180;
@@ -19,39 +31,47 @@ export function tileToBounds(x, y, z) {
   return { latTop, latBottom, lonLeft, lonRight };
 }
 
-// --- Terrain Tile laden ---
+// --- Tile-Cache & Loading ---
 
-const TILE_SEGMENTS = 128;
+const TILE_SEG_NEAR = 128;
+const TILE_SEG_FAR = 64;
+const LOD_NEAR_RADIUS = 1;
+const MAX_CONCURRENT = 6;
+
 const tileCache = new Map();
 const loadingTiles = new Set();
+const loadQueue = [];
+let activeLoads = 0;
 
 function tileKey(x, y, z) {
   return `${z}/${x}/${y}`;
 }
 
-function loadImage(url) {
-  return new Promise((resolve, reject) => {
-    const img = new Image();
-    img.crossOrigin = 'anonymous';
-    img.onload = () => resolve(img);
-    img.onerror = reject;
-    img.src = url;
-  });
+async function fetchImageBitmap(url) {
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`HTTP ${res.status} for ${url}`);
+  const blob = await res.blob();
+  return createImageBitmap(blob);
 }
 
-function decodeTerrarium(imageData) {
+function decodeTerrariumFromBitmap(bitmap) {
+  const canvas = typeof OffscreenCanvas !== 'undefined'
+    ? new OffscreenCanvas(256, 256)
+    : Object.assign(document.createElement('canvas'), { width: 256, height: 256 });
+  const ctx = canvas.getContext('2d');
+  ctx.drawImage(bitmap, 0, 0);
+  const data = ctx.getImageData(0, 0, 256, 256).data;
   const elevations = new Float32Array(256 * 256);
   for (let i = 0; i < 256 * 256; i++) {
-    const r = imageData[i * 4];
-    const g = imageData[i * 4 + 1];
-    const b = imageData[i * 4 + 2];
+    const r = data[i * 4];
+    const g = data[i * 4 + 1];
+    const b = data[i * 4 + 2];
     elevations[i] = (r * 256.0 + g + b / 256.0) - 32768.0;
   }
   return elevations;
 }
 
 function sampleElevation(elevations, u, v) {
-  // Bilineare Interpolation im 256x256 Grid
   const fx = u * 255;
   const fy = v * 255;
   const ix = Math.min(254, Math.floor(fx));
@@ -72,44 +92,57 @@ function sampleElevation(elevations, u, v) {
   );
 }
 
-export async function loadTerrainTile(scene, tx, ty, tz, worldOffsetX, worldOffsetZ, tileWorldSize) {
+// Parallelitäts-Limit: neue Jobs nur starten, wenn Slot frei
+function pumpQueue() {
+  while (activeLoads < MAX_CONCURRENT && loadQueue.length > 0) {
+    loadQueue.sort((a, b) => a.priority - b.priority);
+    const job = loadQueue.shift();
+    activeLoads++;
+    job.run().finally(() => {
+      activeLoads--;
+      pumpQueue();
+    });
+  }
+}
+
+function enqueueTileLoad(scene, tx, ty, tz, worldX, worldZ, tileWorldSize, segments, elevOffset, priority) {
   const key = tileKey(tx, ty, tz);
-  if (tileCache.has(key) || loadingTiles.has(key)) return tileCache.get(key);
+  if (tileCache.has(key) || loadingTiles.has(key)) return;
   loadingTiles.add(key);
 
+  const job = {
+    priority,
+    run: () => loadTerrainTile(scene, tx, ty, tz, worldX, worldZ, tileWorldSize, segments, elevOffset),
+  };
+  loadQueue.push(job);
+  pumpQueue();
+}
+
+async function loadTerrainTile(scene, tx, ty, tz, worldOffsetX, worldOffsetZ, tileWorldSize, segments, elevOffset) {
+  const key = tileKey(tx, ty, tz);
   try {
-    // Höhendaten und Satellitenbild parallel laden
-    const [terrainImg, satelliteImg] = await Promise.all([
-      loadImage(`https://s3.amazonaws.com/elevation-tiles-prod/terrarium/${tz}/${tx}/${ty}.png`),
-      loadImage(`https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/${tz}/${ty}/${tx}`),
+    const [terrainBitmap, satelliteBitmap] = await Promise.all([
+      fetchImageBitmap(`https://s3.amazonaws.com/elevation-tiles-prod/terrarium/${tz}/${tx}/${ty}.png`),
+      fetchImageBitmap(`https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/${tz}/${ty}/${tx}`),
     ]);
 
-    // Höhendaten dekodieren
-    const canvas = document.createElement('canvas');
-    canvas.width = canvas.height = 256;
-    const ctx = canvas.getContext('2d');
-    ctx.drawImage(terrainImg, 0, 0);
-    const imageData = ctx.getImageData(0, 0, 256, 256).data;
-    const elevations = decodeTerrarium(imageData);
+    const elevations = decodeTerrariumFromBitmap(terrainBitmap);
+    terrainBitmap.close?.();
 
-    // Geometrie erstellen
-    const geo = new THREE.PlaneGeometry(tileWorldSize, tileWorldSize, TILE_SEGMENTS, TILE_SEGMENTS);
+    const geo = new THREE.PlaneGeometry(tileWorldSize, tileWorldSize, segments, segments);
     geo.rotateX(-Math.PI / 2);
 
     const positions = geo.attributes.position.array;
     for (let i = 0; i < positions.length; i += 3) {
       const lx = positions[i];
       const lz = positions[i + 2];
-      // Normalisieren auf 0-1 im Tile
       const u = (lx / tileWorldSize) + 0.5;
       const v = (lz / tileWorldSize) + 0.5;
-      positions[i + 1] = sampleElevation(elevations, u, v);
+      positions[i + 1] = sampleElevation(elevations, u, v) - elevOffset;
     }
     geo.computeVertexNormals();
 
-    // Satellitentextur
-    const texture = new THREE.Texture(satelliteImg);
-    texture.needsUpdate = true;
+    const texture = new THREE.CanvasTexture(satelliteBitmap);
     texture.minFilter = THREE.LinearMipMapLinearFilter;
     texture.magFilter = THREE.LinearFilter;
     texture.anisotropy = 4;
@@ -119,6 +152,7 @@ export async function loadTerrainTile(scene, tx, ty, tz, worldOffsetX, worldOffs
     mesh.position.set(worldOffsetX, 0, worldOffsetZ);
     mesh.receiveShadow = true;
     mesh.userData.tileKey = key;
+    mesh.userData.segments = segments;
 
     scene.add(mesh);
     tileCache.set(key, mesh);
@@ -131,29 +165,35 @@ export async function loadTerrainTile(scene, tx, ty, tz, worldOffsetX, worldOffs
   }
 }
 
-// --- Terrain-Manager: Tiles um Spieler laden/entladen ---
+// --- Terrain-Manager ---
 
 export class TerrainManager {
   constructor(scene, options = {}) {
     this.scene = scene;
     this.zoom = options.zoom || 11;
-    this.radius = options.radius || 3; // Tiles in jede Richtung
+    this.targetRadius = options.radius || 3;
+    this.currentRadius = Math.min(2, this.targetRadius);
     this.tileWorldSize = options.tileWorldSize || 2000;
     this.centerLat = options.lat || 47.37;
     this.centerLon = options.lon || 10.98;
+    this.elevOffset = options.elevation || 0;
     this.activeTiles = new Set();
     this.centerTile = null;
+
+    // Airport auf Weltursprung (0,0) ausrichten — nicht auf Tile-Mitte
+    const frac = latLonToTileFrac(this.centerLat, this.centerLon, this.zoom);
+    this.baseTile = frac.tile;
+    // Base-Tile-Mitte verschieben, damit Airport bei Welt (0,0) liegt
+    this.baseTileCenterX = (0.5 - frac.u) * this.tileWorldSize;
+    this.baseTileCenterZ = (0.5 - frac.v) * this.tileWorldSize;
   }
 
   getTileForWorldPos(wx, wz) {
-    // Welche Tile-Koordinate entspricht einer Weltposition?
-    // Die Welt-Mitte (0,0) = centerLat/centerLon
-    const centerTile = latLonToTile(this.centerLat, this.centerLon, this.zoom);
-    const tileOffX = Math.round(wx / this.tileWorldSize);
-    const tileOffZ = Math.round(wz / this.tileWorldSize);
+    const tileOffX = Math.round((wx - this.baseTileCenterX) / this.tileWorldSize);
+    const tileOffZ = Math.round((wz - this.baseTileCenterZ) / this.tileWorldSize);
     return {
-      x: centerTile.x + tileOffX,
-      y: centerTile.y + tileOffZ,
+      x: this.baseTile.x + tileOffX,
+      y: this.baseTile.y + tileOffZ,
       z: this.zoom,
     };
   }
@@ -162,30 +202,44 @@ export class TerrainManager {
     const centerTile = this.getTileForWorldPos(playerX, playerZ);
     const newKey = tileKey(centerTile.x, centerTile.y, centerTile.z);
 
-    // Nur updaten wenn sich das Center-Tile geändert hat
-    if (this.centerTile === newKey) return;
+    // Radius schrittweise ausbauen, sobald initiale Tiles da sind
+    if (this.currentRadius < this.targetRadius &&
+        this.activeTiles.size > 0 && loadingTiles.size === 0) {
+      this.currentRadius++;
+    }
+
+    if (this.centerTile === newKey && this.currentRadius === this._lastRadius) return;
     this.centerTile = newKey;
+    this._lastRadius = this.currentRadius;
 
     const neededTiles = new Set();
+    const candidates = [];
 
-    for (let dx = -this.radius; dx <= this.radius; dx++) {
-      for (let dz = -this.radius; dz <= this.radius; dz++) {
+    for (let dx = -this.currentRadius; dx <= this.currentRadius; dx++) {
+      for (let dz = -this.currentRadius; dz <= this.currentRadius; dz++) {
         const tx = centerTile.x + dx;
         const ty = centerTile.y + dz;
         const key = tileKey(tx, ty, this.zoom);
         neededTiles.add(key);
 
         if (!tileCache.has(key) && !loadingTiles.has(key)) {
-          // Weltposition des Tiles berechnen
-          const baseTile = latLonToTile(this.centerLat, this.centerLon, this.zoom);
-          const worldX = (tx - baseTile.x) * this.tileWorldSize;
-          const worldZ = (ty - baseTile.y) * this.tileWorldSize;
-          loadTerrainTile(this.scene, tx, ty, this.zoom, worldX, worldZ, this.tileWorldSize);
+          const worldX = (tx - this.baseTile.x) * this.tileWorldSize + this.baseTileCenterX;
+          const worldZ = (ty - this.baseTile.y) * this.tileWorldSize + this.baseTileCenterZ;
+          const dist = Math.sqrt(dx * dx + dz * dz);
+          const segments = dist <= LOD_NEAR_RADIUS ? TILE_SEG_NEAR : TILE_SEG_FAR;
+          candidates.push({ tx, ty, worldX, worldZ, segments, dist });
         }
       }
     }
 
-    // Alte Tiles entfernen
+    // Nächste Tiles zuerst laden (distance-sort)
+    candidates.sort((a, b) => a.dist - b.dist);
+    for (const c of candidates) {
+      enqueueTileLoad(this.scene, c.tx, c.ty, this.zoom, c.worldX, c.worldZ,
+                      this.tileWorldSize, c.segments, this.elevOffset, c.dist);
+    }
+
+    // Entfernte Tiles ausräumen
     for (const key of this.activeTiles) {
       if (!neededTiles.has(key)) {
         const mesh = tileCache.get(key);

@@ -236,6 +236,131 @@ export const AIRCRAFT_TYPES = {
     wingArea: 377,
     color: 0xf0f0f0,
   },
+
+  // ==================================================
+  // AIRBUS — Weitere
+  // ==================================================
+  a220: { name: 'Airbus A220-300', manufacturer: 'Airbus', type: 'narrow', engines: 2, maxSpeed: 871, cruiseSpeed: 828, stallSpeed: 180, maxAlt: 41000, range: 6390, wingspan: 35.1, length: 38.7, mtow: 67585, thrust: 102300, fuelCapacity: 21805, passengers: '120-160', scale: 2.2, liftCoeff: 1.4, dragCoeff: 0.028, mass: 45000, wingArea: 112, color: 0xf0f0f0 },
+  a300: { name: 'Airbus A300-600', manufacturer: 'Airbus', type: 'wide', engines: 2, maxSpeed: 897, cruiseSpeed: 833, stallSpeed: 205, maxAlt: 40000, range: 7500, wingspan: 44.8, length: 54.1, mtow: 171700, thrust: 272000, fuelCapacity: 68150, passengers: '228-336', scale: 2.9, liftCoeff: 1.45, dragCoeff: 0.028, mass: 130000, wingArea: 260, color: 0xf0f0f0 },
+  a321: { name: 'Airbus A321neo', manufacturer: 'Airbus', type: 'narrow', engines: 2, maxSpeed: 871, cruiseSpeed: 828, stallSpeed: 200, maxAlt: 39800, range: 7400, wingspan: 35.8, length: 44.5, mtow: 97000, thrust: 293000, fuelCapacity: 32940, passengers: '180-244', scale: 2.3, liftCoeff: 1.4, dragCoeff: 0.028, mass: 75000, wingArea: 122.6, color: 0xf0f0f0 },
+
+  // ==================================================
+  // BOEING — Weitere
+  // ==================================================
+  b707: { name: 'Boeing 707-320', manufacturer: 'Boeing', type: 'narrow', engines: 4, maxSpeed: 1000, cruiseSpeed: 886, stallSpeed: 200, maxAlt: 42000, range: 9900, wingspan: 44.4, length: 46.6, mtow: 151000, thrust: 80000, fuelCapacity: 90300, passengers: '140-189', scale: 2.7, liftCoeff: 1.4, dragCoeff: 0.029, mass: 117000, wingArea: 283, color: 0xf0f0f0 },
+  b717: { name: 'Boeing 717-200', manufacturer: 'Boeing', type: 'narrow', engines: 2, maxSpeed: 811, cruiseSpeed: 810, stallSpeed: 180, maxAlt: 37000, range: 2645, wingspan: 28.5, length: 37.8, mtow: 54900, thrust: 85000, fuelCapacity: 13892, passengers: '106-134', scale: 2.0, liftCoeff: 1.35, dragCoeff: 0.030, mass: 49000, wingArea: 93, color: 0xf0f0f0 },
+  b727: { name: 'Boeing 727-200', manufacturer: 'Boeing', type: 'narrow', engines: 3, maxSpeed: 963, cruiseSpeed: 904, stallSpeed: 200, maxAlt: 42000, range: 4450, wingspan: 32.9, length: 46.7, mtow: 95000, thrust: 71000, fuelCapacity: 42260, passengers: '134-189', scale: 2.5, liftCoeff: 1.4, dragCoeff: 0.029, mass: 86000, wingArea: 157.9, color: 0xf0f0f0 },
+  b767: { name: 'Boeing 767-300ER', manufacturer: 'Boeing', type: 'wide', engines: 2, maxSpeed: 913, cruiseSpeed: 851, stallSpeed: 200, maxAlt: 43000, range: 11093, wingspan: 47.6, length: 54.9, mtow: 186900, thrust: 280000, fuelCapacity: 91380, passengers: '218-351', scale: 2.8, liftCoeff: 1.5, dragCoeff: 0.027, mass: 155000, wingArea: 283.3, color: 0xf0f0f0 },
+
+  // ==================================================
+  // DOUGLAS / MCDONNELL DOUGLAS
+  // ==================================================
+  dc3: { name: 'Douglas DC-3', manufacturer: 'Douglas', type: 'prop', engines: 2, maxSpeed: 370, cruiseSpeed: 333, stallSpeed: 110, maxAlt: 23200, range: 2420, wingspan: 29, length: 19.7, mtow: 11430, thrust: 8800, fuelCapacity: 3058, passengers: '21-32', scale: 1.8, liftCoeff: 1.5, dragCoeff: 0.035, mass: 8000, wingArea: 91.7, color: 0xe4e4e4 },
+  dc8: { name: 'Douglas DC-8-63', manufacturer: 'Douglas', type: 'narrow', engines: 4, maxSpeed: 965, cruiseSpeed: 875, stallSpeed: 205, maxAlt: 42000, range: 9200, wingspan: 45.2, length: 57.1, mtow: 161000, thrust: 80000, fuelCapacity: 88500, passengers: '189-259', scale: 2.8, liftCoeff: 1.4, dragCoeff: 0.029, mass: 135000, wingArea: 271, color: 0xf0f0f0 },
+  dc9: { name: 'Douglas DC-9-30', manufacturer: 'Douglas', type: 'narrow', engines: 2, maxSpeed: 925, cruiseSpeed: 811, stallSpeed: 190, maxAlt: 37000, range: 2780, wingspan: 28.5, length: 36.4, mtow: 54900, thrust: 80000, fuelCapacity: 13853, passengers: '90-135', scale: 2.1, liftCoeff: 1.4, dragCoeff: 0.030, mass: 48000, wingArea: 93, color: 0xf0f0f0 },
+  dc10: { name: 'McDonnell Douglas DC-10-30', manufacturer: 'McDonnell Douglas', type: 'wide', engines: 3, maxSpeed: 956, cruiseSpeed: 908, stallSpeed: 215, maxAlt: 42000, range: 10010, wingspan: 50.4, length: 55.5, mtow: 263085, thrust: 233000, fuelCapacity: 138700, passengers: '270-380', scale: 3.3, liftCoeff: 1.55, dragCoeff: 0.027, mass: 195000, wingArea: 367.7, color: 0xf0f0f0 },
+  md80: { name: 'McDonnell Douglas MD-80', manufacturer: 'McDonnell Douglas', type: 'narrow', engines: 2, maxSpeed: 925, cruiseSpeed: 811, stallSpeed: 195, maxAlt: 37000, range: 4635, wingspan: 32.8, length: 45.1, mtow: 67800, thrust: 91000, fuelCapacity: 22106, passengers: '130-172', scale: 2.5, liftCoeff: 1.4, dragCoeff: 0.029, mass: 58000, wingArea: 112.3, color: 0xf0f0f0 },
+  md11: { name: 'McDonnell Douglas MD-11', manufacturer: 'McDonnell Douglas', type: 'wide', engines: 3, maxSpeed: 945, cruiseSpeed: 876, stallSpeed: 215, maxAlt: 43000, range: 12670, wingspan: 51.7, length: 61.2, mtow: 285990, thrust: 269000, fuelCapacity: 146173, passengers: '293-410', scale: 3.4, liftCoeff: 1.55, dragCoeff: 0.026, mass: 210000, wingArea: 338.9, color: 0xf0f0f0 },
+
+  // ==================================================
+  // RUSSISCHE JET-AIRLINER
+  // ==================================================
+  tu154: { name: 'Tupolev Tu-154', manufacturer: 'Tupolev', type: 'narrow', engines: 3, maxSpeed: 950, cruiseSpeed: 850, stallSpeed: 200, maxAlt: 39000, range: 6600, wingspan: 37.6, length: 48, mtow: 100000, thrust: 103000, fuelCapacity: 39750, passengers: '164-180', scale: 2.6, liftCoeff: 1.4, dragCoeff: 0.030, mass: 82000, wingArea: 202, color: 0xf0f0f0 },
+  il62: { name: 'Ilyushin Il-62', manufacturer: 'Ilyushin', type: 'wide', engines: 4, maxSpeed: 900, cruiseSpeed: 850, stallSpeed: 195, maxAlt: 42000, range: 10000, wingspan: 43.2, length: 53.1, mtow: 165000, thrust: 107900, fuelCapacity: 105300, passengers: '168-186', scale: 2.9, liftCoeff: 1.4, dragCoeff: 0.029, mass: 105000, wingArea: 282, color: 0xf0f0f0 },
+
+  // ==================================================
+  // EARLY JETS
+  // ==================================================
+  comet: { name: 'de Havilland Comet 4', manufacturer: 'de Havilland', type: 'narrow', engines: 4, maxSpeed: 840, cruiseSpeed: 830, stallSpeed: 180, maxAlt: 42000, range: 5190, wingspan: 35, length: 33.98, mtow: 73480, thrust: 47000, fuelCapacity: 40200, passengers: '74-109', scale: 2.4, liftCoeff: 1.3, dragCoeff: 0.032, mass: 50000, wingArea: 187, color: 0xe8e8e8 },
+  caravelle: { name: 'Sud Caravelle III', manufacturer: 'Sud Aviation', type: 'narrow', engines: 2, maxSpeed: 845, cruiseSpeed: 760, stallSpeed: 180, maxAlt: 37000, range: 1700, wingspan: 34.3, length: 32, mtow: 46000, thrust: 57400, fuelCapacity: 18900, passengers: '80-99', scale: 2.1, liftCoeff: 1.35, dragCoeff: 0.031, mass: 32000, wingArea: 146.7, color: 0xe8e8e8 },
+
+  // ==================================================
+  // SUPERSONIC
+  // ==================================================
+  concorde: { name: 'Aérospatiale Concorde', manufacturer: 'BAC / Aérospatiale', type: 'super', engines: 4, maxSpeed: 2180, cruiseSpeed: 2158, stallSpeed: 300, maxAlt: 60000, range: 7222, wingspan: 25.6, length: 61.66, mtow: 185000, thrust: 169000, fuelCapacity: 119500, passengers: '92-128', scale: 3.2, liftCoeff: 0.6, dragCoeff: 0.035, mass: 111000, wingArea: 358.25, color: 0xffffff },
+  tu144: { name: 'Tupolev Tu-144', manufacturer: 'Tupolev', type: 'super', engines: 4, maxSpeed: 2430, cruiseSpeed: 2200, stallSpeed: 310, maxAlt: 60000, range: 6500, wingspan: 28.8, length: 65.5, mtow: 180000, thrust: 196000, fuelCapacity: 120000, passengers: '120-150', scale: 3.4, liftCoeff: 0.6, dragCoeff: 0.036, mass: 120000, wingArea: 438, color: 0xffffff },
+
+  // ==================================================
+  // REGIONAL JETS
+  // ==================================================
+  e190: { name: 'Embraer E190', manufacturer: 'Embraer', type: 'regional', engines: 2, maxSpeed: 890, cruiseSpeed: 829, stallSpeed: 180, maxAlt: 41000, range: 4537, wingspan: 28.72, length: 36.2, mtow: 50790, thrust: 126000, fuelCapacity: 16153, passengers: '96-114', scale: 2.0, liftCoeff: 1.4, dragCoeff: 0.029, mass: 28000, wingArea: 92.5, color: 0xf0f0f0 },
+  crj900: { name: 'Bombardier CRJ-900', manufacturer: 'Bombardier', type: 'regional', engines: 2, maxSpeed: 876, cruiseSpeed: 828, stallSpeed: 175, maxAlt: 41000, range: 2956, wingspan: 24.85, length: 36.24, mtow: 38330, thrust: 80000, fuelCapacity: 14308, passengers: '76-90', scale: 2.0, liftCoeff: 1.4, dragCoeff: 0.030, mass: 22000, wingArea: 70.6, color: 0xf0f0f0 },
+  bae146: { name: 'BAe 146-200', manufacturer: 'British Aerospace', type: 'regional', engines: 4, maxSpeed: 789, cruiseSpeed: 740, stallSpeed: 170, maxAlt: 35000, range: 2909, wingspan: 26.2, length: 28.6, mtow: 42184, thrust: 122400, fuelCapacity: 11728, passengers: '70-112', scale: 1.9, liftCoeff: 1.5, dragCoeff: 0.031, mass: 26000, wingArea: 77.3, color: 0xf0f0f0 },
+  fokker100: { name: 'Fokker 100', manufacturer: 'Fokker', type: 'regional', engines: 2, maxSpeed: 845, cruiseSpeed: 755, stallSpeed: 170, maxAlt: 35000, range: 3170, wingspan: 28.08, length: 35.53, mtow: 44450, thrust: 122000, fuelCapacity: 13365, passengers: '97-122', scale: 2.0, liftCoeff: 1.4, dragCoeff: 0.031, mass: 24400, wingArea: 93.5, color: 0xf0f0f0 },
+
+  // ==================================================
+  // MODERNE NEUE
+  // ==================================================
+  c919: { name: 'COMAC C919', manufacturer: 'COMAC', type: 'narrow', engines: 2, maxSpeed: 876, cruiseSpeed: 834, stallSpeed: 195, maxAlt: 40000, range: 4075, wingspan: 35.8, length: 38.9, mtow: 72500, thrust: 258000, fuelCapacity: 19560, passengers: '156-174', scale: 2.2, liftCoeff: 1.4, dragCoeff: 0.028, mass: 42100, wingArea: 129.5, color: 0xf0f0f0 },
+  ssj100: { name: 'Sukhoi Superjet 100', manufacturer: 'Sukhoi', type: 'regional', engines: 2, maxSpeed: 860, cruiseSpeed: 828, stallSpeed: 175, maxAlt: 40200, range: 4578, wingspan: 27.8, length: 29.94, mtow: 49450, thrust: 142000, fuelCapacity: 15805, passengers: '98-108', scale: 2.0, liftCoeff: 1.4, dragCoeff: 0.030, mass: 24250, wingArea: 77, color: 0xf0f0f0 },
+  mc21: { name: 'Irkut MC-21-300', manufacturer: 'Irkut', type: 'narrow', engines: 2, maxSpeed: 870, cruiseSpeed: 828, stallSpeed: 190, maxAlt: 40000, range: 6000, wingspan: 35.9, length: 42.2, mtow: 79250, thrust: 275000, fuelCapacity: 20400, passengers: '163-211', scale: 2.3, liftCoeff: 1.45, dragCoeff: 0.026, mass: 41000, wingArea: 134.9, color: 0xf0f0f0 },
+
+  // ==================================================
+  // HISTORIC PROPS
+  // ==================================================
+  ju52: { name: 'Junkers Ju 52/3m', manufacturer: 'Junkers', type: 'prop', engines: 3, maxSpeed: 265, cruiseSpeed: 245, stallSpeed: 100, maxAlt: 18000, range: 1000, wingspan: 29.25, length: 18.9, mtow: 10990, thrust: 12000, fuelCapacity: 2500, passengers: '15-17', scale: 1.7, liftCoeff: 1.55, dragCoeff: 0.040, mass: 5970, wingArea: 110.5, color: 0x9ea2a8 },
+  fordtrimotor: { name: 'Ford Trimotor 5-AT', manufacturer: 'Ford', type: 'prop', engines: 3, maxSpeed: 241, cruiseSpeed: 193, stallSpeed: 95, maxAlt: 18500, range: 900, wingspan: 23.72, length: 15.19, mtow: 6124, thrust: 9500, fuelCapacity: 1250, passengers: '13-15', scale: 1.6, liftCoeff: 1.5, dragCoeff: 0.042, mass: 3400, wingArea: 77.6, color: 0x9ea2a8 },
+  constellation: { name: 'Lockheed L-1049 Super Constellation', manufacturer: 'Lockheed', type: 'prop', engines: 4, maxSpeed: 607, cruiseSpeed: 491, stallSpeed: 180, maxAlt: 24000, range: 8700, wingspan: 37.49, length: 34.62, mtow: 62370, thrust: 40000, fuelCapacity: 25600, passengers: '62-109', scale: 2.4, liftCoeff: 1.5, dragCoeff: 0.034, mass: 39000, wingArea: 153.3, color: 0xe8e8e8 },
+
+  // ==================================================
+  // BUSINESS JETS
+  // ==================================================
+  g650: { name: 'Gulfstream G650ER', manufacturer: 'Gulfstream', type: 'bizjet', engines: 2, maxSpeed: 1133, cruiseSpeed: 904, stallSpeed: 180, maxAlt: 51000, range: 13890, wingspan: 30.4, length: 30.41, mtow: 46493, thrust: 147000, fuelCapacity: 20593, passengers: '8-18', scale: 1.9, liftCoeff: 1.4, dragCoeff: 0.024, mass: 21000, wingArea: 119, color: 0xf0f0f0 },
+  global7500: { name: 'Bombardier Global 7500', manufacturer: 'Bombardier', type: 'bizjet', engines: 2, maxSpeed: 1151, cruiseSpeed: 978, stallSpeed: 180, maxAlt: 51000, range: 14260, wingspan: 31.7, length: 33.8, mtow: 51700, thrust: 165000, fuelCapacity: 22700, passengers: '8-19', scale: 1.9, liftCoeff: 1.4, dragCoeff: 0.024, mass: 22500, wingArea: 131, color: 0xf0f0f0 },
+  falcon7x: { name: 'Dassault Falcon 7X', manufacturer: 'Dassault', type: 'bizjet', engines: 3, maxSpeed: 953, cruiseSpeed: 900, stallSpeed: 180, maxAlt: 51000, range: 11020, wingspan: 26.21, length: 23.38, mtow: 31751, thrust: 101000, fuelCapacity: 14670, passengers: '8-16', scale: 1.7, liftCoeff: 1.4, dragCoeff: 0.025, mass: 15000, wingArea: 70, color: 0xf0f0f0 },
+  citation: { name: 'Cessna Citation CJ4', manufacturer: 'Cessna', type: 'bizjet', engines: 2, maxSpeed: 835, cruiseSpeed: 833, stallSpeed: 170, maxAlt: 45000, range: 3710, wingspan: 15.49, length: 16.25, mtow: 7761, thrust: 31000, fuelCapacity: 2632, passengers: '7-10', scale: 1.3, liftCoeff: 1.35, dragCoeff: 0.028, mass: 5400, wingArea: 33, color: 0xf0f0f0 },
+  hondajet: { name: 'HondaJet Elite', manufacturer: 'Honda Aircraft', type: 'bizjet', engines: 2, maxSpeed: 782, cruiseSpeed: 780, stallSpeed: 165, maxAlt: 43000, range: 2661, wingspan: 12.12, length: 12.99, mtow: 4853, thrust: 17200, fuelCapacity: 1320, passengers: '4-6', scale: 1.1, liftCoeff: 1.35, dragCoeff: 0.026, mass: 4800, wingArea: 17.4, color: 0xf0f0f0 },
+
+  // ==================================================
+  // TURBOPROP REGIONAL
+  // ==================================================
+  atr72: { name: 'ATR 72-600', manufacturer: 'ATR', type: 'turboprop', engines: 2, maxSpeed: 511, cruiseSpeed: 510, stallSpeed: 150, maxAlt: 25000, range: 1528, wingspan: 27.05, length: 27.17, mtow: 23000, thrust: 18600, fuelCapacity: 6360, passengers: '68-78', scale: 1.9, liftCoeff: 1.5, dragCoeff: 0.035, mass: 13500, wingArea: 61, color: 0xf0f0f0 },
+  dash8: { name: 'Bombardier Dash 8 Q400', manufacturer: 'Bombardier', type: 'turboprop', engines: 2, maxSpeed: 667, cruiseSpeed: 667, stallSpeed: 150, maxAlt: 27000, range: 2040, wingspan: 28.42, length: 32.83, mtow: 29257, thrust: 34000, fuelCapacity: 6526, passengers: '68-90', scale: 2.0, liftCoeff: 1.5, dragCoeff: 0.035, mass: 17200, wingArea: 63.1, color: 0xf0f0f0 },
+  do328: { name: 'Dornier 328', manufacturer: 'Dornier', type: 'turboprop', engines: 2, maxSpeed: 620, cruiseSpeed: 620, stallSpeed: 140, maxAlt: 31000, range: 1850, wingspan: 20.98, length: 21.28, mtow: 13990, thrust: 15600, fuelCapacity: 3430, passengers: '30-33', scale: 1.7, liftCoeff: 1.5, dragCoeff: 0.036, mass: 8400, wingArea: 40, color: 0xf0f0f0 },
+
+  // ==================================================
+  // GENERAL AVIATION
+  // ==================================================
+  c172: { name: 'Cessna 172 Skyhawk', manufacturer: 'Cessna', type: 'ga', engines: 1, maxSpeed: 302, cruiseSpeed: 226, stallSpeed: 88, maxAlt: 14000, range: 1272, wingspan: 11, length: 8.28, mtow: 1157, thrust: 2500, fuelCapacity: 212, passengers: '1-3', scale: 1.1, liftCoeff: 1.5, dragCoeff: 0.045, mass: 770, wingArea: 16.2, color: 0xffffff },
+  c208: { name: 'Cessna 208 Caravan', manufacturer: 'Cessna', type: 'ga', engines: 1, maxSpeed: 344, cruiseSpeed: 344, stallSpeed: 110, maxAlt: 25000, range: 1982, wingspan: 15.88, length: 12.68, mtow: 3969, thrust: 5500, fuelCapacity: 1257, passengers: '9-14', scale: 1.3, liftCoeff: 1.5, dragCoeff: 0.045, mass: 2100, wingArea: 25.9, color: 0xffffff },
+  pa28: { name: 'Piper PA-28 Cherokee', manufacturer: 'Piper', type: 'ga', engines: 1, maxSpeed: 259, cruiseSpeed: 240, stallSpeed: 88, maxAlt: 14000, range: 1040, wingspan: 10.67, length: 7.25, mtow: 1157, thrust: 2300, fuelCapacity: 189, passengers: '1-3', scale: 1.1, liftCoeff: 1.45, dragCoeff: 0.045, mass: 700, wingArea: 15.1, color: 0xffffff },
+  supercub: { name: 'Piper PA-18 Super Cub', manufacturer: 'Piper', type: 'ga', engines: 1, maxSpeed: 209, cruiseSpeed: 185, stallSpeed: 65, maxAlt: 19000, range: 740, wingspan: 10.74, length: 6.83, mtow: 794, thrust: 1500, fuelCapacity: 136, passengers: '1', scale: 1.0, liftCoeff: 1.5, dragCoeff: 0.050, mass: 460, wingArea: 16.6, color: 0xffd12f },
+  sr22: { name: 'Cirrus SR22', manufacturer: 'Cirrus', type: 'ga', engines: 1, maxSpeed: 340, cruiseSpeed: 340, stallSpeed: 110, maxAlt: 17500, range: 2065, wingspan: 11.68, length: 7.92, mtow: 1633, thrust: 3000, fuelCapacity: 348, passengers: '1-4', scale: 1.1, liftCoeff: 1.4, dragCoeff: 0.038, mass: 900, wingArea: 13.6, color: 0xffffff },
+  da40: { name: 'Diamond DA40 NG', manufacturer: 'Diamond', type: 'ga', engines: 1, maxSpeed: 279, cruiseSpeed: 279, stallSpeed: 100, maxAlt: 16400, range: 1593, wingspan: 11.94, length: 8.1, mtow: 1310, thrust: 2200, fuelCapacity: 148, passengers: '1-3', scale: 1.1, liftCoeff: 1.4, dragCoeff: 0.040, mass: 750, wingArea: 13.5, color: 0xffffff },
+  pc12: { name: 'Pilatus PC-12 NGX', manufacturer: 'Pilatus', type: 'turboprop', engines: 1, maxSpeed: 528, cruiseSpeed: 528, stallSpeed: 120, maxAlt: 30000, range: 3417, wingspan: 16.28, length: 14.4, mtow: 4740, thrust: 7800, fuelCapacity: 1538, passengers: '6-9', scale: 1.4, liftCoeff: 1.5, dragCoeff: 0.034, mass: 2700, wingArea: 25.8, color: 0xffffff },
+
+  // ==================================================
+  // AEROBATIC
+  // ==================================================
+  extra300: { name: 'Extra 300', manufacturer: 'Extra Aircraft', type: 'aerobatic', engines: 1, maxSpeed: 407, cruiseSpeed: 352, stallSpeed: 106, maxAlt: 16000, range: 1000, wingspan: 8, length: 6.96, mtow: 950, thrust: 2900, fuelCapacity: 177, passengers: '1-2', scale: 1.0, liftCoeff: 1.4, dragCoeff: 0.042, mass: 660, wingArea: 10.7, color: 0xff3030 },
+  pitts: { name: 'Pitts Special S-2C', manufacturer: 'Aviat', type: 'aerobatic', engines: 1, maxSpeed: 291, cruiseSpeed: 283, stallSpeed: 92, maxAlt: 20000, range: 523, wingspan: 6.1, length: 5.36, mtow: 770, thrust: 2100, fuelCapacity: 114, passengers: '1-2', scale: 0.9, liftCoeff: 1.5, dragCoeff: 0.050, mass: 520, wingArea: 9.3, color: 0xff0000 },
+  yak52: { name: 'Yakovlev Yak-52', manufacturer: 'Yakovlev', type: 'aerobatic', engines: 1, maxSpeed: 285, cruiseSpeed: 230, stallSpeed: 105, maxAlt: 13000, range: 465, wingspan: 9.3, length: 7.75, mtow: 1305, thrust: 2800, fuelCapacity: 122, passengers: '1-2', scale: 1.1, liftCoeff: 1.45, dragCoeff: 0.048, mass: 1000, wingArea: 15, color: 0xffffff },
+
+  // ==================================================
+  // BUSH / UTILITY
+  // ==================================================
+  dhc2: { name: 'DHC-2 Beaver', manufacturer: 'de Havilland Canada', type: 'bush', engines: 1, maxSpeed: 254, cruiseSpeed: 225, stallSpeed: 80, maxAlt: 18000, range: 732, wingspan: 14.64, length: 9.24, mtow: 2313, thrust: 3500, fuelCapacity: 360, passengers: '1-6', scale: 1.3, liftCoeff: 1.55, dragCoeff: 0.048, mass: 1200, wingArea: 23.2, color: 0xe8d32a },
+  an2: { name: 'Antonov An-2', manufacturer: 'Antonov', type: 'bush', engines: 1, maxSpeed: 258, cruiseSpeed: 185, stallSpeed: 65, maxAlt: 14425, range: 845, wingspan: 18.18, length: 12.4, mtow: 5500, thrust: 7500, fuelCapacity: 1200, passengers: '1-12', scale: 1.5, liftCoeff: 1.7, dragCoeff: 0.055, mass: 3500, wingArea: 71.5, color: 0x5a8f3a },
+
+  // ==================================================
+  // SEGELFLUGZEUGE (keine Triebwerke)
+  // ==================================================
+  ask21: { name: 'Schleicher ASK 21', manufacturer: 'Schleicher', type: 'glider', engines: 0, maxSpeed: 280, cruiseSpeed: 110, stallSpeed: 65, maxAlt: 30000, range: 400, wingspan: 17, length: 8.35, mtow: 600, thrust: 0, fuelCapacity: 0, passengers: '1-2', scale: 1.5, liftCoeff: 1.4, dragCoeff: 0.018, mass: 360, wingArea: 17.95, color: 0xffffff },
+  asw28: { name: 'Schleicher ASW 28', manufacturer: 'Schleicher', type: 'glider', engines: 0, maxSpeed: 280, cruiseSpeed: 110, stallSpeed: 68, maxAlt: 30000, range: 500, wingspan: 18, length: 6.55, mtow: 525, thrust: 0, fuelCapacity: 0, passengers: '1', scale: 1.5, liftCoeff: 1.4, dragCoeff: 0.014, mass: 310, wingArea: 10.5, color: 0xffffff },
+  ventus: { name: 'Schempp-Hirth Ventus 3', manufacturer: 'Schempp-Hirth', type: 'glider', engines: 0, maxSpeed: 285, cruiseSpeed: 120, stallSpeed: 68, maxAlt: 30000, range: 600, wingspan: 18, length: 6.84, mtow: 600, thrust: 0, fuelCapacity: 0, passengers: '1', scale: 1.5, liftCoeff: 1.4, dragCoeff: 0.013, mass: 320, wingArea: 10.16, color: 0xffffff },
+  dg1000: { name: 'DG Flugzeugbau DG-1000', manufacturer: 'DG Flugzeugbau', type: 'glider', engines: 0, maxSpeed: 270, cruiseSpeed: 120, stallSpeed: 68, maxAlt: 30000, range: 450, wingspan: 18, length: 8.66, mtow: 750, thrust: 0, fuelCapacity: 0, passengers: '1-2', scale: 1.5, liftCoeff: 1.4, dragCoeff: 0.016, mass: 430, wingArea: 16.72, color: 0xffffff },
+
+  // ==================================================
+  // AMPHIBIEN
+  // ==================================================
+  cl415: { name: 'Canadair CL-415', manufacturer: 'Bombardier', type: 'amphibian', engines: 2, maxSpeed: 376, cruiseSpeed: 333, stallSpeed: 150, maxAlt: 14700, range: 2443, wingspan: 28.63, length: 19.82, mtow: 19890, thrust: 15900, fuelCapacity: 5808, passengers: '1-11', scale: 1.7, liftCoeff: 1.5, dragCoeff: 0.045, mass: 12900, wingArea: 100.3, color: 0xffcc00 },
+  icona5: { name: 'ICON A5', manufacturer: 'ICON Aircraft', type: 'amphibian', engines: 1, maxSpeed: 176, cruiseSpeed: 160, stallSpeed: 70, maxAlt: 4600, range: 685, wingspan: 10.36, length: 7.01, mtow: 686, thrust: 740, fuelCapacity: 76, passengers: '1-2', scale: 1.1, liftCoeff: 1.5, dragCoeff: 0.050, mass: 440, wingArea: 14, color: 0xf0f0f0 },
+
+  // ==================================================
+  // EXPERIMENTAL
+  // ==================================================
+  varieze: { name: 'Rutan VariEze', manufacturer: 'Rutan Aircraft', type: 'experimental', engines: 1, maxSpeed: 314, cruiseSpeed: 298, stallSpeed: 98, maxAlt: 6000, range: 1550, wingspan: 6.76, length: 4.29, mtow: 488, thrust: 800, fuelCapacity: 100, passengers: '1-2', scale: 0.9, liftCoeff: 1.2, dragCoeff: 0.025, mass: 420, wingArea: 4.5, color: 0xffffff },
+  solarimpulse: { name: 'Solar Impulse 2', manufacturer: 'Solar Impulse', type: 'experimental', engines: 4, maxSpeed: 140, cruiseSpeed: 90, stallSpeed: 50, maxAlt: 8500, range: 40000, wingspan: 71.9, length: 22.4, mtow: 2300, thrust: 400, fuelCapacity: 0, passengers: '1', scale: 2.6, liftCoeff: 1.8, dragCoeff: 0.018, mass: 2300, wingArea: 269.5, color: 0xffffff },
 };
 
 // ============================================================

@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { TerrainManager } from './terrain.js';
 import { createAircraftForType, createProceduralAirplane, AircraftPreview, createGLBInstance } from './airplane.js';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { AIRCRAFT_TYPES, AIRLINES, getAirlinesForAircraft } from './airlines.js';
 import { AIRPORTS, searchAirports } from './airports.js';
 import { Cockpit } from './cockpit.js';
@@ -46,7 +47,13 @@ function initScene() {
   renderer.shadowMap.enabled = settings.shadows;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure = 1.2;
+  renderer.outputColorSpace = THREE.SRGBColorSpace;
   document.body.appendChild(renderer.domElement);
+
+  // PBR Environment: gives aircraft metallic surfaces real reflections
+  const pmrem = new THREE.PMREMGenerator(renderer);
+  scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+  scene.environmentIntensity = 0.6;
 
   window.addEventListener('resize', () => {
     camera.aspect = innerWidth / innerHeight;
@@ -191,12 +198,37 @@ function onKeyPress(code) {
   }
 }
 
+// Sanft gerampte Tastatur-Eingabe — binäres W/A/D/S fühlt sich direkt
+// analog an, statt sofort auf volle Auslenkung zu springen.
+const kbInput = { pitch: 0, roll: 0, yaw: 0 };
+let _kbInputTs = 0;
+const KB_RAMP = 3.8;   // Einheiten/s zum Ziel hin
+const KB_DECAY = 5.5;  // Einheiten/s Richtung 0 ohne Taste (schnellere Selbstzentrierung)
+
+function updateKbInput() {
+  const now = performance.now();
+  const dt = _kbInputTs ? Math.min(0.1, (now - _kbInputTs) / 1000) : 0;
+  _kbInputTs = now;
+  const tgt = {
+    pitch: (keys['KeyW']||keys['ArrowUp']?1:0) + (keys['KeyS']||keys['ArrowDown']?-1:0),
+    roll:  (keys['KeyA']||keys['ArrowLeft']?1:0) + (keys['KeyD']||keys['ArrowRight']?-1:0),
+    yaw:   (keys['KeyQ']?1:0) + (keys['KeyE']?-1:0),
+  };
+  for (const k of ['pitch','roll','yaw']) {
+    const cur = kbInput[k], t = tgt[k];
+    const rate = (t === 0 ? KB_DECAY : KB_RAMP) * dt;
+    const diff = t - cur;
+    kbInput[k] = Math.abs(diff) <= rate ? t : cur + Math.sign(diff) * rate;
+  }
+}
+
 function getInput() {
+  updateKbInput();
   return {
     type: 'input',
-    pitch: (keys['KeyW']||keys['ArrowUp']?1:0)+(keys['KeyS']||keys['ArrowDown']?-1:0),
-    roll: (keys['KeyA']||keys['ArrowLeft']?1:0)+(keys['KeyD']||keys['ArrowRight']?-1:0),
-    yaw: (keys['KeyQ']?1:0)+(keys['KeyE']?-1:0),
+    pitch: kbInput.pitch,
+    roll: kbInput.roll,
+    yaw: kbInput.yaw,
     throttle: (keys['ShiftLeft']||keys['ShiftRight']?1:0)+(keys['ControlLeft']||keys['ControlRight']?-1:0),
   };
 }
@@ -793,6 +825,7 @@ async function startFlight() {
   fill.style.width = '50%'; txt.textContent = 'Downloading satellite terrain data...';
   terrainManager = new TerrainManager(scene, {
     lat: selectedAirport.lat, lon: selectedAirport.lon,
+    elevation: selectedAirport.elev || 0,
     zoom: settings.terrainZoom, radius: settings.terrainRadius, tileWorldSize: 2000,
   });
   await terrainManager.update(0, 0);

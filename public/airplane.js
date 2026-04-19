@@ -1,346 +1,164 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 
 // ============================================================
 // FLUGZEUG-GEOMETRIE-PARAMETER PRO TYP
-// Jeder Typ hat einzigartige Proportionen
 // ============================================================
 
 const CONFIGS = {
-  a320: { // Airbus Narrowbody
-    body: { len: 12, r: 0.6, noseTaper: 0.35 },
-    wing: { span: 11, root: 3, tip: 0.9, sweep: 2.5, pos: 0.3, y: -0.1 },
-    engine: { r: 0.42, len: 2, y: -0.7, z: 3.2, count: 2 },
-    tail: { hSpan: 4.5, hChord: 1.5, vH: 2.3, vChord: 2.5 },
-    gear: { noseX: 4.5, mainX: -0.5, mainZ: 1.8 },
-    winglet: 'fence',
-  },
-  a330: { // Airbus Widebody Twin
-    body: { len: 20, r: 0.88, noseTaper: 0.4 },
-    wing: { span: 18, root: 5, tip: 1.2, sweep: 3.5, pos: 1, y: -0.2 },
-    engine: { r: 0.6, len: 2.8, y: -1.0, z: 5, count: 2 },
-    tail: { hSpan: 6, hChord: 2, vH: 3.2, vChord: 3 },
-    gear: { noseX: 7, mainX: -1, mainZ: 2.8 },
-    winglet: 'fence',
-  },
-  a340: { // Airbus Quad
-    body: { len: 22, r: 0.88, noseTaper: 0.4 },
-    wing: { span: 19, root: 5, tip: 1.2, sweep: 3.5, pos: 1, y: -0.2 },
-    engine: { r: 0.38, len: 2.2, y: -0.85, z: 0, count: 4, positions: [[0.5,3.2],[0.2,6.5]] },
-    tail: { hSpan: 6, hChord: 2, vH: 3.5, vChord: 3.5 },
-    gear: { noseX: 8, mainX: -1, mainZ: 2.8 },
-    winglet: 'fence',
-  },
-  a350: { // Airbus Modern Widebody
-    body: { len: 20, r: 0.9, noseTaper: 0.45 },
-    wing: { span: 19, root: 5.5, tip: 1, sweep: 4, pos: 1, y: -0.2 },
-    engine: { r: 0.55, len: 3, y: -1.0, z: 5, count: 2 },
-    tail: { hSpan: 6, hChord: 2, vH: 3.5, vChord: 3.5 },
-    gear: { noseX: 7.5, mainX: -1, mainZ: 3 },
-    winglet: 'curved',
-  },
-  a380: { // Double Deck Super
-    body: { len: 24, r: 1.25, noseTaper: 0.4, doubleDeck: true },
-    wing: { span: 24, root: 7, tip: 1.5, sweep: 5, pos: 1, y: -0.4 },
-    engine: { r: 0.52, len: 2.8, y: -1.3, z: 0, count: 4, positions: [[0.5,4.8],[0.2,9]] },
-    tail: { hSpan: 8, hChord: 3, vH: 4.5, vChord: 4.5 },
-    gear: { noseX: 9, mainX: -1.5, mainZ: 3.5, extraBody: true },
-    winglet: 'fence',
-  },
-  b737: { // Boeing Narrowbody
-    body: { len: 12, r: 0.58, noseTaper: 0.3 },
-    wing: { span: 11, root: 3, tip: 0.8, sweep: 2.2, pos: 0.2, y: -0.05 },
-    engine: { r: 0.38, len: 1.8, y: -0.6, z: 3, count: 2, flat: true },
-    tail: { hSpan: 4.5, hChord: 1.4, vH: 2.2, vChord: 2.2 },
-    gear: { noseX: 4.5, mainX: -0.5, mainZ: 1.8 },
-    winglet: 'split',
-  },
-  b747: { // Jumbo — Upper Deck Hump
-    body: { len: 22, r: 1.05, noseTaper: 0.35, hump: true },
-    wing: { span: 19, root: 6, tip: 1.5, sweep: 4.5, pos: 0.5, y: -0.3 },
-    engine: { r: 0.48, len: 2.5, y: -1.2, z: 0, count: 4, positions: [[0.8,3.8],[0.3,7.2]] },
-    tail: { hSpan: 7, hChord: 2.5, vH: 4, vChord: 4 },
-    gear: { noseX: 8, mainX: -1, mainZ: 3.2, extraBody: true },
-    winglet: null,
-  },
-  b757: { // Boeing Long Narrowbody
-    body: { len: 15, r: 0.6, noseTaper: 0.32 },
-    wing: { span: 12, root: 3.5, tip: 0.9, sweep: 2.5, pos: 0.3, y: -0.1 },
-    engine: { r: 0.45, len: 2.3, y: -0.8, z: 3.5, count: 2 },
-    tail: { hSpan: 5, hChord: 1.6, vH: 2.8, vChord: 2.8 },
-    gear: { noseX: 5.5, mainX: -0.5, mainZ: 2 },
-    winglet: null,
-  },
-  b777: { // Boeing Big Twin
-    body: { len: 22, r: 0.98, noseTaper: 0.38 },
-    wing: { span: 19, root: 5.5, tip: 1.2, sweep: 4, pos: 1, y: -0.25 },
-    engine: { r: 0.7, len: 3.2, y: -1.2, z: 5.2, count: 2 },
-    tail: { hSpan: 6.5, hChord: 2.2, vH: 3.5, vChord: 3.5 },
-    gear: { noseX: 8, mainX: -1, mainZ: 3.2, extraBody: true },
-    winglet: null,
-  },
-  b787: { // Boeing Dreamliner
-    body: { len: 19, r: 0.9, noseTaper: 0.42 },
-    wing: { span: 18, root: 5, tip: 1, sweep: 4.5, pos: 1, y: -0.2 },
-    engine: { r: 0.52, len: 2.8, y: -1.0, z: 4.8, count: 2, serrated: true },
-    tail: { hSpan: 6, hChord: 2, vH: 3.2, vChord: 3.2 },
-    gear: { noseX: 7, mainX: -1, mainZ: 2.8 },
-    winglet: 'raked',
-  },
+  // ===================== JET AIRLINERS (bestehend) =====================
+  a320: { archetype: 'airliner', body: { len: 12, r: 0.6, noseTaper: 0.35 }, wing: { span: 11, root: 3, tip: 0.9, sweep: 2.5, pos: 0.3, y: -0.1 }, engine: { r: 0.42, len: 2, y: -0.7, z: 3.2, count: 2 }, tail: { hSpan: 4.5, hChord: 1.5, vH: 2.3, vChord: 2.5 }, gear: { noseX: 4.5, mainX: -0.5, mainZ: 1.8 }, winglet: 'fence' },
+  a330: { archetype: 'airliner', body: { len: 20, r: 0.88, noseTaper: 0.4 }, wing: { span: 18, root: 5, tip: 1.2, sweep: 3.5, pos: 1, y: -0.2 }, engine: { r: 0.6, len: 2.8, y: -1.0, z: 5, count: 2 }, tail: { hSpan: 6, hChord: 2, vH: 3.2, vChord: 3 }, gear: { noseX: 7, mainX: -1, mainZ: 2.8 }, winglet: 'fence' },
+  a340: { archetype: 'airliner', body: { len: 22, r: 0.88, noseTaper: 0.4 }, wing: { span: 19, root: 5, tip: 1.2, sweep: 3.5, pos: 1, y: -0.2 }, engine: { r: 0.38, len: 2.2, y: -0.85, z: 0, count: 4, positions: [[0.5,3.2],[0.2,6.5]] }, tail: { hSpan: 6, hChord: 2, vH: 3.5, vChord: 3.5 }, gear: { noseX: 8, mainX: -1, mainZ: 2.8 }, winglet: 'fence' },
+  a350: { archetype: 'airliner', body: { len: 20, r: 0.9, noseTaper: 0.45 }, wing: { span: 19, root: 5.5, tip: 1, sweep: 4, pos: 1, y: -0.2 }, engine: { r: 0.55, len: 3, y: -1.0, z: 5, count: 2 }, tail: { hSpan: 6, hChord: 2, vH: 3.5, vChord: 3.5 }, gear: { noseX: 7.5, mainX: -1, mainZ: 3 }, winglet: 'curved' },
+  a380: { archetype: 'airliner', body: { len: 24, r: 1.25, noseTaper: 0.4, doubleDeck: true }, wing: { span: 24, root: 7, tip: 1.5, sweep: 5, pos: 1, y: -0.4 }, engine: { r: 0.52, len: 2.8, y: -1.3, z: 0, count: 4, positions: [[0.5,4.8],[0.2,9]] }, tail: { hSpan: 8, hChord: 3, vH: 4.5, vChord: 4.5 }, gear: { noseX: 9, mainX: -1.5, mainZ: 3.5, extraBody: true }, winglet: 'fence' },
+  b737: { archetype: 'airliner', body: { len: 12, r: 0.58, noseTaper: 0.3 }, wing: { span: 11, root: 3, tip: 0.8, sweep: 2.2, pos: 0.2, y: -0.05 }, engine: { r: 0.38, len: 1.8, y: -0.6, z: 3, count: 2, flat: true }, tail: { hSpan: 4.5, hChord: 1.4, vH: 2.2, vChord: 2.2 }, gear: { noseX: 4.5, mainX: -0.5, mainZ: 1.8 }, winglet: 'split' },
+  b747: { archetype: 'airliner', body: { len: 22, r: 1.05, noseTaper: 0.35, hump: true }, wing: { span: 19, root: 6, tip: 1.5, sweep: 4.5, pos: 0.5, y: -0.3 }, engine: { r: 0.48, len: 2.5, y: -1.2, z: 0, count: 4, positions: [[0.8,3.8],[0.3,7.2]] }, tail: { hSpan: 7, hChord: 2.5, vH: 4, vChord: 4 }, gear: { noseX: 8, mainX: -1, mainZ: 3.2, extraBody: true }, winglet: null },
+  b757: { archetype: 'airliner', body: { len: 15, r: 0.6, noseTaper: 0.32 }, wing: { span: 12, root: 3.5, tip: 0.9, sweep: 2.5, pos: 0.3, y: -0.1 }, engine: { r: 0.45, len: 2.3, y: -0.8, z: 3.5, count: 2 }, tail: { hSpan: 5, hChord: 1.6, vH: 2.8, vChord: 2.8 }, gear: { noseX: 5.5, mainX: -0.5, mainZ: 2 }, winglet: null },
+  b777: { archetype: 'airliner', body: { len: 22, r: 0.98, noseTaper: 0.38 }, wing: { span: 19, root: 5.5, tip: 1.2, sweep: 4, pos: 1, y: -0.25 }, engine: { r: 0.7, len: 3.2, y: -1.2, z: 5.2, count: 2 }, tail: { hSpan: 6.5, hChord: 2.2, vH: 3.5, vChord: 3.5 }, gear: { noseX: 8, mainX: -1, mainZ: 3.2, extraBody: true }, winglet: null },
+  b787: { archetype: 'airliner', body: { len: 19, r: 0.9, noseTaper: 0.42 }, wing: { span: 18, root: 5, tip: 1, sweep: 4.5, pos: 1, y: -0.2 }, engine: { r: 0.52, len: 2.8, y: -1.0, z: 4.8, count: 2, serrated: true }, tail: { hSpan: 6, hChord: 2, vH: 3.2, vChord: 3.2 }, gear: { noseX: 7, mainX: -1, mainZ: 2.8 }, winglet: 'raked' },
+
+  // ===================== AIRBUS (NEU) =====================
+  a220: { archetype: 'airliner', body: { len: 11, r: 0.55, noseTaper: 0.35 }, wing: { span: 10.5, root: 2.8, tip: 0.8, sweep: 2.2, pos: 0.3, y: -0.1 }, engine: { r: 0.48, len: 2.2, y: -0.7, z: 3, count: 2 }, tail: { hSpan: 4.2, hChord: 1.4, vH: 2.2, vChord: 2.3 }, gear: { noseX: 4, mainX: -0.5, mainZ: 1.7 }, winglet: 'curved' },
+  a300: { archetype: 'airliner', body: { len: 17, r: 0.85, noseTaper: 0.4 }, wing: { span: 14, root: 4.5, tip: 1.2, sweep: 3, pos: 0.5, y: -0.2 }, engine: { r: 0.55, len: 2.5, y: -0.9, z: 4, count: 2 }, tail: { hSpan: 5.5, hChord: 1.8, vH: 3, vChord: 3 }, gear: { noseX: 6, mainX: -0.5, mainZ: 2.5 }, winglet: null },
+  a321: { archetype: 'airliner', body: { len: 14, r: 0.6, noseTaper: 0.32 }, wing: { span: 11, root: 3, tip: 0.9, sweep: 2.5, pos: 0.3, y: -0.1 }, engine: { r: 0.42, len: 2, y: -0.7, z: 3.2, count: 2 }, tail: { hSpan: 4.5, hChord: 1.5, vH: 2.3, vChord: 2.5 }, gear: { noseX: 5.2, mainX: -0.5, mainZ: 1.8 }, winglet: 'fence' },
+
+  // ===================== BOEING (NEU) =====================
+  b707: { archetype: 'airliner', body: { len: 15, r: 0.72, noseTaper: 0.32 }, wing: { span: 13, root: 3.8, tip: 1, sweep: 3, pos: 0.3, y: -0.15 }, engine: { r: 0.32, len: 2.2, y: -0.9, z: 0, count: 4, positions: [[0.8,2.8],[0.4,5.2]] }, tail: { hSpan: 5, hChord: 1.6, vH: 2.8, vChord: 2.8 }, gear: { noseX: 5, mainX: -0.5, mainZ: 2 }, winglet: null },
+  b717: { archetype: 'reartwin', body: { len: 11, r: 0.55, noseTaper: 0.32 }, wing: { span: 10, root: 2.8, tip: 0.8, sweep: 2, pos: 0.1, y: -0.15 }, engine: { r: 0.4, len: 2, y: 0.15, z: 1.0, count: 2 }, tail: { hSpan: 4.2, hChord: 1.4, vH: 2.6, vChord: 2.5, tTail: true }, gear: { noseX: 4, mainX: -0.4, mainZ: 1.6 } },
+  b727: { archetype: 'trijet', body: { len: 14, r: 0.62, noseTaper: 0.32 }, wing: { span: 11, root: 3, tip: 0.9, sweep: 2.8, pos: 0, y: -0.15 }, engine: { r: 0.35, len: 2, y: 0.15, z: 1.0, wingZ: 0, count: 3 }, tail: { hSpan: 4.5, hChord: 1.5, vH: 2.8, vChord: 2.6, tTail: true }, gear: { noseX: 5, mainX: -0.5, mainZ: 1.8 } },
+  b767: { archetype: 'airliner', body: { len: 17, r: 0.78, noseTaper: 0.38 }, wing: { span: 15, root: 4.5, tip: 1.1, sweep: 3.5, pos: 0.7, y: -0.2 }, engine: { r: 0.55, len: 2.7, y: -0.9, z: 4, count: 2 }, tail: { hSpan: 5.5, hChord: 1.8, vH: 3, vChord: 3 }, gear: { noseX: 6.5, mainX: -0.8, mainZ: 2.5 }, winglet: null },
+
+  // ===================== DOUGLAS / MCDONNELL DOUGLAS =====================
+  dc3: { archetype: 'proptwin', body: { len: 10, r: 0.5, noseTaper: 0.32, taildragger: true }, wing: { span: 10, root: 2.5, tip: 0.7, sweep: 0.4, pos: 0.2, y: -0.18 }, engine: { r: 0.3, len: 1.4, y: -0.3, z: 2.5, count: 2, radial: true, bladeCount: 3 }, tail: { hSpan: 3.8, hChord: 1.2, vH: 1.8, vChord: 1.8 }, gear: { taildragger: true, mainX: 1, mainZ: 1.2, tailX: -5 } },
+  dc8: { archetype: 'airliner', body: { len: 16, r: 0.72, noseTaper: 0.32 }, wing: { span: 13, root: 3.8, tip: 1, sweep: 3, pos: 0.4, y: -0.18 }, engine: { r: 0.3, len: 2.1, y: -0.9, z: 0, count: 4, positions: [[0.8,2.8],[0.4,5.2]] }, tail: { hSpan: 5, hChord: 1.6, vH: 2.8, vChord: 2.8 }, gear: { noseX: 5.5, mainX: -0.5, mainZ: 2 }, winglet: null },
+  dc9: { archetype: 'reartwin', body: { len: 12, r: 0.55, noseTaper: 0.3 }, wing: { span: 10, root: 2.8, tip: 0.8, sweep: 2.2, pos: 0.1, y: -0.15 }, engine: { r: 0.35, len: 2, y: 0.15, z: 1.0, count: 2 }, tail: { hSpan: 4.2, hChord: 1.4, vH: 2.6, vChord: 2.5, tTail: true }, gear: { noseX: 4.5, mainX: -0.5, mainZ: 1.6 } },
+  dc10: { archetype: 'trijet', body: { len: 19, r: 0.88, noseTaper: 0.38 }, wing: { span: 16, root: 5, tip: 1.2, sweep: 3.5, pos: 0.8, y: -0.22 }, engine: { r: 0.6, len: 2.8, y: -1.0, z: 4, wingZ: 4, count: 3 }, tail: { hSpan: 6, hChord: 2, vH: 3.5, vChord: 3.5 }, gear: { noseX: 7, mainX: -1, mainZ: 2.8, extraBody: true } },
+  md80: { archetype: 'reartwin', body: { len: 14, r: 0.55, noseTaper: 0.3 }, wing: { span: 11, root: 3, tip: 0.8, sweep: 2.3, pos: 0.1, y: -0.15 }, engine: { r: 0.38, len: 2.2, y: 0.15, z: 1.0, count: 2 }, tail: { hSpan: 4.5, hChord: 1.5, vH: 2.8, vChord: 2.6, tTail: true }, gear: { noseX: 5.5, mainX: -0.5, mainZ: 1.6 } },
+  md11: { archetype: 'trijet', body: { len: 20, r: 0.88, noseTaper: 0.38 }, wing: { span: 17, root: 5, tip: 1.2, sweep: 3.8, pos: 0.8, y: -0.22 }, engine: { r: 0.58, len: 2.8, y: -1.0, z: 4.2, wingZ: 4.2, count: 3 }, tail: { hSpan: 6, hChord: 2, vH: 3.5, vChord: 3.5 }, gear: { noseX: 7.2, mainX: -1, mainZ: 2.9, extraBody: true }, winglet: 'fence' },
+
+  // ===================== RUSSISCHE JET-AIRLINER =====================
+  tu154: { archetype: 'trijet', body: { len: 14, r: 0.6, noseTaper: 0.3 }, wing: { span: 11, root: 3, tip: 0.8, sweep: 3, pos: 0.1, y: -0.18 }, engine: { r: 0.35, len: 2.1, y: 0.15, z: 1.1, wingZ: 0, count: 3 }, tail: { hSpan: 4.5, hChord: 1.5, vH: 2.8, vChord: 2.6, tTail: true }, gear: { noseX: 5.5, mainX: -0.5, mainZ: 1.7 } },
+  il62: { archetype: 'quadrear', body: { len: 16, r: 0.72, noseTaper: 0.32 }, wing: { span: 13, root: 3.8, tip: 1, sweep: 3.5, pos: 0, y: -0.15 }, engine: { r: 0.35, len: 2.1, y: 0.15, z: 0, count: 4, positions: [[0.5,1.0],[0.1,1.6]] }, tail: { hSpan: 5, hChord: 1.6, vH: 3, vChord: 2.8, tTail: true }, gear: { noseX: 5.8, mainX: -0.5, mainZ: 2 } },
+
+  // ===================== EARLY JETS =====================
+  comet: { archetype: 'airliner', body: { len: 13, r: 0.6, noseTaper: 0.35 }, wing: { span: 11, root: 4, tip: 1, sweep: 2, pos: 0.2, y: -0.1, buried: true }, engine: { r: 0.25, len: 1.6, y: -0.2, z: 0, count: 4, positions: [[0.3,1.5],[0.2,2.5]], buried: true }, tail: { hSpan: 4.5, hChord: 1.5, vH: 2.5, vChord: 2.5 }, gear: { noseX: 4.5, mainX: -0.5, mainZ: 1.5 }, winglet: null },
+  caravelle: { archetype: 'reartwin', body: { len: 11, r: 0.55, noseTaper: 0.35 }, wing: { span: 10, root: 3, tip: 0.8, sweep: 2, pos: 0.1, y: -0.15 }, engine: { r: 0.33, len: 1.9, y: 0.1, z: 0.95, count: 2 }, tail: { hSpan: 4, hChord: 1.3, vH: 2.4, vChord: 2.4 }, gear: { noseX: 4, mainX: -0.5, mainZ: 1.5 } },
+
+  // ===================== SUPERSONIC DELTAS =====================
+  concorde: { archetype: 'delta', body: { len: 18, r: 0.48, noseTaper: 0.5, droopNose: true }, wing: { span: 12, rootChord: 12, sweep: 5, y: -0.1, ogee: true }, engine: { r: 0.4, len: 3.2, y: -0.6, z: 1.5, count: 4 }, tail: { vH: 2.8, vChord: 3 }, gear: { noseX: 6, mainX: -1, mainZ: 1.8 } },
+  tu144: { archetype: 'delta', body: { len: 19, r: 0.5, noseTaper: 0.5, droopNose: true, canard: true }, wing: { span: 12, rootChord: 13, sweep: 5.5, y: -0.1, ogee: false }, engine: { r: 0.4, len: 3.4, y: -0.6, z: 1.2, count: 4 }, tail: { vH: 3, vChord: 3.2 }, gear: { noseX: 6.5, mainX: -1, mainZ: 1.8 } },
+
+  // ===================== REGIONAL JETS =====================
+  e190: { archetype: 'airliner', body: { len: 11, r: 0.52, noseTaper: 0.3 }, wing: { span: 10, root: 2.7, tip: 0.8, sweep: 2, pos: 0.3, y: -0.1 }, engine: { r: 0.4, len: 1.9, y: -0.65, z: 2.6, count: 2 }, tail: { hSpan: 4, hChord: 1.3, vH: 2.2, vChord: 2.3 }, gear: { noseX: 4, mainX: -0.5, mainZ: 1.6 }, winglet: 'curved' },
+  crj900: { archetype: 'reartwin', body: { len: 11.5, r: 0.48, noseTaper: 0.3 }, wing: { span: 9.5, root: 2.5, tip: 0.7, sweep: 2.2, pos: 0.1, y: -0.18 }, engine: { r: 0.32, len: 1.8, y: 0.1, z: 0.85, count: 2 }, tail: { hSpan: 3.8, hChord: 1.2, vH: 2.3, vChord: 2.2, tTail: true }, gear: { noseX: 4.5, mainX: -0.4, mainZ: 1.5 } },
+  bae146: { archetype: 'highwingjet', body: { len: 10, r: 0.55, noseTaper: 0.3 }, wing: { span: 10, root: 2.8, tip: 0.8, sweep: 0.3, pos: 0, y: 0.55 }, engine: { r: 0.28, len: 1.6, y: 0.4, z: 0, count: 4, positions: [[0.2,1.5],[-0.1,3.0]] }, tail: { hSpan: 4, hChord: 1.3, vH: 2.2, vChord: 2.2, tTail: true }, gear: { noseX: 4, mainX: -0.5, mainZ: 0.8 } },
+  fokker100: { archetype: 'reartwin', body: { len: 11, r: 0.5, noseTaper: 0.3 }, wing: { span: 9.5, root: 2.6, tip: 0.75, sweep: 1.8, pos: 0.1, y: -0.15 }, engine: { r: 0.33, len: 1.8, y: 0.1, z: 0.85, count: 2 }, tail: { hSpan: 4, hChord: 1.3, vH: 2.3, vChord: 2.2, tTail: true }, gear: { noseX: 4.2, mainX: -0.4, mainZ: 1.4 } },
+
+  // ===================== MODERNE NEUE =====================
+  c919: { archetype: 'airliner', body: { len: 12, r: 0.58, noseTaper: 0.35 }, wing: { span: 11, root: 3, tip: 0.9, sweep: 2.5, pos: 0.3, y: -0.1 }, engine: { r: 0.45, len: 2.1, y: -0.7, z: 3.2, count: 2 }, tail: { hSpan: 4.5, hChord: 1.5, vH: 2.4, vChord: 2.5 }, gear: { noseX: 4.5, mainX: -0.5, mainZ: 1.8 }, winglet: 'fence' },
+  ssj100: { archetype: 'airliner', body: { len: 10, r: 0.5, noseTaper: 0.32 }, wing: { span: 9, root: 2.5, tip: 0.7, sweep: 2, pos: 0.2, y: -0.12 }, engine: { r: 0.38, len: 1.8, y: -0.65, z: 2.4, count: 2 }, tail: { hSpan: 3.6, hChord: 1.2, vH: 2, vChord: 2.1 }, gear: { noseX: 3.8, mainX: -0.4, mainZ: 1.4 }, winglet: null },
+  mc21: { archetype: 'airliner', body: { len: 13, r: 0.6, noseTaper: 0.35 }, wing: { span: 11, root: 3, tip: 0.85, sweep: 2.5, pos: 0.3, y: -0.1 }, engine: { r: 0.48, len: 2.2, y: -0.75, z: 3.3, count: 2 }, tail: { hSpan: 4.5, hChord: 1.5, vH: 2.3, vChord: 2.5 }, gear: { noseX: 4.8, mainX: -0.5, mainZ: 1.8 }, winglet: 'curved' },
+
+  // ===================== HISTORIC PROPS =====================
+  ju52: { archetype: 'trimotorprop', body: { len: 10, r: 0.6, noseTaper: 0.28, corrugated: true, taildragger: true }, wing: { span: 11, root: 2.8, tip: 1.4, sweep: 0, pos: -0.3, y: 0.55, corrugated: true }, engine: { r: 0.32, len: 1.2, y: -0.2, z: 2.5, noseZ: 0, count: 3, radial: true, bladeCount: 3 }, tail: { hSpan: 4, hChord: 1.2, vH: 1.8, vChord: 1.8 }, gear: { taildragger: true, mainX: 0.8, mainZ: 1.2, tailX: -5 } },
+  fordtrimotor: { archetype: 'trimotorprop', body: { len: 9, r: 0.5, noseTaper: 0.3, corrugated: true, taildragger: true }, wing: { span: 11, root: 2.5, tip: 1.2, sweep: 0, pos: -0.3, y: 0.5, corrugated: true }, engine: { r: 0.28, len: 1.1, y: -0.15, z: 2.3, noseZ: 0, count: 3, radial: true, bladeCount: 2 }, tail: { hSpan: 3.8, hChord: 1.1, vH: 1.5, vChord: 1.5 }, gear: { taildragger: true, mainX: 0.8, mainZ: 1.1, tailX: -4.5 } },
+  constellation: { archetype: 'propquad', body: { len: 13, r: 0.55, noseTaper: 0.35, curved: true, taildragger: true }, wing: { span: 13, root: 3, tip: 0.9, sweep: 0.5, pos: 0.2, y: -0.12 }, engine: { r: 0.28, len: 1.8, y: -0.25, z: 0, count: 4, positions: [[0.3,2.2],[0.1,4.2]], radial: true, bladeCount: 3 }, tail: { triple: true, hSpan: 4.5, hChord: 1.3, vH: 1.5, vChord: 1.3 }, gear: { taildragger: true, mainX: 1, mainZ: 1.6, tailX: -6 } },
+
+  // ===================== BUSINESS JETS =====================
+  g650: { archetype: 'bizjet', body: { len: 10, r: 0.45, noseTaper: 0.35 }, wing: { span: 9.5, root: 2.5, tip: 0.6, sweep: 2.5, pos: 0.1, y: -0.15 }, engine: { r: 0.28, len: 1.5, y: 0.1, z: 0.8, count: 2 }, tail: { hSpan: 3.6, hChord: 1.1, vH: 2.2, vChord: 2, tTail: true }, gear: { noseX: 4, mainX: -0.4, mainZ: 1.3 }, winglet: 'raked' },
+  global7500: { archetype: 'bizjet', body: { len: 10.5, r: 0.48, noseTaper: 0.35 }, wing: { span: 10, root: 2.5, tip: 0.6, sweep: 2.5, pos: 0.1, y: -0.15 }, engine: { r: 0.3, len: 1.6, y: 0.1, z: 0.85, count: 2 }, tail: { hSpan: 3.6, hChord: 1.1, vH: 2.2, vChord: 2, tTail: true }, gear: { noseX: 4.2, mainX: -0.4, mainZ: 1.4 }, winglet: 'curved' },
+  falcon7x: { archetype: 'trijet', body: { len: 9.5, r: 0.45, noseTaper: 0.35 }, wing: { span: 9, root: 2.3, tip: 0.6, sweep: 2, pos: 0.1, y: -0.15 }, engine: { r: 0.25, len: 1.4, y: 0.1, z: 0.75, wingZ: 0, count: 3 }, tail: { hSpan: 3.4, hChord: 1, vH: 2.1, vChord: 1.9, tTail: true }, gear: { noseX: 3.8, mainX: -0.4, mainZ: 1.2 } },
+  citation: { archetype: 'bizjet', body: { len: 7, r: 0.38, noseTaper: 0.35 }, wing: { span: 7.5, root: 1.8, tip: 0.5, sweep: 0.5, pos: 0, y: -0.15 }, engine: { r: 0.24, len: 1.2, y: 0.08, z: 0.65, count: 2 }, tail: { hSpan: 2.8, hChord: 0.9, vH: 1.6, vChord: 1.5, tTail: true }, gear: { noseX: 2.8, mainX: -0.3, mainZ: 1 } },
+  hondajet: { archetype: 'hondajet', body: { len: 6, r: 0.35, noseTaper: 0.35 }, wing: { span: 7, root: 1.6, tip: 0.45, sweep: 0.4, pos: 0, y: -0.12 }, engine: { r: 0.22, len: 1.1, y: 0.3, z: 1.1, count: 2 }, tail: { hSpan: 2.6, hChord: 0.85, vH: 1.4, vChord: 1.4, tTail: true }, gear: { noseX: 2.5, mainX: -0.2, mainZ: 0.9 } },
+
+  // ===================== TURBOPROP REGIONALE =====================
+  atr72: { archetype: 'turbopropwing', body: { len: 11, r: 0.55, noseTaper: 0.35 }, wing: { span: 13, root: 2.4, tip: 0.8, sweep: 0.2, pos: 0, y: 0.5 }, engine: { r: 0.28, len: 1.8, y: 0.45, z: 2.8, count: 2, bladeCount: 6 }, tail: { hSpan: 4.2, hChord: 1.3, vH: 2.2, vChord: 2.2, tTail: true }, gear: { noseX: 4.5, mainX: -0.5, mainZ: 0.6, bodyMount: true } },
+  dash8: { archetype: 'turbopropwing', body: { len: 11, r: 0.55, noseTaper: 0.35 }, wing: { span: 12, root: 2.3, tip: 0.8, sweep: 0.3, pos: 0, y: 0.5 }, engine: { r: 0.28, len: 1.9, y: 0.45, z: 2.7, count: 2, bladeCount: 6 }, tail: { hSpan: 4, hChord: 1.3, vH: 2.4, vChord: 2.2, tTail: true }, gear: { noseX: 4.5, mainX: -0.5, mainZ: 0.6, bodyMount: true } },
+  do328: { archetype: 'turbopropwing', body: { len: 8, r: 0.5, noseTaper: 0.35 }, wing: { span: 10, root: 2, tip: 0.7, sweep: 0.2, pos: 0, y: 0.45 }, engine: { r: 0.25, len: 1.6, y: 0.4, z: 2.3, count: 2, bladeCount: 6 }, tail: { hSpan: 3.4, hChord: 1.1, vH: 1.8, vChord: 1.8, tTail: true }, gear: { noseX: 3.5, mainX: -0.4, mainZ: 0.55, bodyMount: true } },
+
+  // ===================== GA SINGLE ENGINE =====================
+  c172: { archetype: 'propsingle', body: { len: 4.2, r: 0.3, noseTaper: 0.3 }, wing: { span: 5.5, root: 1, tip: 0.7, sweep: 0, pos: -0.1, y: 0.3, strutted: true }, engine: { r: 0.22, noseZ: 0, bladeCount: 2 }, tail: { hSpan: 2, hChord: 0.7, vH: 1, vChord: 1 }, gear: { fixed: true, noseX: 1.2, mainX: -0.1, mainZ: 0.8 } },
+  c208: { archetype: 'propsingle', body: { len: 5.5, r: 0.4, noseTaper: 0.35, turboprop: true }, wing: { span: 7, root: 1.3, tip: 0.9, sweep: 0, pos: -0.2, y: 0.38, strutted: true }, engine: { r: 0.26, noseZ: 0, bladeCount: 3 }, tail: { hSpan: 2.5, hChord: 0.8, vH: 1.3, vChord: 1.2 }, gear: { fixed: true, noseX: 1.5, mainX: -0.3, mainZ: 1 } },
+  pa28: { archetype: 'propsingle', body: { len: 4, r: 0.28, noseTaper: 0.3 }, wing: { span: 5, root: 0.9, tip: 0.6, sweep: 0, pos: 0.1, y: -0.25 }, engine: { r: 0.2, noseZ: 0, bladeCount: 2 }, tail: { hSpan: 1.9, hChord: 0.65, vH: 0.9, vChord: 0.9 }, gear: { fixed: true, noseX: 1, mainX: -0.1, mainZ: 0.7 } },
+  supercub: { archetype: 'propsingle', body: { len: 4, r: 0.25, noseTaper: 0.3, taildragger: true }, wing: { span: 5.2, root: 0.9, tip: 0.7, sweep: 0, pos: -0.1, y: 0.28, strutted: true }, engine: { r: 0.18, noseZ: 0, bladeCount: 2 }, tail: { hSpan: 1.8, hChord: 0.65, vH: 0.9, vChord: 0.9 }, gear: { taildragger: true, mainX: 0.5, mainZ: 0.65, tailX: -1.8, fixed: true } },
+  sr22: { archetype: 'propsingle', body: { len: 4.2, r: 0.3, noseTaper: 0.3 }, wing: { span: 5.5, root: 1, tip: 0.6, sweep: 0.15, pos: 0.1, y: -0.2 }, engine: { r: 0.2, noseZ: 0, bladeCount: 3 }, tail: { hSpan: 2, hChord: 0.7, vH: 1, vChord: 1 }, gear: { fixed: true, noseX: 1.2, mainX: -0.1, mainZ: 0.75 } },
+  da40: { archetype: 'propsingle', body: { len: 4, r: 0.28, noseTaper: 0.3 }, wing: { span: 5.2, root: 0.9, tip: 0.55, sweep: 0.1, pos: 0.1, y: -0.2 }, engine: { r: 0.2, noseZ: 0, bladeCount: 3 }, tail: { hSpan: 1.9, hChord: 0.6, vH: 1.1, vChord: 0.9, tTail: true }, gear: { fixed: true, noseX: 1, mainX: -0.1, mainZ: 0.7 } },
+  pc12: { archetype: 'propsingle', body: { len: 5.5, r: 0.4, noseTaper: 0.38, turboprop: true }, wing: { span: 7, root: 1.2, tip: 0.7, sweep: 0.1, pos: 0.1, y: -0.28 }, engine: { r: 0.28, noseZ: 0, bladeCount: 4 }, tail: { hSpan: 2.6, hChord: 0.85, vH: 1.4, vChord: 1.3 }, gear: { noseX: 1.8, mainX: -0.2, mainZ: 1 }, winglet: 'curved' },
+
+  // ===================== AEROBATIC / SPORT =====================
+  extra300: { archetype: 'propsingle', body: { len: 3.5, r: 0.25, noseTaper: 0.32, taildragger: true, aerobatic: true }, wing: { span: 4, root: 1, tip: 0.7, sweep: 0, pos: 0, y: 0 }, engine: { r: 0.18, noseZ: 0, bladeCount: 3 }, tail: { hSpan: 1.5, hChord: 0.55, vH: 0.9, vChord: 0.8 }, gear: { taildragger: true, mainX: 0.6, mainZ: 0.5, tailX: -1.5, fixed: true } },
+  pitts: { archetype: 'biplane', body: { len: 3, r: 0.24, noseTaper: 0.3, taildragger: true, aerobatic: true }, wing: { upperSpan: 3.5, lowerSpan: 3.5, upperRoot: 0.9, lowerRoot: 0.9, gap: 0.7, stagger: 0.1, y: 0 }, engine: { r: 0.17, noseZ: 0, bladeCount: 2, radial: false }, tail: { hSpan: 1.3, hChord: 0.5, vH: 0.8, vChord: 0.75 }, gear: { taildragger: true, mainX: 0.5, mainZ: 0.5, tailX: -1.3, fixed: true } },
+  yak52: { archetype: 'propsingle', body: { len: 4, r: 0.3, noseTaper: 0.3, taildragger: true }, wing: { span: 4.8, root: 1, tip: 0.6, sweep: 0, pos: 0.1, y: -0.22 }, engine: { r: 0.22, noseZ: 0, bladeCount: 2, radial: true }, tail: { hSpan: 1.8, hChord: 0.65, vH: 0.95, vChord: 0.95 }, gear: { taildragger: true, mainX: 0.6, mainZ: 0.7, tailX: -1.8, fixed: true } },
+
+  // ===================== BUSH / UTILITY =====================
+  dhc2: { archetype: 'propsingle', body: { len: 4.5, r: 0.35, noseTaper: 0.3, taildragger: true }, wing: { span: 5.8, root: 1.1, tip: 0.85, sweep: 0, pos: -0.1, y: 0.35, strutted: true }, engine: { r: 0.24, noseZ: 0, bladeCount: 2, radial: true }, tail: { hSpan: 2, hChord: 0.75, vH: 1.1, vChord: 1 }, gear: { taildragger: true, mainX: 0.6, mainZ: 0.85, tailX: -2, fixed: true } },
+  an2: { archetype: 'biplane', body: { len: 5.5, r: 0.45, noseTaper: 0.3, taildragger: true }, wing: { upperSpan: 7, lowerSpan: 5.8, upperRoot: 1.4, lowerRoot: 1.2, gap: 1.1, stagger: 0.3, y: 0 }, engine: { r: 0.28, noseZ: 0, bladeCount: 4, radial: true }, tail: { hSpan: 2.4, hChord: 0.9, vH: 1.4, vChord: 1.3 }, gear: { taildragger: true, mainX: 1, mainZ: 1, tailX: -2.5, fixed: true } },
+
+  // ===================== SEGELFLUGZEUGE =====================
+  ask21: { archetype: 'glider', body: { len: 5, r: 0.3, noseTaper: 0.45, tapered: true }, wing: { span: 10, root: 0.9, tip: 0.3, sweep: 0, pos: 0, y: 0 }, tail: { hSpan: 2, hChord: 0.6, vH: 1.1, vChord: 1 } },
+  asw28: { archetype: 'glider', body: { len: 4.5, r: 0.25, noseTaper: 0.5, tapered: true }, wing: { span: 11, root: 0.8, tip: 0.25, sweep: 0, pos: 0, y: 0 }, tail: { hSpan: 1.8, hChord: 0.5, vH: 1, vChord: 0.9, tTail: true } },
+  ventus: { archetype: 'glider', body: { len: 4.5, r: 0.25, noseTaper: 0.5, tapered: true }, wing: { span: 11, root: 0.85, tip: 0.22, sweep: 0, pos: 0, y: 0 }, tail: { hSpan: 1.8, hChord: 0.5, vH: 1, vChord: 0.9, tTail: true } },
+  dg1000: { archetype: 'glider', body: { len: 5, r: 0.28, noseTaper: 0.45, tapered: true }, wing: { span: 11, root: 0.9, tip: 0.25, sweep: 0, pos: 0, y: 0 }, tail: { hSpan: 2, hChord: 0.6, vH: 1.1, vChord: 1, tTail: true } },
+
+  // ===================== AMPHIBIEN =====================
+  cl415: { archetype: 'amphibian', body: { len: 8, r: 0.5, noseTaper: 0.3, boatHull: true }, wing: { span: 10, root: 1.8, tip: 1, sweep: 0, pos: 0, y: 0.6 }, engine: { r: 0.25, len: 1.8, y: 0.55, z: 2, count: 2, bladeCount: 4 }, tail: { hSpan: 3, hChord: 1, vH: 1.8, vChord: 1.6 }, gear: { noseX: 3, mainX: -0.5, mainZ: 0.8, bodyMount: true } },
+  icona5: { archetype: 'amphibian', body: { len: 4, r: 0.35, noseTaper: 0.3, boatHull: true }, wing: { span: 5.5, root: 0.9, tip: 0.6, sweep: 0.4, pos: -0.2, y: 0.4, strutted: true }, engine: { r: 0.18, len: 1.2, y: 0.5, z: 0, pusher: true, count: 1, bladeCount: 3 }, tail: { hSpan: 1.8, hChord: 0.6, vH: 1, vChord: 0.9 }, gear: { noseX: 1.2, mainX: -0.2, mainZ: 0.7, bodyMount: true, retractable: true } },
+
+  // ===================== EXPERIMENTAL =====================
+  varieze: { archetype: 'canard', body: { len: 3.5, r: 0.25, noseTaper: 0.35 }, wing: { span: 4.5, root: 1, tip: 0.5, sweep: 1.5, pos: -0.5, y: -0.05 }, canard: { span: 2.5, root: 0.5, tip: 0.3, pos: 1.3, y: 0.05 }, engine: { r: 0.15, noseZ: -2, pusher: true, bladeCount: 2 }, tail: null, fins: { y: 0, x: -0.5, zSpread: 2, h: 0.7, chord: 0.7 }, gear: { noseX: 0.5, mainX: -0.6, mainZ: 0.8, fixed: false, retractable: true } },
+  solarimpulse: { archetype: 'solar', body: { len: 5, r: 0.3, noseTaper: 0.4 }, wing: { span: 30, root: 1.2, tip: 0.6, sweep: 0, pos: 0, y: 0.3 }, engine: { r: 0.1, len: 0.4, y: 0, z: 0, count: 4, positions: [[0, 4],[0, 11]], bladeCount: 2 }, tail: { hSpan: 4, hChord: 0.8, vH: 1.5, vChord: 1.2 }, gear: { fixed: true, noseX: 1, mainX: -0.3, mainZ: 1.5 } },
 };
 
 // ============================================================
-// HAUPT-BAUFUNKTION
+// MATERIAL-FACTORY (PBR wie GLB-Modelle)
+// ============================================================
+function buildMats(color1, color2) {
+  return {
+    white: new THREE.MeshStandardMaterial({ color: 0xf5f6f8, metalness: 0.55, roughness: 0.32, envMapIntensity: 1.3 }),
+    tailMat: new THREE.MeshStandardMaterial({ color: new THREE.Color(color1), metalness: 0.45, roughness: 0.35, envMapIntensity: 1.2 }),
+    accentMat: new THREE.MeshStandardMaterial({ color: new THREE.Color(color2), metalness: 0.4, roughness: 0.4, envMapIntensity: 1.1 }),
+    chrome: new THREE.MeshStandardMaterial({ color: 0xc8ccd0, metalness: 0.98, roughness: 0.18, envMapIntensity: 1.6 }),
+    dark: new THREE.MeshStandardMaterial({ color: 0x15181b, metalness: 0.7, roughness: 0.55, envMapIntensity: 0.9 }),
+    rubber: new THREE.MeshStandardMaterial({ color: 0x0a0a0c, metalness: 0.0, roughness: 0.95 }),
+    glass: new THREE.MeshStandardMaterial({ color: 0x0a1626, metalness: 0.92, roughness: 0.08, envMapIntensity: 1.8, transparent: true, opacity: 0.78 }),
+    cockpit: new THREE.MeshStandardMaterial({ color: 0x06101c, metalness: 0.95, roughness: 0.05, envMapIntensity: 2.2, transparent: true, opacity: 0.7 }),
+    corrugated: new THREE.MeshStandardMaterial({ color: 0x9ea2a8, metalness: 0.75, roughness: 0.45 }),
+    fabric: new THREE.MeshStandardMaterial({ color: 0xd4cda8, metalness: 0.05, roughness: 0.85 }),
+  };
+}
+
+// ============================================================
+// HAUPT-DISPATCHER
 // ============================================================
 
 export function buildAircraft(type = 'a320', color1 = '#ffffff', color2 = '#cc0000') {
   const C = CONFIGS[type] || CONFIGS.a320;
-  const inner = new THREE.Group(); // Gebaut entlang X-Achse
-
-  const white = new THREE.MeshPhongMaterial({ color: 0xf0f0f0, shininess: 60 });
-  const tailMat = new THREE.MeshPhongMaterial({ color: new THREE.Color(color1), shininess: 50 });
-  const accentMat = new THREE.MeshPhongMaterial({ color: new THREE.Color(color2), shininess: 40 });
-  const chrome = new THREE.MeshPhongMaterial({ color: 0xbbbbbb, shininess: 90 });
-  const dark = new THREE.MeshPhongMaterial({ color: 0x333333 });
-  const glass = new THREE.MeshPhongMaterial({ color: 0x1a3050, shininess: 120, transparent: true, opacity: 0.8 });
-
-  const B = C.body;
-  const halfLen = B.len / 2;
-
-  // ── RUMPF (Zylinder + Nasenkegel + Heckkonus) ──
-  const bodyGeo = new THREE.CylinderGeometry(B.r, B.r, B.len, 20, 1, false);
-  bodyGeo.rotateZ(Math.PI / 2);
-  const bodyMesh = new THREE.Mesh(bodyGeo, white);
-  bodyMesh.castShadow = true;
-  inner.add(bodyMesh);
-
-  // Nase
-  const noseGeo = new THREE.ConeGeometry(B.r, B.len * B.noseTaper, 20);
-  noseGeo.rotateZ(-Math.PI / 2);
-  const nose = new THREE.Mesh(noseGeo, white);
-  nose.position.x = halfLen + B.len * B.noseTaper * 0.48;
-  nose.castShadow = true;
-  inner.add(nose);
-
-  // Heck (verjüngt sich)
-  const tailConeGeo = new THREE.ConeGeometry(B.r, B.len * 0.22, 20);
-  tailConeGeo.rotateZ(Math.PI / 2);
-  const tailCone = new THREE.Mesh(tailConeGeo, white);
-  tailCone.position.x = -halfLen - B.len * 0.1;
-  tailCone.castShadow = true;
-  inner.add(tailCone);
-
-  // ── B747 OBERDECK-BUCKEL ──
-  if (B.hump) {
-    const humpLen = B.len * 0.45;
-    const humpGeo = new THREE.CylinderGeometry(B.r * 0.55, B.r * 0.55, humpLen, 16, 1, false, 0, Math.PI);
-    humpGeo.rotateZ(Math.PI / 2);
-    humpGeo.rotateX(Math.PI); // Oben
-    const hump = new THREE.Mesh(humpGeo, white);
-    hump.position.set(halfLen * 0.35, B.r * 0.7, 0);
-    hump.castShadow = true;
-    inner.add(hump);
-
-    // Buckel-Nase abrunden
-    const humpNoseGeo = new THREE.SphereGeometry(B.r * 0.55, 12, 8, 0, Math.PI * 2, 0, Math.PI / 2);
-    humpNoseGeo.rotateZ(-Math.PI / 2);
-    const humpNose = new THREE.Mesh(humpNoseGeo, white);
-    humpNose.position.set(halfLen * 0.35 + humpLen / 2, B.r * 0.7, 0);
-    inner.add(humpNose);
+  const M = buildMats(color1, color2);
+  const arch = C.archetype || 'airliner';
+  let inner;
+  switch (arch) {
+    case 'airliner':       inner = buildAirliner(C, M); break;
+    case 'reartwin':       inner = buildRearTwin(C, M); break;
+    case 'trijet':         inner = buildTrijet(C, M); break;
+    case 'quadrear':       inner = buildQuadRear(C, M); break;
+    case 'highwingjet':    inner = buildHighwingJet(C, M); break;
+    case 'delta':          inner = buildDelta(C, M); break;
+    case 'proptwin':       inner = buildPropTwin(C, M); break;
+    case 'propquad':       inner = buildPropQuad(C, M); break;
+    case 'trimotorprop':   inner = buildTrimotorProp(C, M); break;
+    case 'turbopropwing':  inner = buildTurbopropWing(C, M); break;
+    case 'propsingle':     inner = buildPropSingle(C, M); break;
+    case 'biplane':        inner = buildBiplane(C, M); break;
+    case 'glider':         inner = buildGlider(C, M); break;
+    case 'amphibian':      inner = buildAmphibian(C, M); break;
+    case 'canard':         inner = buildCanard(C, M); break;
+    case 'bizjet':         inner = buildBizjet(C, M); break;
+    case 'hondajet':       inner = buildHondajet(C, M); break;
+    case 'solar':          inner = buildSolar(C, M); break;
+    default:               inner = buildAirliner(C, M);
   }
-
-  // ── A380 DOPPELDECK (breiterer Oberkörper) ──
-  if (B.doubleDeck) {
-    const ddGeo = new THREE.CylinderGeometry(B.r * 0.92, B.r * 0.92, B.len * 0.88, 20, 1, false, 0, Math.PI);
-    ddGeo.rotateZ(Math.PI / 2);
-    ddGeo.rotateX(Math.PI);
-    const dd = new THREE.Mesh(ddGeo, white);
-    dd.position.y = B.r * 0.15;
-    dd.castShadow = true;
-    inner.add(dd);
-  }
-
-  // ── COCKPIT-FENSTER ──
-  const cwGeo = new THREE.BoxGeometry(0.5, 0.28, B.r * 1.5);
-  const cw = new THREE.Mesh(cwGeo, glass);
-  cw.position.set(halfLen + B.len * B.noseTaper * 0.25, B.r * 0.45, 0);
-  inner.add(cw);
-
-  // ── PASSAGIER-FENSTERSTREIFEN ──
-  const winGeo = new THREE.BoxGeometry(B.len * 0.75, 0.06, B.r * 2.01);
-  const winMesh = new THREE.Mesh(winGeo, glass);
-  winMesh.position.set(0, B.r * 0.4, 0);
-  inner.add(winMesh);
-
-  // ── AIRLINE-STREIFEN am Rumpf ──
-  const stripeGeo = new THREE.BoxGeometry(B.len * 0.82, 0.05, B.r * 2.02);
-  const stripeMesh = new THREE.Mesh(stripeGeo, accentMat);
-  stripeMesh.position.set(0, B.r * 0.1, 0);
-  inner.add(stripeMesh);
-
-  // ── FLÜGEL ──
-  const W = C.wing;
-  for (const side of [1, -1]) {
-    const wGeo = createWingGeo(W.span / 2, W.root, W.tip, W.sweep);
-    const wMesh = new THREE.Mesh(wGeo, white);
-    wMesh.castShadow = true;
-    wMesh.position.set(W.pos, W.y, 0);
-    if (side === -1) wMesh.scale.z = -1;
-    inner.add(wMesh);
-
-    // Winglets
-    if (C.winglet === 'fence') {
-      const wlGeo = new THREE.BoxGeometry(W.tip * 0.7, W.span * 0.04, 0.04);
-      const wl = new THREE.Mesh(wlGeo, white);
-      wl.position.set(W.pos + W.sweep, W.y + W.span * 0.02, side * W.span / 2);
-      inner.add(wl);
-    } else if (C.winglet === 'curved') {
-      const wlGeo = new THREE.BoxGeometry(W.tip * 0.5, W.span * 0.06, 0.04);
-      const wl = new THREE.Mesh(wlGeo, white);
-      wl.position.set(W.pos + W.sweep + 0.3, W.y + W.span * 0.035, side * W.span / 2);
-      wl.rotation.z = side * 1.0;
-      inner.add(wl);
-    } else if (C.winglet === 'raked') {
-      const wlGeo = new THREE.BoxGeometry(W.tip * 0.9, W.span * 0.05, 0.04);
-      const wl = new THREE.Mesh(wlGeo, white);
-      wl.position.set(W.pos + W.sweep + 0.5, W.y + W.span * 0.03, side * (W.span / 2 + 0.2));
-      wl.rotation.z = side * 0.6;
-      inner.add(wl);
-    } else if (C.winglet === 'split') {
-      // Boeing split-tip winglet (737 MAX style)
-      for (const dir of [1, -1]) {
-        const wlGeo = new THREE.BoxGeometry(W.tip * 0.5, W.span * 0.03, 0.03);
-        const wl = new THREE.Mesh(wlGeo, white);
-        wl.position.set(W.pos + W.sweep, W.y + dir * W.span * 0.02, side * W.span / 2);
-        wl.rotation.z = side * dir * 0.7;
-        inner.add(wl);
-      }
-    }
-  }
-
-  // ── TRIEBWERKE ──
-  const E = C.engine;
-  const enginePositions = [];
-  if (E.count === 4 && E.positions) {
-    for (const [offX, offZ] of E.positions) {
-      enginePositions.push([W.pos + offX, E.y, offZ]);
-      enginePositions.push([W.pos + offX, E.y, -offZ]);
-    }
-  } else {
-    enginePositions.push([W.pos, E.y, E.z], [W.pos, E.y, -E.z]);
-  }
-
-  for (const [ex, ey, ez] of enginePositions) {
-    const eg = new THREE.Group();
-
-    // Gondel
-    const nacGeo = new THREE.CylinderGeometry(E.r, E.r * 0.88, E.len, 16);
-    nacGeo.rotateZ(Math.PI / 2);
-    eg.add(new THREE.Mesh(nacGeo, chrome));
-
-    // Intake-Ring
-    const ringGeo = new THREE.TorusGeometry(E.r, E.r * 0.07, 8, 20);
-    ringGeo.rotateY(Math.PI / 2);
-    const ring = new THREE.Mesh(ringGeo, dark);
-    ring.position.x = E.len / 2;
-    eg.add(ring);
-
-    // Innerer Spinner
-    const spinGeo = new THREE.ConeGeometry(E.r * 0.25, E.r * 0.6, 12);
-    spinGeo.rotateZ(-Math.PI / 2);
-    const spin = new THREE.Mesh(spinGeo, chrome);
-    spin.position.x = E.len / 2 - 0.1;
-    eg.add(spin);
-
-    // Fan-Blades (drehen sich!)
-    const fanGroup = new THREE.Group();
-    for (let i = 0; i < 18; i++) {
-      const bladeGeo = new THREE.BoxGeometry(0.02, E.r * 0.65, E.r * 0.06);
-      const blade = new THREE.Mesh(bladeGeo, chrome);
-      blade.position.y = E.r * 0.37;
-      const pivot = new THREE.Group();
-      pivot.add(blade);
-      pivot.rotation.x = (i / 18) * Math.PI * 2;
-      fanGroup.add(pivot);
-    }
-    fanGroup.position.x = E.len / 2 - 0.15;
-    fanGroup.userData.isPropeller = true;
-    eg.add(fanGroup);
-
-    // Exhaust
-    const exhGeo = new THREE.CylinderGeometry(E.r * 0.6, E.r * 0.65, 0.2, 16);
-    exhGeo.rotateZ(Math.PI / 2);
-    const exh = new THREE.Mesh(exhGeo, dark);
-    exh.position.x = -E.len / 2;
-    eg.add(exh);
-
-    // Pylon
-    const pylonH = Math.abs(ey - W.y);
-    const pylonGeo = new THREE.BoxGeometry(E.len * 0.45, pylonH, 0.08);
-    const pylon = new THREE.Mesh(pylonGeo, chrome);
-    pylon.position.set(0, pylonH / 2 + 0.05, 0);
-    eg.add(pylon);
-
-    // B737 flat bottom
-    if (E.flat) {
-      const flatGeo = new THREE.BoxGeometry(E.len * 0.55, 0.06, E.r * 1.6);
-      const flat = new THREE.Mesh(flatGeo, chrome);
-      flat.position.set(0.1, -E.r * 0.82, 0);
-      eg.add(flat);
-    }
-
-    // B787 serrated nacelle
-    if (E.serrated) {
-      for (let i = 0; i < 12; i++) {
-        const toothGeo = new THREE.ConeGeometry(0.03, 0.15, 3);
-        toothGeo.rotateZ(Math.PI / 2);
-        const tooth = new THREE.Mesh(toothGeo, dark);
-        const a = (i / 12) * Math.PI * 2;
-        tooth.position.set(-E.len / 2 - 0.1, Math.sin(a) * E.r * 0.65, Math.cos(a) * E.r * 0.65);
-        eg.add(tooth);
-      }
-    }
-
-    eg.position.set(ex, ey, ez);
-    inner.add(eg);
-  }
-
-  // ── HÖHENLEITWERK ──
-  const T = C.tail;
-  const tailX = -halfLen - B.len * 0.15;
-  for (const side of [1, -1]) {
-    const hsGeo = createWingGeo(T.hSpan / 2, T.hChord, T.hChord * 0.4, 0.8);
-    const hs = new THREE.Mesh(hsGeo, white);
-    hs.position.set(tailX, B.r * 0.15, 0);
-    if (side === -1) hs.scale.z = -1;
-    hs.castShadow = true;
-    inner.add(hs);
-  }
-
-  // ── SEITENLEITWERK (Airline-Farbe!) ──
-  const vfGeo = createFinGeo(T.vH, T.vChord);
-  const vf = new THREE.Mesh(vfGeo, tailMat);
-  vf.position.set(tailX, B.r, 0);
-  vf.castShadow = true;
-  inner.add(vf);
-
-  // Akzent auf dem Leitwerk
-  const faGeo = new THREE.BoxGeometry(T.vChord * 0.3, T.vH * 0.25, 0.06);
-  const fa = new THREE.Mesh(faGeo, accentMat);
-  fa.position.set(tailX - T.vChord * 0.15, B.r + T.vH * 0.55, 0);
-  inner.add(fa);
-
-  // ── FAHRWERK ──
-  const G = C.gear;
-  addGearAssembly(inner, G.noseX, -B.r - 0.2, 0, 0.14, 1.0, dark);
-  addGearAssembly(inner, G.mainX, -B.r - 0.2, G.mainZ, 0.2, 1.3, dark);
-  addGearAssembly(inner, G.mainX, -B.r - 0.2, -G.mainZ, 0.2, 1.3, dark);
-  if (G.extraBody) {
-    addGearAssembly(inner, G.mainX + 1.5, -B.r - 0.2, G.mainZ * 0.4, 0.18, 1.2, dark);
-    addGearAssembly(inner, G.mainX + 1.5, -B.r - 0.2, -G.mainZ * 0.4, 0.18, 1.2, dark);
-  }
-
-  // ── WRAPPER: Drehe Modell von X-Achse (Baurichtung) auf Z-Achse (Flugrichtung) ──
   inner.rotation.y = -Math.PI / 2;
   const wrapper = new THREE.Group();
   wrapper.add(inner);
@@ -348,32 +166,1377 @@ export function buildAircraft(type = 'a320', color1 = '#ffffff', color2 = '#cc00
 }
 
 // ============================================================
+// ARCHETYPE: AIRLINER (Jets unter Flügel)
+// ============================================================
+
+function buildAirliner(C, M) {
+  const inner = new THREE.Group();
+  const B = C.body;
+  const halfLen = B.len / 2;
+
+  addFuselage(inner, C, M);
+  addCockpitWindows(inner, C, M);
+  addPassengerWindows(inner, C, M);
+
+  // ── FLÜGEL ──
+  const W = C.wing;
+  addWings(inner, W, C.winglet, M);
+
+  // ── TRIEBWERKE ──
+  const E = C.engine;
+  const positions = [];
+  if (E.count === 4 && E.positions) {
+    for (const [offX, offZ] of E.positions) {
+      positions.push([W.pos + offX, E.y, offZ]);
+      positions.push([W.pos + offX, E.y, -offZ]);
+    }
+  } else if (E.count === 2) {
+    positions.push([W.pos, E.y, E.z], [W.pos, E.y, -E.z]);
+  }
+  for (const [ex, ey, ez] of positions) addJetEngine(inner, ex, ey, ez, E, W, M);
+
+  addConventionalTail(inner, C, M);
+  addAirlinerGear(inner, C, M);
+  return inner;
+}
+
+// ============================================================
+// ARCHETYPE: REAR-TWIN (Triebwerke am Heckrumpf, T-Leitwerk)
+// ============================================================
+
+function buildRearTwin(C, M) {
+  const inner = new THREE.Group();
+  addFuselage(inner, C, M);
+  addCockpitWindows(inner, C, M);
+  addPassengerWindows(inner, C, M);
+  addWings(inner, C.wing, C.winglet, M);
+
+  const E = C.engine;
+  const B = C.body;
+  const rearX = -B.len * 0.35;
+  for (const s of [1, -1]) addJetEngine(inner, rearX, E.y, s * E.z, E, C.wing, M, { rearMount: true });
+
+  addTail(inner, C, M);
+  addAirlinerGear(inner, C, M);
+  return inner;
+}
+
+// ============================================================
+// ARCHETYPE: TRIJET (2 Flügel + 1 Heck)
+// ============================================================
+
+function buildTrijet(C, M) {
+  const inner = new THREE.Group();
+  addFuselage(inner, C, M);
+  addCockpitWindows(inner, C, M);
+  addPassengerWindows(inner, C, M);
+  addWings(inner, C.wing, C.winglet, M);
+
+  const E = C.engine;
+  const W = C.wing;
+  const B = C.body;
+  // Zwei Flügel-Triebwerke (wie Airliner)
+  if (E.wingZ) {
+    for (const s of [1, -1]) addJetEngine(inner, W.pos, E.y - 0.3, s * E.wingZ, E, W, M);
+  } else {
+    const rearX = -B.len * 0.35;
+    for (const s of [1, -1]) addJetEngine(inner, rearX, E.y, s * E.z, E, W, M, { rearMount: true });
+  }
+  // Zentral-Heck-Triebwerk (S-Duct für 727)
+  const T = C.tail;
+  const cEng = new THREE.Group();
+  const nacGeo = new THREE.CylinderGeometry(E.r * 1.05, E.r * 0.9, E.len * 1.1, 16);
+  nacGeo.rotateZ(Math.PI / 2);
+  cEng.add(new THREE.Mesh(nacGeo, M.chrome));
+  const fan = createFan(E.r, 18, M.chrome);
+  fan.position.x = E.len * 0.55;
+  cEng.add(fan);
+  const exh = new THREE.Mesh(new THREE.CylinderGeometry(E.r * 0.6, E.r * 0.65, 0.2, 16), M.dark);
+  exh.geometry.rotateZ(Math.PI / 2);
+  exh.position.x = -E.len * 0.55;
+  cEng.add(exh);
+  cEng.position.set(-B.len * 0.5, B.r * 1.1, 0);
+  inner.add(cEng);
+
+  addTail(inner, C, M);
+  addAirlinerGear(inner, C, M);
+  return inner;
+}
+
+// ============================================================
+// ARCHETYPE: QUAD-REAR (Il-62 etc.)
+// ============================================================
+
+function buildQuadRear(C, M) {
+  const inner = new THREE.Group();
+  addFuselage(inner, C, M);
+  addCockpitWindows(inner, C, M);
+  addPassengerWindows(inner, C, M);
+  addWings(inner, C.wing, C.winglet, M);
+
+  const E = C.engine;
+  const B = C.body;
+  const baseX = -B.len * 0.35;
+  // 4 Triebwerke paarweise am Heck
+  for (const [offX, offZ] of E.positions) {
+    for (const s of [1, -1]) addJetEngine(inner, baseX + offX, E.y, s * offZ, E, C.wing, M, { rearMount: true });
+  }
+
+  addTail(inner, C, M);
+  addAirlinerGear(inner, C, M);
+  return inner;
+}
+
+// ============================================================
+// ARCHETYPE: HIGH-WING JET (BAe 146)
+// ============================================================
+
+function buildHighwingJet(C, M) {
+  const inner = new THREE.Group();
+  addFuselage(inner, C, M);
+  addCockpitWindows(inner, C, M);
+  addPassengerWindows(inner, C, M);
+  addWings(inner, C.wing, null, M);
+
+  const E = C.engine;
+  const W = C.wing;
+  if (E.positions) {
+    for (const [offX, offZ] of E.positions) {
+      for (const s of [1, -1]) addJetEngine(inner, W.pos + offX, E.y, s * offZ, E, W, M);
+    }
+  }
+  addTail(inner, C, M);
+  addAirlinerGear(inner, C, M);
+  return inner;
+}
+
+// ============================================================
+// ARCHETYPE: DELTA (Concorde, Tu-144)
+// ============================================================
+
+function buildDelta(C, M) {
+  const inner = new THREE.Group();
+  const B = C.body;
+
+  // Schlanker, ovaler Rumpf
+  const bodyGeo = new THREE.CylinderGeometry(B.r, B.r * 0.8, B.len, 18, 1, false);
+  bodyGeo.rotateZ(Math.PI / 2);
+  inner.add(new THREE.Mesh(bodyGeo, M.white));
+
+  // Lange spitze Nase (ggf. „droop")
+  const noseGeo = new THREE.ConeGeometry(B.r * 0.8, B.len * B.noseTaper, 18);
+  noseGeo.rotateZ(-Math.PI / 2);
+  const nose = new THREE.Mesh(noseGeo, M.white);
+  nose.position.x = B.len / 2 + B.len * B.noseTaper * 0.48;
+  inner.add(nose);
+
+  // Heck
+  const tailConeGeo = new THREE.ConeGeometry(B.r * 0.8, B.len * 0.2, 16);
+  tailConeGeo.rotateZ(Math.PI / 2);
+  const tailCone = new THREE.Mesh(tailConeGeo, M.white);
+  tailCone.position.x = -B.len / 2 - B.len * 0.1;
+  inner.add(tailCone);
+
+  // Cockpitfenster (klein, weit vorn)
+  const cw = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.15, B.r * 0.9), M.glass);
+  cw.position.set(B.len / 2 + B.len * B.noseTaper * 0.2, B.r * 0.6, 0);
+  inner.add(cw);
+
+  // ── DELTA-FLÜGEL ──
+  const W = C.wing;
+  for (const side of [1, -1]) {
+    const deltaGeo = createDeltaWing(W.rootChord, W.span / 2, W.sweep, W.ogee);
+    const w = new THREE.Mesh(deltaGeo, M.white);
+    w.position.set(-W.rootChord * 0.1, W.y, 0);
+    if (side === -1) w.scale.z = -1;
+    inner.add(w);
+  }
+
+  // Seitenleitwerk
+  const T = C.tail;
+  const vf = new THREE.Mesh(createFinGeo(T.vH, T.vChord), M.tailMat);
+  vf.position.set(-B.len * 0.35, B.r, 0);
+  inner.add(vf);
+
+  // Canards (Tu-144)
+  if (B.canard) {
+    for (const side of [1, -1]) {
+      const cGeo = createWingGeo(1.5, 1, 0.4, 0.5);
+      const c = new THREE.Mesh(cGeo, M.white);
+      c.position.set(B.len * 0.25, B.r * 0.8, 0);
+      if (side === -1) c.scale.z = -1;
+      inner.add(c);
+    }
+  }
+
+  // 4 Jet-Triebwerke paarweise unter dem Flügel
+  const E = C.engine;
+  for (const side of [1, -1]) {
+    for (const zOff of [E.z * 0.7, E.z * 1.6]) {
+      addJetEngine(inner, -W.rootChord * 0.25, E.y, side * zOff, { ...E, len: E.len }, { y: W.y }, M);
+    }
+  }
+
+  // Fahrwerk
+  const G = C.gear;
+  addGearAssembly(inner, G.noseX, -B.r - 0.15, 0, 0.14, 0.9, M.chrome, M.rubber);
+  for (const s of [1, -1]) addGearAssembly(inner, G.mainX, -B.r - 0.15, s * G.mainZ, 0.2, 1.2, M.chrome, M.rubber);
+  return inner;
+}
+
+// ============================================================
+// ARCHETYPE: PROP-SINGLE (Cessna 172, SR22, Super Cub etc.)
+// ============================================================
+
+function buildPropSingle(C, M) {
+  const inner = new THREE.Group();
+  const B = C.body;
+  const halfLen = B.len / 2;
+
+  // Schlanker Rumpf
+  const bodyMat = B.aerobatic ? M.accentMat : M.white;
+  const bodyGeo = new THREE.CylinderGeometry(B.r, B.r * 0.6, B.len, 14);
+  bodyGeo.rotateZ(Math.PI / 2);
+  inner.add(new THREE.Mesh(bodyGeo, bodyMat));
+
+  // Nase: Propeller-Spinner + Motorhaube
+  const cowlGeo = new THREE.CylinderGeometry(B.r, B.r * 0.6, B.len * 0.22, 14);
+  cowlGeo.rotateZ(Math.PI / 2);
+  const cowl = new THREE.Mesh(cowlGeo, M.tailMat);
+  cowl.position.x = halfLen + B.len * 0.11;
+  inner.add(cowl);
+  const spinGeo = new THREE.ConeGeometry(B.r * 0.3, 0.3, 14);
+  spinGeo.rotateZ(-Math.PI / 2);
+  const spin = new THREE.Mesh(spinGeo, M.chrome);
+  spin.position.x = halfLen + B.len * 0.22 + 0.15;
+  inner.add(spin);
+
+  // Propeller
+  const prop = createPropeller(C.engine.bladeCount || 2, B.r * 2, 0.08, M.dark);
+  prop.position.x = halfLen + B.len * 0.22 + 0.2;
+  inner.add(prop);
+
+  // Cockpit / Kabinenfenster
+  const cabGeo = new THREE.BoxGeometry(B.len * 0.35, B.r * 0.7, B.r * 1.8);
+  const cab = new THREE.Mesh(cabGeo, M.glass);
+  cab.position.set(halfLen * 0.1, B.r * 0.55, 0);
+  inner.add(cab);
+
+  // Flügel (hoch, tief oder mittig)
+  const W = C.wing;
+  addWings(inner, W, null, M);
+  if (W.strutted) addWingStruts(inner, W, B, M);
+
+  // Leitwerk
+  addTail(inner, C, M);
+
+  // Fahrwerk (feststehend oder Spornrad)
+  addLightGear(inner, C, M);
+  return inner;
+}
+
+// ============================================================
+// ARCHETYPE: PROP-TWIN (DC-3, Beechcraft etc.)
+// ============================================================
+
+function buildPropTwin(C, M) {
+  const inner = new THREE.Group();
+  const B = C.body;
+  const halfLen = B.len / 2;
+
+  const bodyGeo = new THREE.CylinderGeometry(B.r, B.r * 0.6, B.len, 18);
+  bodyGeo.rotateZ(Math.PI / 2);
+  inner.add(new THREE.Mesh(bodyGeo, M.white));
+
+  // Nase (abgerundet)
+  const noseGeo = new THREE.SphereGeometry(B.r, 14, 10, 0, Math.PI * 2, 0, Math.PI / 2);
+  noseGeo.rotateZ(-Math.PI / 2);
+  const nose = new THREE.Mesh(noseGeo, M.white);
+  nose.position.x = halfLen;
+  inner.add(nose);
+
+  // Heck
+  const tailGeo = new THREE.ConeGeometry(B.r, B.len * 0.3, 14);
+  tailGeo.rotateZ(Math.PI / 2);
+  const tail = new THREE.Mesh(tailGeo, M.white);
+  tail.position.x = -halfLen - B.len * 0.15;
+  inner.add(tail);
+
+  // Kabinenfenster (Streifen)
+  const winGeo = new THREE.BoxGeometry(B.len * 0.55, 0.08, B.r * 2.01);
+  const win = new THREE.Mesh(winGeo, M.glass);
+  win.position.y = B.r * 0.45;
+  inner.add(win);
+
+  // Flügel
+  const W = C.wing;
+  addWings(inner, W, null, M);
+
+  // Zwei Radial-Propellertriebwerke
+  const E = C.engine;
+  for (const side of [1, -1]) {
+    addPropellerEngine(inner, W.pos + E.len * 0.3, W.y + E.y, side * E.z, E, M);
+  }
+
+  // Leitwerk
+  addTail(inner, C, M);
+
+  // Fahrwerk
+  if (B.taildragger) addTaildraggerGear(inner, C, M);
+  else addAirlinerGear(inner, C, M);
+  return inner;
+}
+
+// ============================================================
+// ARCHETYPE: PROP-QUAD (Lockheed Constellation)
+// ============================================================
+
+function buildPropQuad(C, M) {
+  const inner = new THREE.Group();
+  const B = C.body;
+  const halfLen = B.len / 2;
+
+  // Geschwungener Rumpf (gekrümmte Linie der Constellation)
+  const bodyGeo = new THREE.CylinderGeometry(B.r, B.r * 0.55, B.len, 20);
+  bodyGeo.rotateZ(Math.PI / 2);
+  inner.add(new THREE.Mesh(bodyGeo, M.white));
+
+  const noseGeo = new THREE.ConeGeometry(B.r, B.len * B.noseTaper, 16);
+  noseGeo.rotateZ(-Math.PI / 2);
+  const nose = new THREE.Mesh(noseGeo, M.white);
+  nose.position.x = halfLen + B.len * B.noseTaper * 0.48;
+  inner.add(nose);
+
+  const tailGeo = new THREE.ConeGeometry(B.r * 0.8, B.len * 0.3, 14);
+  tailGeo.rotateZ(Math.PI / 2);
+  const tail = new THREE.Mesh(tailGeo, M.white);
+  tail.position.x = -halfLen - B.len * 0.15;
+  inner.add(tail);
+
+  addPassengerWindows(inner, C, M);
+  addCockpitWindows(inner, C, M);
+
+  // Flügel
+  const W = C.wing;
+  addWings(inner, W, null, M);
+
+  // 4 Radial-Triebwerke
+  const E = C.engine;
+  for (const [offX, offZ] of E.positions) {
+    for (const side of [1, -1]) {
+      addPropellerEngine(inner, W.pos + offX, W.y - 0.1, side * offZ, E, M);
+    }
+  }
+
+  // Drei-Finnen-Leitwerk (Constellation-Signatur)
+  const T = C.tail;
+  const tailX = -halfLen - B.len * 0.2;
+  // Höhenleitwerk
+  for (const side of [1, -1]) {
+    const hs = new THREE.Mesh(createWingGeo(T.hSpan / 2, T.hChord, T.hChord * 0.4, 0.5), M.white);
+    hs.position.set(tailX, B.r * 0.1, 0);
+    if (side === -1) hs.scale.z = -1;
+    inner.add(hs);
+  }
+  // Drei Finnen
+  for (const z of [-T.hSpan * 0.48, 0, T.hSpan * 0.48]) {
+    const vf = new THREE.Mesh(createFinGeo(T.vH, T.vChord), z === 0 ? M.tailMat : M.white);
+    vf.position.set(tailX, B.r * 0.1, z);
+    inner.add(vf);
+  }
+
+  // Fahrwerk Spornrad
+  if (B.taildragger) addTaildraggerGear(inner, C, M);
+  else addAirlinerGear(inner, C, M);
+  return inner;
+}
+
+// ============================================================
+// ARCHETYPE: TRIMOTOR-PROP (Ju 52, Ford Trimotor)
+// ============================================================
+
+function buildTrimotorProp(C, M) {
+  const inner = new THREE.Group();
+  const B = C.body;
+  const halfLen = B.len / 2;
+  const fuselageMat = B.corrugated ? M.corrugated : M.white;
+
+  // Rumpf (ggf. Wellblech optisch durch Ribben-Streifen angedeutet)
+  const bodyGeo = new THREE.CylinderGeometry(B.r, B.r * 0.55, B.len, 16);
+  bodyGeo.rotateZ(Math.PI / 2);
+  inner.add(new THREE.Mesh(bodyGeo, fuselageMat));
+  if (B.corrugated) addCorrugationRings(inner, B, M);
+
+  // Nase
+  const noseGeo = new THREE.CylinderGeometry(B.r * 0.6, B.r * 0.45, B.len * B.noseTaper, 12);
+  noseGeo.rotateZ(Math.PI / 2);
+  const nose = new THREE.Mesh(noseGeo, M.dark);
+  nose.position.x = halfLen + B.len * B.noseTaper * 0.5;
+  inner.add(nose);
+
+  // Heck
+  const tailGeo = new THREE.ConeGeometry(B.r * 0.7, B.len * 0.25, 12);
+  tailGeo.rotateZ(Math.PI / 2);
+  const tail = new THREE.Mesh(tailGeo, fuselageMat);
+  tail.position.x = -halfLen - B.len * 0.12;
+  inner.add(tail);
+
+  // Hoher Flügel
+  const W = C.wing;
+  addWings(inner, W, null, M, B.corrugated ? M.corrugated : null);
+
+  // Drei Sternmotoren
+  const E = C.engine;
+  addPropellerEngine(inner, halfLen + B.len * B.noseTaper * 0.5 + 0.3, 0, 0, E, M, { nose: true });
+  for (const side of [1, -1]) {
+    addPropellerEngine(inner, W.pos + 0.2, W.y - 0.4, side * E.z, E, M);
+  }
+
+  addTail(inner, C, M);
+  addTaildraggerGear(inner, C, M);
+  return inner;
+}
+
+// ============================================================
+// ARCHETYPE: TURBOPROP-WING (ATR, Dash 8)
+// ============================================================
+
+function buildTurbopropWing(C, M) {
+  const inner = new THREE.Group();
+  const B = C.body;
+  const halfLen = B.len / 2;
+
+  const bodyGeo = new THREE.CylinderGeometry(B.r, B.r * 0.55, B.len, 18);
+  bodyGeo.rotateZ(Math.PI / 2);
+  inner.add(new THREE.Mesh(bodyGeo, M.white));
+  const noseGeo = new THREE.ConeGeometry(B.r, B.len * B.noseTaper, 14);
+  noseGeo.rotateZ(-Math.PI / 2);
+  const nose = new THREE.Mesh(noseGeo, M.white);
+  nose.position.x = halfLen + B.len * B.noseTaper * 0.48;
+  inner.add(nose);
+  const tailGeo = new THREE.ConeGeometry(B.r * 0.8, B.len * 0.28, 14);
+  tailGeo.rotateZ(Math.PI / 2);
+  const tail = new THREE.Mesh(tailGeo, M.white);
+  tail.position.x = -halfLen - B.len * 0.14;
+  inner.add(tail);
+
+  addCockpitWindows(inner, C, M);
+  addPassengerWindows(inner, C, M);
+
+  const W = C.wing;
+  addWings(inner, W, null, M);
+
+  // Turboprop-Gondeln mit großen sichtbaren Propellern
+  const E = C.engine;
+  for (const side of [1, -1]) {
+    addPropellerEngine(inner, W.pos + 0.3, W.y, side * E.z, E, M, { turboprop: true });
+  }
+
+  addTail(inner, C, M);
+  // Rumpfmontiertes Hauptfahrwerk
+  addAirlinerGear(inner, C, M);
+  return inner;
+}
+
+// ============================================================
+// ARCHETYPE: BIPLANE (Pitts, An-2)
+// ============================================================
+
+function buildBiplane(C, M) {
+  const inner = new THREE.Group();
+  const B = C.body;
+  const halfLen = B.len / 2;
+
+  // Schmaler Rumpf (Stoff/Holz-Look)
+  const bodyGeo = new THREE.CylinderGeometry(B.r, B.r * 0.45, B.len, 12);
+  bodyGeo.rotateZ(Math.PI / 2);
+  inner.add(new THREE.Mesh(bodyGeo, M.tailMat));
+  // Nase
+  const cowlGeo = new THREE.CylinderGeometry(B.r * 1.1, B.r, B.len * 0.15, 14);
+  cowlGeo.rotateZ(Math.PI / 2);
+  const cowl = new THREE.Mesh(cowlGeo, M.dark);
+  cowl.position.x = halfLen + B.len * 0.07;
+  inner.add(cowl);
+
+  // Cockpit offen
+  const openPit = new THREE.Mesh(new THREE.BoxGeometry(B.len * 0.2, 0.1, B.r * 1.2), M.dark);
+  openPit.position.set(halfLen * 0.2, B.r * 0.9, 0);
+  inner.add(openPit);
+
+  // Propeller
+  const prop = createPropeller(C.engine.bladeCount || 2, B.r * 2, 0.08, M.dark);
+  prop.position.x = halfLen + B.len * 0.16;
+  inner.add(prop);
+
+  // Zwei Flügel
+  const W = C.wing;
+  const upperY = W.y + W.gap * 0.5;
+  const lowerY = W.y - W.gap * 0.5;
+  const staggerX = W.stagger;
+  for (const side of [1, -1]) {
+    // Oberer Flügel
+    const upGeo = createWingGeo(W.upperSpan / 2, W.upperRoot, W.upperRoot * 0.9, 0);
+    const up = new THREE.Mesh(upGeo, M.white);
+    up.position.set(staggerX, upperY, 0);
+    if (side === -1) up.scale.z = -1;
+    inner.add(up);
+    // Unterer Flügel
+    const loGeo = createWingGeo(W.lowerSpan / 2, W.lowerRoot, W.lowerRoot * 0.9, 0);
+    const lo = new THREE.Mesh(loGeo, M.white);
+    lo.position.set(-staggerX * 0.5, lowerY, 0);
+    if (side === -1) lo.scale.z = -1;
+    inner.add(lo);
+  }
+  // Streben zwischen Flügeln
+  for (const side of [1, -1]) {
+    for (const zFrac of [0.35, 0.75]) {
+      const z = side * (W.upperSpan / 2) * zFrac;
+      const strut = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, W.gap, 6), M.chrome);
+      strut.position.set(staggerX * 0.2, W.y, z);
+      inner.add(strut);
+    }
+  }
+  // N-Streben Mitte
+  for (const side of [1, -1]) {
+    const strut = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, W.gap, 6), M.chrome);
+    strut.position.set(staggerX * 0.2, W.y, side * 0.3);
+    inner.add(strut);
+  }
+
+  addTail(inner, C, M);
+  addTaildraggerGear(inner, C, M);
+  return inner;
+}
+
+// ============================================================
+// ARCHETYPE: GLIDER (Segelflugzeug)
+// ============================================================
+
+function buildGlider(C, M) {
+  const inner = new THREE.Group();
+  const B = C.body;
+  const halfLen = B.len / 2;
+
+  // Sehr schlanker, tropfenförmiger Rumpf
+  const bodyGeo = new THREE.CylinderGeometry(B.r, B.r * 0.25, B.len, 18);
+  bodyGeo.rotateZ(Math.PI / 2);
+  inner.add(new THREE.Mesh(bodyGeo, M.white));
+
+  // Abgerundete Nase (halbe Kugel)
+  const noseGeo = new THREE.SphereGeometry(B.r, 14, 10, 0, Math.PI * 2, 0, Math.PI / 2);
+  noseGeo.rotateZ(-Math.PI / 2);
+  const nose = new THREE.Mesh(noseGeo, M.white);
+  nose.position.x = halfLen;
+  inner.add(nose);
+
+  // Großes Cockpit-Glas (Kanzel)
+  const canopyGeo = new THREE.SphereGeometry(B.r * 0.95, 16, 10, 0, Math.PI * 2, 0, Math.PI / 2);
+  const canopy = new THREE.Mesh(canopyGeo, M.glass);
+  canopy.position.set(halfLen * 0.3, B.r * 0.3, 0);
+  canopy.scale.set(2.2, 1, 1);
+  inner.add(canopy);
+
+  // Dünnes Heck
+  const tailGeo = new THREE.ConeGeometry(B.r * 0.3, B.len * 0.3, 12);
+  tailGeo.rotateZ(Math.PI / 2);
+  const tail = new THREE.Mesh(tailGeo, M.white);
+  tail.position.x = -halfLen - B.len * 0.15;
+  inner.add(tail);
+
+  // Schmale hohe Flügel (sehr hohes Streckungsverhältnis)
+  const W = C.wing;
+  for (const side of [1, -1]) {
+    const g = createWingGeo(W.span / 2, W.root, W.tip, W.sweep, { thin: true });
+    const w = new THREE.Mesh(g, M.white);
+    w.position.set(W.pos, W.y, 0);
+    if (side === -1) w.scale.z = -1;
+    inner.add(w);
+  }
+
+  addTail(inner, C, M);
+  // Zentrales Bugrad
+  addGearAssembly(inner, 0, -B.r - 0.1, 0, 0.1, 0.4, M.chrome, M.rubber);
+  // Heckkufe
+  const skid = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.05, 0.08), M.dark);
+  skid.position.set(-halfLen - B.len * 0.2, -B.r * 0.5, 0);
+  inner.add(skid);
+  return inner;
+}
+
+// ============================================================
+// ARCHETYPE: AMPHIBIAN (CL-415, ICON A5)
+// ============================================================
+
+function buildAmphibian(C, M) {
+  const inner = new THREE.Group();
+  const B = C.body;
+  const halfLen = B.len / 2;
+
+  // Bootsrumpf (unten flach, oben rund)
+  const hullGeo = new THREE.BoxGeometry(B.len, B.r * 0.9, B.r * 1.6);
+  const hull = new THREE.Mesh(hullGeo, M.white);
+  hull.position.y = -B.r * 0.2;
+  inner.add(hull);
+  // Oberer Teil (zylindrisch)
+  const topGeo = new THREE.CylinderGeometry(B.r * 0.7, B.r * 0.7, B.len * 0.9, 16, 1, false, 0, Math.PI);
+  topGeo.rotateZ(Math.PI / 2);
+  topGeo.rotateX(Math.PI);
+  const top = new THREE.Mesh(topGeo, M.white);
+  top.position.y = B.r * 0.3;
+  inner.add(top);
+
+  // Abgerundete Nase
+  const noseGeo = new THREE.SphereGeometry(B.r * 0.8, 14, 10, 0, Math.PI * 2, 0, Math.PI / 2);
+  noseGeo.rotateZ(-Math.PI / 2);
+  const nose = new THREE.Mesh(noseGeo, M.white);
+  nose.position.set(halfLen, 0, 0);
+  inner.add(nose);
+
+  addCockpitWindows(inner, C, M);
+
+  // Heck
+  const tailGeo = new THREE.ConeGeometry(B.r * 0.6, B.len * 0.25, 12);
+  tailGeo.rotateZ(Math.PI / 2);
+  const tail = new THREE.Mesh(tailGeo, M.white);
+  tail.position.x = -halfLen - B.len * 0.12;
+  inner.add(tail);
+
+  // Hoher Flügel
+  const W = C.wing;
+  addWings(inner, W, null, M);
+  if (W.strutted) addWingStruts(inner, W, B, M);
+
+  // Triebwerke (Prop)
+  const E = C.engine;
+  if (E.pusher) {
+    // Pusher-Propeller hinter Cockpit
+    addPropellerEngine(inner, -halfLen * 0.3, W.y + 0.3, 0, E, M, { pusher: true });
+  } else {
+    for (const side of [1, -1]) {
+      addPropellerEngine(inner, W.pos + 0.3, W.y + E.y - W.y, side * E.z, E, M, { turboprop: true });
+    }
+  }
+
+  addTail(inner, C, M);
+
+  // Schwimmer/Stabilisatoren am Flügel
+  for (const side of [1, -1]) {
+    const f = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.2, 0.3), M.white);
+    f.position.set(W.pos + 0.1, W.y - 0.2, side * W.span * 0.4);
+    inner.add(f);
+  }
+  // Einfaches Fahrwerk für Landungen
+  if (C.gear.retractable || C.gear.noseX) {
+    addGearAssembly(inner, C.gear.noseX, -B.r * 0.7, 0, 0.12, 0.4, M.chrome, M.rubber);
+    for (const s of [1, -1]) addGearAssembly(inner, C.gear.mainX, -B.r * 0.7, s * C.gear.mainZ, 0.14, 0.4, M.chrome, M.rubber);
+  }
+  return inner;
+}
+
+// ============================================================
+// ARCHETYPE: CANARD (VariEze)
+// ============================================================
+
+function buildCanard(C, M) {
+  const inner = new THREE.Group();
+  const B = C.body;
+  const halfLen = B.len / 2;
+
+  // Sehr schlanker Rumpf
+  const bodyGeo = new THREE.CylinderGeometry(B.r, B.r * 0.4, B.len, 14);
+  bodyGeo.rotateZ(Math.PI / 2);
+  inner.add(new THREE.Mesh(bodyGeo, M.white));
+  // Nase spitz
+  const noseGeo = new THREE.ConeGeometry(B.r, B.len * B.noseTaper, 14);
+  noseGeo.rotateZ(-Math.PI / 2);
+  const nose = new THREE.Mesh(noseGeo, M.white);
+  nose.position.x = halfLen + B.len * B.noseTaper * 0.48;
+  inner.add(nose);
+
+  // Bubble-Canopy
+  const canopy = new THREE.Mesh(new THREE.SphereGeometry(B.r, 14, 10), M.glass);
+  canopy.position.set(halfLen * 0.3, B.r * 0.6, 0);
+  canopy.scale.set(1.6, 0.6, 0.9);
+  inner.add(canopy);
+
+  // Hauptflügel (hinten, gepfeilt)
+  const W = C.wing;
+  for (const side of [1, -1]) {
+    const g = createWingGeo(W.span / 2, W.root, W.tip, W.sweep);
+    const w = new THREE.Mesh(g, M.white);
+    w.position.set(W.pos, W.y, 0);
+    if (side === -1) w.scale.z = -1;
+    inner.add(w);
+  }
+
+  // Canards (vorne, klein)
+  const CN = C.canard;
+  for (const side of [1, -1]) {
+    const g = createWingGeo(CN.span / 2, CN.root, CN.tip, 0);
+    const c = new THREE.Mesh(g, M.white);
+    c.position.set(CN.pos, CN.y, 0);
+    if (side === -1) c.scale.z = -1;
+    inner.add(c);
+  }
+
+  // Winglet-Finnen an Flügelspitzen (kein klassisches Heckleitwerk)
+  if (C.fins) {
+    for (const side of [1, -1]) {
+      const f = new THREE.Mesh(createFinGeo(C.fins.h, C.fins.chord), M.tailMat);
+      f.position.set(W.pos + W.sweep, W.y, side * (W.span / 2));
+      inner.add(f);
+    }
+  }
+
+  // Pusher-Propeller am Heck
+  const E = C.engine;
+  const spin = new THREE.Mesh(new THREE.ConeGeometry(B.r * 0.4, 0.3, 12), M.chrome);
+  spin.geometry.rotateZ(Math.PI / 2);
+  spin.position.x = -halfLen - 0.2;
+  inner.add(spin);
+  const prop = createPropeller(E.bladeCount || 2, B.r * 2.5, 0.08, M.dark);
+  prop.position.x = -halfLen - 0.25;
+  prop.userData.pusher = true;
+  inner.add(prop);
+
+  // Einfaches Fahrwerk
+  addGearAssembly(inner, C.gear.noseX, -B.r - 0.1, 0, 0.08, 0.35, M.chrome, M.rubber);
+  for (const s of [1, -1]) addGearAssembly(inner, C.gear.mainX, -B.r - 0.1, s * C.gear.mainZ, 0.1, 0.35, M.chrome, M.rubber);
+  return inner;
+}
+
+// ============================================================
+// ARCHETYPE: BIZJET (Gulfstream, Global, Citation)
+// ============================================================
+
+function buildBizjet(C, M) {
+  const inner = new THREE.Group();
+  addFuselage(inner, C, M);
+  addCockpitWindows(inner, C, M);
+  // Bizjet-Fenster: kleiner/runder, als Streifen okay
+  addPassengerWindows(inner, C, M);
+  addWings(inner, C.wing, C.winglet, M);
+
+  const E = C.engine;
+  const B = C.body;
+  const rearX = -B.len * 0.35;
+  for (const s of [1, -1]) addJetEngine(inner, rearX, E.y, s * E.z, E, C.wing, M, { rearMount: true });
+
+  addTail(inner, C, M);
+  addAirlinerGear(inner, C, M);
+  return inner;
+}
+
+// ============================================================
+// ARCHETYPE: HONDAJET (Triebwerke ÜBER dem Flügel)
+// ============================================================
+
+function buildHondajet(C, M) {
+  const inner = new THREE.Group();
+  addFuselage(inner, C, M);
+  addCockpitWindows(inner, C, M);
+  addPassengerWindows(inner, C, M);
+  addWings(inner, C.wing, null, M);
+
+  const E = C.engine;
+  const W = C.wing;
+  for (const s of [1, -1]) {
+    addJetEngine(inner, W.pos, W.y + 0.4, s * E.z, E, W, M, { overWing: true });
+  }
+  addTail(inner, C, M);
+  addAirlinerGear(inner, C, M);
+  return inner;
+}
+
+// ============================================================
+// ARCHETYPE: SOLAR (Solar Impulse — sehr weiter Flügel, leichte Props)
+// ============================================================
+
+function buildSolar(C, M) {
+  const inner = new THREE.Group();
+  const B = C.body;
+  const halfLen = B.len / 2;
+
+  const bodyGeo = new THREE.CylinderGeometry(B.r, B.r * 0.35, B.len, 14);
+  bodyGeo.rotateZ(Math.PI / 2);
+  inner.add(new THREE.Mesh(bodyGeo, M.white));
+  const noseGeo = new THREE.ConeGeometry(B.r, B.len * B.noseTaper, 14);
+  noseGeo.rotateZ(-Math.PI / 2);
+  const nose = new THREE.Mesh(noseGeo, M.white);
+  nose.position.x = halfLen + B.len * B.noseTaper * 0.48;
+  inner.add(nose);
+  const tailGeo = new THREE.ConeGeometry(B.r * 0.5, B.len * 0.25, 12);
+  tailGeo.rotateZ(Math.PI / 2);
+  const tail = new THREE.Mesh(tailGeo, M.white);
+  tail.position.x = -halfLen - B.len * 0.12;
+  inner.add(tail);
+
+  // Extrem breite Solar-Fläche
+  const W = C.wing;
+  for (const side of [1, -1]) {
+    const g = createWingGeo(W.span / 2, W.root, W.tip, W.sweep, { thin: true });
+    const w = new THREE.Mesh(g, M.dark); // Solarzellen dunkel
+    w.position.set(W.pos, W.y, 0);
+    if (side === -1) w.scale.z = -1;
+    inner.add(w);
+  }
+
+  // 4 kleine Props
+  const E = C.engine;
+  for (const [, offZ] of E.positions) {
+    for (const side of [1, -1]) {
+      addPropellerEngine(inner, W.pos + 0.3, W.y - 0.3, side * offZ, E, M, { tiny: true });
+    }
+  }
+  addTail(inner, C, M);
+  addAirlinerGear(inner, C, M);
+  return inner;
+}
+
+// ============================================================
+// RUMPF / FENSTER / FLÜGEL — gemeinsame Helfer
+// ============================================================
+
+function addFuselage(group, C, M) {
+  const B = C.body;
+  const halfLen = B.len / 2;
+  // Geloftetes Profil: Nasenradius → Vollradius → Heck (Lathe rotiert um Y-Achse)
+  const noseL = B.len * (B.noseTaper || 0.35);
+  const midL = B.len;                         // Zylinder-Länge bleibt B.len
+  const tailL = B.len * 0.25;
+  const pts = [];
+  const push = (x, r) => pts.push(new THREE.Vector2(Math.max(r, 0.001), x));
+  // Nase (smooth curve)
+  const noseSteps = 8;
+  for (let i = 0; i <= noseSteps; i++) {
+    const t = i / noseSteps;
+    const r = B.r * Math.sin(t * Math.PI * 0.5) * (0.15 + 0.85 * t);
+    push(-halfLen - noseL + t * noseL, r);
+  }
+  // Zylindrischer Mittelteil
+  push(-halfLen + 0.01, B.r);
+  push(halfLen - 0.01, B.r);
+  // Heck (smooth taper)
+  const tailSteps = 10;
+  for (let i = 1; i <= tailSteps; i++) {
+    const t = i / tailSteps;
+    const r = B.r * (1 - t) * (1 - t * 0.6);
+    push(halfLen + t * tailL, r);
+  }
+  const latheGeo = new THREE.LatheGeometry(pts, 36);
+  latheGeo.rotateZ(-Math.PI / 2);
+  const bodyMesh = new THREE.Mesh(latheGeo, M.white);
+  bodyMesh.castShadow = true;
+  bodyMesh.receiveShadow = true;
+  group.add(bodyMesh);
+
+  // Zurück-Kompatibilität für alten Code (nicht mehr benutzt, aber z. B. Buckel)
+  if (B.hump) {
+    const humpLen = B.len * 0.45;
+    const humpGeo = new THREE.CylinderGeometry(B.r * 0.55, B.r * 0.55, humpLen, 16, 1, false, 0, Math.PI);
+    humpGeo.rotateZ(Math.PI / 2);
+    humpGeo.rotateX(Math.PI);
+    const hump = new THREE.Mesh(humpGeo, M.white);
+    hump.position.set(halfLen * 0.35, B.r * 0.7, 0);
+    group.add(hump);
+    const humpNoseGeo = new THREE.SphereGeometry(B.r * 0.55, 12, 8, 0, Math.PI * 2, 0, Math.PI / 2);
+    humpNoseGeo.rotateZ(-Math.PI / 2);
+    const humpNose = new THREE.Mesh(humpNoseGeo, M.white);
+    humpNose.position.set(halfLen * 0.35 + humpLen / 2, B.r * 0.7, 0);
+    group.add(humpNose);
+  }
+  if (B.doubleDeck) {
+    const ddGeo = new THREE.CylinderGeometry(B.r * 0.92, B.r * 0.92, B.len * 0.88, 20, 1, false, 0, Math.PI);
+    ddGeo.rotateZ(Math.PI / 2);
+    ddGeo.rotateX(Math.PI);
+    const dd = new THREE.Mesh(ddGeo, M.white);
+    dd.position.y = B.r * 0.15;
+    group.add(dd);
+  }
+}
+
+function addCockpitWindows(group, C, M) {
+  const B = C.body;
+  const halfLen = B.len / 2;
+  const noseL = B.len * (B.noseTaper || 0.35);
+  // Gewölbte Cockpit-Verglasung: Torus-Ausschnitt über Rumpf gespannt
+  const cockpitX = halfLen - B.len * 0.05;
+  // Schräg abfallende Windschutzscheibe (flache Scheibe, leicht gewölbt)
+  const wsGeo = new THREE.SphereGeometry(B.r * 1.02, 20, 10, Math.PI * 0.75, Math.PI * 0.5, Math.PI * 0.25, Math.PI * 0.3);
+  const ws = new THREE.Mesh(wsGeo, M.cockpit);
+  ws.position.set(cockpitX + noseL * 0.25, 0, 0);
+  ws.rotation.y = Math.PI;
+  group.add(ws);
+  // Rahmen-Streifen als dunkle Linie
+  const frameGeo = new THREE.TorusGeometry(B.r * 1.01, 0.015, 6, 24, Math.PI);
+  frameGeo.rotateY(Math.PI / 2);
+  const frame = new THREE.Mesh(frameGeo, M.dark);
+  frame.position.set(cockpitX + noseL * 0.2, 0, 0);
+  frame.rotation.z = -0.15;
+  group.add(frame);
+}
+
+function addPassengerWindows(group, C, M) {
+  const B = C.body;
+  const halfLen = B.len / 2;
+  // Reihe echter runder Fenster (kleine Scheiben in Fuselage eingelassen)
+  const windowCount = Math.floor(B.len * 2.5);
+  const startX = -halfLen * 0.75;
+  const endX = halfLen * 0.55;
+  const spacing = (endX - startX) / windowCount;
+  const winRadius = Math.min(0.055, B.r * 0.08);
+  for (let side of [1, -1]) {
+    const angle = side * 0.38; // leicht oberhalb der Mittellinie
+    for (let i = 0; i < windowCount; i++) {
+      const x = startX + i * spacing;
+      const y = Math.sin(angle) * B.r;
+      const z = side * Math.cos(angle) * B.r * 1.003;
+      const winGeo = new THREE.CircleGeometry(winRadius, 10);
+      const win = new THREE.Mesh(winGeo, M.glass);
+      win.position.set(x, y, z);
+      win.rotation.y = side > 0 ? Math.PI / 2 : -Math.PI / 2;
+      group.add(win);
+    }
+    // Zweite Deck-Reihe beim A380
+    if (B.doubleDeck) {
+      const angle2 = side * 0.9;
+      for (let i = 0; i < windowCount * 0.8; i++) {
+        const x = startX + i * spacing * 1.1;
+        const y = Math.sin(angle2) * B.r;
+        const z = side * Math.cos(angle2) * B.r * 1.003;
+        const win = new THREE.Mesh(new THREE.CircleGeometry(winRadius, 10), M.glass);
+        win.position.set(x, y, z);
+        win.rotation.y = side > 0 ? Math.PI / 2 : -Math.PI / 2;
+        group.add(win);
+      }
+    }
+  }
+  // Zierstreifen der Airline (unterhalb der Fenster)
+  const stripeGeo = new THREE.TorusGeometry(B.r * 1.002, 0.025, 6, 36);
+  stripeGeo.rotateY(Math.PI / 2);
+  const stripe = new THREE.Mesh(stripeGeo, M.accentMat);
+  stripe.position.x = 0;
+  stripe.scale.set(B.len * 0.85 / (B.r * 2), 1, 1);
+  // Statt skaliertem Torus einfach zwei flache Streifenlinien
+  const s = new THREE.Mesh(new THREE.BoxGeometry(B.len * 0.82, 0.04, B.r * 2.02), M.accentMat);
+  s.position.y = B.r * 0.1;
+  group.add(s);
+  // Türen (markante dunkle Rechtecke)
+  const doorPositions = [halfLen * 0.4, -halfLen * 0.1, -halfLen * 0.5];
+  for (const dx of doorPositions) {
+    for (const side of [1, -1]) {
+      const doorGeo = new THREE.BoxGeometry(0.35, 0.55, 0.02);
+      const door = new THREE.Mesh(doorGeo, M.dark);
+      door.position.set(dx, B.r * 0.35, side * B.r * 1.002);
+      door.rotation.y = side > 0 ? Math.PI / 2 : -Math.PI / 2;
+      group.add(door);
+    }
+  }
+}
+
+function addCorrugationRings(group, B, M) {
+  const halfLen = B.len / 2;
+  for (let x = -halfLen + 0.5; x < halfLen; x += 0.6) {
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(B.r * 1.01, 0.025, 6, 18), M.dark);
+    ring.rotation.y = Math.PI / 2;
+    ring.position.x = x;
+    group.add(ring);
+  }
+}
+
+function addWings(group, W, wingletType, M, wingMat) {
+  const mat = wingMat || M.white;
+  for (const side of [1, -1]) {
+    const wGeo = createWingGeo(W.span / 2, W.root, W.tip, W.sweep);
+    const wMesh = new THREE.Mesh(wGeo, mat);
+    wMesh.castShadow = true;
+    wMesh.position.set(W.pos, W.y, 0);
+    if (side === -1) wMesh.scale.z = -1;
+    group.add(wMesh);
+    if (wingletType === 'fence') {
+      const wl = new THREE.Mesh(new THREE.BoxGeometry(W.tip * 0.7, W.span * 0.04, 0.04), mat);
+      wl.position.set(W.pos + W.sweep, W.y + W.span * 0.02, side * W.span / 2);
+      group.add(wl);
+    } else if (wingletType === 'curved') {
+      const wl = new THREE.Mesh(new THREE.BoxGeometry(W.tip * 0.5, W.span * 0.06, 0.04), mat);
+      wl.position.set(W.pos + W.sweep + 0.3, W.y + W.span * 0.035, side * W.span / 2);
+      wl.rotation.z = side * 1.0;
+      group.add(wl);
+    } else if (wingletType === 'raked') {
+      const wl = new THREE.Mesh(new THREE.BoxGeometry(W.tip * 0.9, W.span * 0.05, 0.04), mat);
+      wl.position.set(W.pos + W.sweep + 0.5, W.y + W.span * 0.03, side * (W.span / 2 + 0.2));
+      wl.rotation.z = side * 0.6;
+      group.add(wl);
+    } else if (wingletType === 'split') {
+      for (const dir of [1, -1]) {
+        const wl = new THREE.Mesh(new THREE.BoxGeometry(W.tip * 0.5, W.span * 0.03, 0.03), mat);
+        wl.position.set(W.pos + W.sweep, W.y + dir * W.span * 0.02, side * W.span / 2);
+        wl.rotation.z = side * dir * 0.7;
+        group.add(wl);
+      }
+    }
+  }
+}
+
+function addWingStruts(group, W, B, M) {
+  for (const side of [1, -1]) {
+    const strut = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, W.y + B.r, 6), M.chrome);
+    strut.rotation.z = side * 0.4;
+    strut.position.set(W.pos, W.y * 0.5 - B.r * 0.3, side * W.span * 0.25);
+    group.add(strut);
+  }
+}
+
+// ============================================================
+// TRIEBWERKE
+// ============================================================
+
+function addJetEngine(group, ex, ey, ez, E, W, M, opts = {}) {
+  const eg = new THREE.Group();
+  // Gelofteter Nacellen-Profil: Einlauflippe → Bauch → Auslass
+  const nacPts = [];
+  const np = (x, r) => nacPts.push(new THREE.Vector2(Math.max(r, 0.001), x));
+  const L = E.len;
+  np(-L * 0.5 - 0.02, E.r * 0.55);   // Auslass (schmal)
+  np(-L * 0.5 + 0.05, E.r * 0.72);
+  np(-L * 0.4, E.r * 0.88);
+  np(-L * 0.1, E.r * 1.0);
+  np(L * 0.25, E.r * 1.05);           // Bauch
+  np(L * 0.42, E.r * 1.02);
+  np(L * 0.48, E.r * 0.96);           // Lippe außen
+  np(L * 0.50, E.r * 0.92);           // Einlauf-Kante
+  np(L * 0.48, E.r * 0.88);           // Lippe innen
+  np(L * 0.42, E.r * 0.82);
+  np(L * 0.1, E.r * 0.78);
+  np(-L * 0.3, E.r * 0.70);
+  np(-L * 0.5 + 0.03, E.r * 0.65);
+  const nacGeo = new THREE.LatheGeometry(nacPts, 28);
+  nacGeo.rotateZ(-Math.PI / 2);
+  const nacelle = new THREE.Mesh(nacGeo, M.chrome);
+  nacelle.castShadow = true;
+  eg.add(nacelle);
+  // Dunkler Einlauf-Innenring
+  const lipGeo = new THREE.TorusGeometry(E.r * 0.88, E.r * 0.05, 8, 24);
+  lipGeo.rotateY(Math.PI / 2);
+  const lip = new THREE.Mesh(lipGeo, M.dark);
+  lip.position.x = L * 0.47;
+  eg.add(lip);
+  // Spinner (drehender Kegel)
+  const spinGeo = new THREE.ConeGeometry(E.r * 0.3, E.r * 0.75, 16);
+  spinGeo.rotateZ(-Math.PI / 2);
+  const spin = new THREE.Mesh(spinGeo, M.chrome);
+  spin.position.x = L * 0.38;
+  eg.add(spin);
+  // Fan-Blades
+  const fan = createFan(E.r * 0.85, 22, M.chrome);
+  fan.position.x = L * 0.3;
+  eg.add(fan);
+  // Abgaskern (innen dunkel)
+  const coreGeo = new THREE.CylinderGeometry(E.r * 0.55, E.r * 0.48, L * 0.35, 16);
+  coreGeo.rotateZ(Math.PI / 2);
+  const core = new THREE.Mesh(coreGeo, M.dark);
+  core.position.x = -L * 0.35;
+  eg.add(core);
+  // Abgaskegel (hinten)
+  const exhConeGeo = new THREE.ConeGeometry(E.r * 0.38, L * 0.3, 14);
+  exhConeGeo.rotateZ(Math.PI / 2);
+  const exhCone = new THREE.Mesh(exhConeGeo, M.dark);
+  exhCone.position.x = -L * 0.65;
+  eg.add(exhCone);
+
+  if (opts.rearMount) {
+    // Pylon seitlich am Rumpf
+    const pylon = new THREE.Mesh(new THREE.BoxGeometry(E.len * 0.4, 0.08, 0.4), M.chrome);
+    pylon.position.set(0, 0, -Math.sign(ez) * 0.25);
+    eg.add(pylon);
+  } else if (opts.overWing) {
+    const pylon = new THREE.Mesh(new THREE.BoxGeometry(E.len * 0.4, 0.3, 0.08), M.chrome);
+    pylon.position.set(0, -0.2, 0);
+    eg.add(pylon);
+  } else {
+    const pylonH = Math.abs(ey - W.y);
+    const pylon = new THREE.Mesh(new THREE.BoxGeometry(E.len * 0.45, pylonH, 0.08), M.chrome);
+    pylon.position.set(0, pylonH / 2 + 0.05, 0);
+    eg.add(pylon);
+  }
+  if (E.flat) {
+    const flat = new THREE.Mesh(new THREE.BoxGeometry(E.len * 0.55, 0.06, E.r * 1.6), M.chrome);
+    flat.position.set(0.1, -E.r * 0.82, 0);
+    eg.add(flat);
+  }
+  if (E.serrated) {
+    for (let i = 0; i < 12; i++) {
+      const toothGeo = new THREE.ConeGeometry(0.03, 0.15, 3);
+      toothGeo.rotateZ(Math.PI / 2);
+      const tooth = new THREE.Mesh(toothGeo, M.dark);
+      const a = (i / 12) * Math.PI * 2;
+      tooth.position.set(-E.len / 2 - 0.1, Math.sin(a) * E.r * 0.65, Math.cos(a) * E.r * 0.65);
+      eg.add(tooth);
+    }
+  }
+  eg.position.set(ex, ey, ez);
+  group.add(eg);
+}
+
+function createFan(r, bladeCount, mat) {
+  const fanGroup = new THREE.Group();
+  for (let i = 0; i < bladeCount; i++) {
+    const bladeGeo = new THREE.BoxGeometry(0.02, r * 0.65, r * 0.06);
+    const blade = new THREE.Mesh(bladeGeo, mat);
+    blade.position.y = r * 0.37;
+    const pivot = new THREE.Group();
+    pivot.add(blade);
+    pivot.rotation.x = (i / bladeCount) * Math.PI * 2;
+    fanGroup.add(pivot);
+  }
+  fanGroup.position.x = 0.1;
+  fanGroup.userData.isPropeller = true;
+  return fanGroup;
+}
+
+function createPropeller(bladeCount, diameter, width, mat) {
+  const g = new THREE.Group();
+  const hub = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 0.12, 10), mat);
+  hub.rotation.z = Math.PI / 2;
+  g.add(hub);
+  for (let i = 0; i < bladeCount; i++) {
+    const blade = new THREE.Mesh(new THREE.BoxGeometry(width, diameter, 0.03), mat);
+    blade.position.y = 0;
+    const pivot = new THREE.Group();
+    pivot.add(blade);
+    pivot.rotation.x = (i / bladeCount) * Math.PI * 2;
+    g.add(pivot);
+  }
+  g.userData.isPropeller = true;
+  return g;
+}
+
+function addPropellerEngine(group, x, y, z, E, M, opts = {}) {
+  const eg = new THREE.Group();
+  const r = E.r || 0.25;
+  // Gondel / Sternmotor
+  if (E.radial) {
+    const cowl = new THREE.Mesh(new THREE.CylinderGeometry(r * 1.05, r * 0.85, r * 1.6, 14), M.dark);
+    cowl.rotation.z = Math.PI / 2;
+    eg.add(cowl);
+    // Sichtbare Zylinder
+    for (let i = 0; i < 7; i++) {
+      const cyl = new THREE.Mesh(new THREE.CylinderGeometry(r * 0.18, r * 0.18, r * 0.4, 8), M.chrome);
+      const a = (i / 7) * Math.PI * 2;
+      cyl.position.set(0, Math.sin(a) * r * 0.75, Math.cos(a) * r * 0.75);
+      cyl.rotation.x = a;
+      eg.add(cyl);
+    }
+  } else {
+    const nac = new THREE.Mesh(new THREE.CylinderGeometry(r, r * 0.55, (E.len || 1.5), 14), M.chrome);
+    nac.rotation.z = Math.PI / 2;
+    eg.add(nac);
+  }
+  const spin = new THREE.Mesh(new THREE.ConeGeometry(r * 0.35, 0.25, 12), M.chrome);
+  spin.geometry.rotateZ(-Math.PI / 2);
+  spin.position.x = (E.len || 1.5) / 2 + (E.radial ? r * 0.85 : 0.1);
+  if (opts.pusher) {
+    spin.rotation.z = Math.PI;
+    spin.position.x = -(E.len || 1.5) / 2 - 0.15;
+  }
+  eg.add(spin);
+  const propD = opts.tiny ? r * 3 : (opts.turboprop ? r * 6 : r * 5);
+  const prop = createPropeller(E.bladeCount || 2, propD, 0.08, M.dark);
+  prop.position.x = spin.position.x + (opts.pusher ? -0.05 : 0.1);
+  if (opts.pusher) prop.userData.pusher = true;
+  eg.add(prop);
+  // Pylon zum Flügel
+  if (!opts.nose && !opts.pusher) {
+    const pylonH = 0.3;
+    const pylon = new THREE.Mesh(new THREE.BoxGeometry((E.len || 1) * 0.4, pylonH, 0.06), M.chrome);
+    pylon.position.set(0, pylonH / 2 + r * 0.4, 0);
+    eg.add(pylon);
+  }
+  eg.position.set(x, y, z);
+  group.add(eg);
+}
+
+// ============================================================
+// LEITWERKE
+// ============================================================
+
+function addConventionalTail(group, C, M) {
+  const B = C.body;
+  const T = C.tail;
+  const tailX = -B.len / 2 - B.len * 0.15;
+  for (const side of [1, -1]) {
+    const hs = new THREE.Mesh(createWingGeo(T.hSpan / 2, T.hChord, T.hChord * 0.4, 0.8), M.white);
+    hs.position.set(tailX, B.r * 0.15, 0);
+    if (side === -1) hs.scale.z = -1;
+    group.add(hs);
+  }
+  const vf = new THREE.Mesh(createFinGeo(T.vH, T.vChord), M.tailMat);
+  vf.position.set(tailX, B.r, 0);
+  group.add(vf);
+  const fa = new THREE.Mesh(new THREE.BoxGeometry(T.vChord * 0.3, T.vH * 0.25, 0.06), M.accentMat);
+  fa.position.set(tailX - T.vChord * 0.15, B.r + T.vH * 0.55, 0);
+  group.add(fa);
+}
+
+function addTail(group, C, M) {
+  const B = C.body;
+  const T = C.tail;
+  if (!T) return;
+  const tailX = -B.len / 2 - B.len * 0.15;
+  // Seitenleitwerk
+  const vf = new THREE.Mesh(createFinGeo(T.vH, T.vChord), M.tailMat);
+  vf.position.set(tailX, B.r, 0);
+  group.add(vf);
+  const fa = new THREE.Mesh(new THREE.BoxGeometry(T.vChord * 0.3, T.vH * 0.25, 0.06), M.accentMat);
+  fa.position.set(tailX - T.vChord * 0.15, B.r + T.vH * 0.55, 0);
+  group.add(fa);
+  // Höhenleitwerk — T-Tail oder konventionell
+  const hY = T.tTail ? B.r + T.vH : B.r * 0.15;
+  const hX = T.tTail ? tailX - T.vChord * 0.25 : tailX;
+  for (const side of [1, -1]) {
+    const hs = new THREE.Mesh(createWingGeo(T.hSpan / 2, T.hChord, T.hChord * 0.4, 0.6), M.white);
+    hs.position.set(hX, hY, 0);
+    if (side === -1) hs.scale.z = -1;
+    group.add(hs);
+  }
+}
+
+// ============================================================
+// FAHRWERK
+// ============================================================
+
+function addAirlinerGear(group, C, M) {
+  const B = C.body;
+  const G = C.gear;
+  if (!G) return;
+  addGearAssembly(group, G.noseX, -B.r - 0.2, 0, 0.14, 1.0, M.chrome, M.rubber);
+  addGearAssembly(group, G.mainX, -B.r - 0.2, G.mainZ, 0.2, 1.3, M.chrome, M.rubber);
+  addGearAssembly(group, G.mainX, -B.r - 0.2, -G.mainZ, 0.2, 1.3, M.chrome, M.rubber);
+  if (G.extraBody) {
+    addGearAssembly(group, G.mainX + 1.5, -B.r - 0.2, G.mainZ * 0.4, 0.18, 1.2, M.chrome, M.rubber);
+    addGearAssembly(group, G.mainX + 1.5, -B.r - 0.2, -G.mainZ * 0.4, 0.18, 1.2, M.chrome, M.rubber);
+  }
+}
+
+function addLightGear(group, C, M) {
+  const B = C.body;
+  const G = C.gear;
+  if (!G) return;
+  if (G.taildragger) {
+    addTaildraggerGear(group, C, M);
+  } else {
+    addGearAssembly(group, G.noseX, -B.r - 0.1, 0, 0.11, 0.5, M.chrome, M.rubber);
+    for (const s of [1, -1]) addGearAssembly(group, G.mainX, -B.r - 0.1, s * G.mainZ, 0.13, 0.55, M.chrome, M.rubber);
+  }
+}
+
+function addTaildraggerGear(group, C, M) {
+  const B = C.body;
+  const G = C.gear;
+  if (!G) return;
+  for (const s of [1, -1]) addGearAssembly(group, G.mainX, -B.r - 0.15, s * G.mainZ, 0.16, 0.7, M.chrome, M.rubber);
+  // Spornrad
+  addGearAssembly(group, G.tailX, -B.r * 0.4, 0, 0.08, 0.3, M.chrome, M.rubber);
+}
+
+function addGearAssembly(group, x, y, z, wheelR, strutH, strutMat, wheelMat) {
+  const tireMat = wheelMat || strutMat;
+  const strut = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, strutH, 8), strutMat);
+  strut.position.set(x, y - strutH / 2, z);
+  group.add(strut);
+  for (const dz of [-0.1, 0.1]) {
+    const wGeo = new THREE.CylinderGeometry(wheelR, wheelR, 0.11, 14);
+    wGeo.rotateX(Math.PI / 2);
+    const w = new THREE.Mesh(wGeo, tireMat);
+    w.position.set(x, y - strutH, z + dz);
+    group.add(w);
+  }
+}
+
+// ============================================================
 // GEOMETRIE-HELFER
 // ============================================================
 
-function createWingGeo(halfSpan, rootChord, tipChord, sweep) {
+function createWingGeo(halfSpan, rootChord, tipChord, sweep, opts = {}) {
+  // Profilierter Flügel (NACA-ähnlich): Querschnitt mit gewölbter Oberseite,
+  // abgerundeter Nase, dünner Hinterkante. Entlang der Spannweite gelotet.
+  const chordSegs = 14;  // Punkte pro Halbprofil
+  const spanSegs = opts.thin ? 6 : 8;
+  const thickMax = opts.thin ? 0.06 : 0.14;
+  // NACA-0012-ähnliches Halbprofil
+  const profileY = (tp) => {
+    // tp: 0 Vorderkante → 1 Hinterkante
+    const t = Math.max(tp, 0.0001);
+    return 5 * thickMax * (0.2969 * Math.sqrt(t) - 0.1260 * t - 0.3516 * t * t + 0.2843 * t * t * t - 0.1036 * t * t * t * t);
+  };
+
   const verts = [];
-  const t = 0.1; // Dicke
-  const sweepX = sweep;
+  const idx = [];
+  // Für jede Spannweiten-Station: ringförmiges Profil (2*chordSegs Punkte)
+  const ringSize = 2 * chordSegs;
+  for (let s = 0; s <= spanSegs; s++) {
+    const sf = s / spanSegs;
+    const z = sf * halfSpan;
+    const chord = rootChord * (1 - sf) + tipChord * sf;
+    const sweepOff = sf * sweep;
+    // Oben: Vorderkante → Hinterkante
+    for (let i = 0; i < chordSegs; i++) {
+      const tp = i / (chordSegs - 1);
+      const x = chord / 2 - tp * chord + sweepOff;
+      const y = profileY(tp);
+      verts.push(x, y, z);
+    }
+    // Unten: Hinterkante → Vorderkante
+    for (let i = 0; i < chordSegs; i++) {
+      const tp = 1 - (i / (chordSegs - 1));
+      const x = chord / 2 - tp * chord + sweepOff;
+      const y = -profileY(tp) * 0.55;   // Unterseite flacher
+      verts.push(x, y, z);
+    }
+  }
+  // Oberfläche zwischen den Ringen triangulieren
+  for (let s = 0; s < spanSegs; s++) {
+    for (let i = 0; i < ringSize; i++) {
+      const a = s * ringSize + i;
+      const b = s * ringSize + ((i + 1) % ringSize);
+      const c = (s + 1) * ringSize + ((i + 1) % ringSize);
+      const d = (s + 1) * ringSize + i;
+      idx.push(a, b, c, a, c, d);
+    }
+  }
+  // Wurzel-Kappe (z=0)
+  for (let i = 1; i < ringSize - 1; i++) {
+    idx.push(0, i + 1, i);
+  }
+  // Flügelspitze-Kappe (z=halfSpan)
+  const base = spanSegs * ringSize;
+  for (let i = 1; i < ringSize - 1; i++) {
+    idx.push(base, base + i, base + i + 1);
+  }
 
-  // Root: von -rootChord/2 bis +rootChord/2 bei z=0
-  // Tip:  von -tipChord/2+sweep bis +tipChord/2+sweep bei z=halfSpan
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(verts), 3));
+  geo.setIndex(idx);
+  geo.computeVertexNormals();
+  return geo;
+}
+
+function createDeltaWing(rootChord, halfSpan, sweep, ogee) {
+  const verts = [];
+  const t = 0.12;
+  // Root leading edge at (rootChord/2, 0), root trailing edge at (-rootChord/2, 0)
+  // Tip at (-rootChord/2 + sweep, halfSpan)  — spitze, hinten
   const r0 = rootChord / 2, r1 = -rootChord / 2;
-  const t0 = tipChord / 2 + sweepX, t1 = -tipChord / 2 + sweepX;
-
+  const tipX = -rootChord / 2 + sweep;
   const quad = (a, b, c, d) => { verts.push(...a, ...b, ...c, ...a, ...c, ...d); };
-
   // Oben
-  quad([r0, t, 0], [t0, t * 0.3, halfSpan], [t1, t * 0.3, halfSpan], [r1, t, 0]);
+  quad([r0, t, 0], [tipX, t * 0.2, halfSpan], [tipX, t * 0.2, halfSpan], [r1, t, 0]);
   // Unten
-  quad([r1, 0, 0], [t1, 0, halfSpan], [t0, 0, halfSpan], [r0, 0, 0]);
+  quad([r1, 0, 0], [tipX, 0, halfSpan], [tipX, 0, halfSpan], [r0, 0, 0]);
   // Vorderkante
-  quad([r0, 0, 0], [t0, 0, halfSpan], [t0, t * 0.3, halfSpan], [r0, t, 0]);
+  quad([r0, 0, 0], [tipX, 0, halfSpan], [tipX, t * 0.2, halfSpan], [r0, t, 0]);
   // Hinterkante
-  quad([r1, t, 0], [t1, t * 0.3, halfSpan], [t1, 0, halfSpan], [r1, 0, 0]);
-  // Flügelspitze
-  quad([t0, 0, halfSpan], [t1, 0, halfSpan], [t1, t * 0.3, halfSpan], [t0, t * 0.3, halfSpan]);
-
+  quad([r1, t, 0], [tipX, t * 0.2, halfSpan], [tipX, 0, halfSpan], [r1, 0, 0]);
   const geo = new THREE.BufferGeometry();
   geo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(verts), 3));
   geo.computeVertexNormals();
@@ -383,35 +1546,17 @@ function createWingGeo(halfSpan, rootChord, tipChord, sweep) {
 function createFinGeo(height, chord) {
   const verts = [];
   const th = 0.06;
-  // Dreieckige Finne: Basis = chord, Spitze schmaler und nach hinten geneigt
   const quad = (a, b, c, d) => { verts.push(...a, ...b, ...c, ...a, ...c, ...d); };
-  // Zwei Seiten
   for (const z of [0, th]) {
     verts.push(0, 0, z, -chord, 0, z, -chord * 0.35, height, z);
     verts.push(0, 0, z, -chord * 0.35, height, z, 0.15, height * 0.65, z);
   }
-  // Vorderkante
   quad([0.15, height * 0.65, 0], [-chord * 0.35, height, 0], [-chord * 0.35, height, th], [0.15, height * 0.65, th]);
-  // Hinterkante
   quad([-chord, 0, 0], [-chord, 0, th], [-chord * 0.35, height, th], [-chord * 0.35, height, 0]);
-
   const geo = new THREE.BufferGeometry();
   geo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(verts), 3));
   geo.computeVertexNormals();
   return geo;
-}
-
-function addGearAssembly(group, x, y, z, wheelR, strutH, mat) {
-  const strut = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, strutH, 6), mat);
-  strut.position.set(x, y - strutH / 2, z);
-  group.add(strut);
-  for (const dz of [-0.1, 0.1]) {
-    const wGeo = new THREE.CylinderGeometry(wheelR, wheelR, 0.1, 10);
-    wGeo.rotateX(Math.PI / 2);
-    const w = new THREE.Mesh(wGeo, mat);
-    w.position.set(x, y - strutH, z + dz);
-    group.add(w);
-  }
 }
 
 // ============================================================
@@ -426,23 +1571,27 @@ export function createProceduralAirplane(id) {
   return buildAircraft('a320', '#05164d', '#ffc72c');
 }
 
-const _glbCache = new Map(); // type -> Promise<Group|null>
+const _glbCache = new Map();
 const _loader = new GLTFLoader();
 
-// Ziel-Länge des prozeduralen Modells (in Szene-Units) je Typ
 const TARGET_LEN = {
   a320: 12, a330: 20, a340: 22, a350: 20, a380: 24,
   b737: 12, b747: 22, b757: 15, b777: 22, b787: 19,
 };
 
+const GLB_FALLBACK = {
+  b737: 'a320', b777: 'b787', b757: 'a320',
+};
+
 export function loadAircraftModel(type) {
+  // Für neu hinzugefügte Archetypen gibt es keine GLB-Dateien → direkt prozedural
+  if (!TARGET_LEN[type]) return Promise.resolve(null);
   if (_glbCache.has(type)) return _glbCache.get(type);
   const p = new Promise((resolve) => {
     _loader.load(
       `/models/${type}.glb`,
       (gltf) => {
         const root = gltf.scene;
-        // Bounding Box → Normalisierung auf Ziel-Länge, Zentrierung
         const box = new THREE.Box3().setFromObject(root);
         const size = new THREE.Vector3(); box.getSize(size);
         const center = new THREE.Vector3(); box.getCenter(center);
@@ -450,25 +1599,36 @@ export function loadAircraftModel(type) {
         if (maxDim === 0) { resolve(null); return; }
         const target = TARGET_LEN[type] || 15;
         const s = target / maxDim;
-        // Wrapper-Group, damit Zentrierung + Rotation konsistent sind.
-        // fr24-Modelle: Nase zeigt +X, Spannweite entlang Z — passt zu Szene
         const wrap = new THREE.Group();
         root.position.sub(center).multiplyScalar(s);
         root.scale.setScalar(s);
         wrap.add(root);
-        // Schatten
-        wrap.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
+        wrap.traverse((o) => {
+          if (!o.isMesh) return;
+          o.castShadow = true; o.receiveShadow = true;
+          const mats = Array.isArray(o.material) ? o.material : [o.material];
+          for (const m of mats) {
+            if (!m) continue;
+            if ('envMapIntensity' in m) m.envMapIntensity = 1.1;
+            if (m.map) m.map.colorSpace = THREE.SRGBColorSpace;
+          }
+        });
         resolve(wrap);
       },
       undefined,
-      () => resolve(null),
+      async () => {
+        const alt = GLB_FALLBACK[type];
+        if (alt) {
+          const fallback = await loadAircraftModel(alt);
+          resolve(fallback ? fallback.clone(true) : null);
+        } else resolve(null);
+      },
     );
   });
   _glbCache.set(type, p);
   return p;
 }
 
-// Liefert einen frischen Clone des geladenen Modells (oder null)
 export async function createGLBInstance(type) {
   const tmpl = await loadAircraftModel(type);
   return tmpl ? tmpl.clone(true) : null;
@@ -483,37 +1643,34 @@ export class AircraftPreview {
     this.container = container;
     this.scene = new THREE.Scene();
     this.scene.background = new THREE.Color(0x0d1524);
-
     this.camera = new THREE.PerspectiveCamera(30, 2, 0.1, 300);
     this.camera.position.set(20, 10, 20);
     this.camera.lookAt(0, 0, 0);
-
     this.renderer = new THREE.WebGLRenderer({ antialias: true });
     this.renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+    this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    this.renderer.toneMappingExposure = 1.1;
+    this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     container.appendChild(this.renderer.domElement);
-
-    this.scene.add(new THREE.AmbientLight(0xffffff, 0.6));
-    const d = new THREE.DirectionalLight(0xfff5e0, 1.3);
+    const pmrem = new THREE.PMREMGenerator(this.renderer);
+    this.scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+    this.scene.environmentIntensity = 0.7;
+    this.scene.add(new THREE.AmbientLight(0xffffff, 0.35));
+    const d = new THREE.DirectionalLight(0xfff5e0, 1.5);
     d.position.set(15, 20, 10);
     this.scene.add(d);
-    const rim = new THREE.DirectionalLight(0x4a9eff, 0.3);
+    const rim = new THREE.DirectionalLight(0x4a9eff, 0.4);
     rim.position.set(-15, 5, -10);
     this.scene.add(rim);
-
-    const ground = new THREE.Mesh(
-      new THREE.PlaneGeometry(80, 80),
-      new THREE.MeshLambertMaterial({ color: 0x151e2d })
-    );
+    const ground = new THREE.Mesh(new THREE.PlaneGeometry(80, 80), new THREE.MeshLambertMaterial({ color: 0x151e2d }));
     ground.rotation.x = -Math.PI / 2;
     ground.position.y = -3;
     this.scene.add(ground);
-
     this.model = null;
     this.angle = 0;
     this.resize();
     window.addEventListener('resize', () => this.resize());
   }
-
   resize() {
     const w = this.container.clientWidth || 400;
     const h = this.container.clientHeight || 280;
@@ -521,13 +1678,11 @@ export class AircraftPreview {
     this.camera.updateProjectionMatrix();
     this.renderer.setSize(w, h);
   }
-
   setAircraft(type, color1, color2) {
-    if (this.model) { this.scene.remove(this.model); }
+    if (this.model) this.scene.remove(this.model);
     this.model = buildAircraft(type, color1, color2);
     this.scene.add(this.model);
     this.resize();
-    // Sobald GLB verfügbar ist, das prozedurale Preview-Mesh ersetzen
     const reqType = type;
     createGLBInstance(type).then((glb) => {
       if (!glb || this._lastType !== reqType) return;
@@ -537,13 +1692,14 @@ export class AircraftPreview {
     });
     this._lastType = type;
   }
-
   render() {
     this.angle += 0.004;
     if (this.model) {
       this.model.rotation.y = this.angle;
       this.model.traverse(c => {
-        if (c.userData?.isPropeller) c.rotation.x += 0.12;
+        if (c.userData?.isPropeller) {
+          c.rotation.x += c.userData.pusher ? -0.25 : 0.25;
+        }
       });
     }
     const dist = 25;
