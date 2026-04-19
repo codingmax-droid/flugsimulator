@@ -30,57 +30,6 @@ const CONFIGS = {
   b717: { archetype: 'reartwin', body: { len: 11, r: 0.55, noseTaper: 0.32 }, wing: { span: 10, root: 2.8, tip: 0.8, sweep: 2, pos: 0.1, y: -0.15 }, engine: { r: 0.4, len: 2, y: 0.15, z: 1.0, count: 2 }, tail: { hSpan: 4.2, hChord: 1.4, vH: 2.6, vChord: 2.5, tTail: true }, gear: { noseX: 4, mainX: -0.4, mainZ: 1.6 } },
   b727: { archetype: 'trijet', body: { len: 14, r: 0.62, noseTaper: 0.32 }, wing: { span: 11, root: 3, tip: 0.9, sweep: 2.8, pos: 0, y: -0.15 }, engine: { r: 0.35, len: 2, y: 0.15, z: 1.0, wingZ: 0, count: 3 }, tail: { hSpan: 4.5, hChord: 1.5, vH: 2.8, vChord: 2.6, tTail: true }, gear: { noseX: 5, mainX: -0.5, mainZ: 1.8 } },
   b767: { archetype: 'airliner', body: { len: 17, r: 0.78, noseTaper: 0.38 }, wing: { span: 15, root: 4.5, tip: 1.1, sweep: 3.5, pos: 0.7, y: -0.2 }, engine: { r: 0.55, len: 2.7, y: -0.9, z: 4, count: 2 }, tail: { hSpan: 5.5, hChord: 1.8, vH: 3, vChord: 3 }, gear: { noseX: 6.5, mainX: -0.8, mainZ: 2.5 }, winglet: null },
-
-  // ===================== DOUGLAS / MCDONNELL DOUGLAS =====================
-  dc3: { archetype: 'proptwin', body: { len: 10, r: 0.5, noseTaper: 0.32, taildragger: true }, wing: { span: 10, root: 2.5, tip: 0.7, sweep: 0.4, pos: 0.2, y: -0.18 }, engine: { r: 0.3, len: 1.4, y: -0.3, z: 2.5, count: 2, radial: true, bladeCount: 3 }, tail: { hSpan: 3.8, hChord: 1.2, vH: 1.8, vChord: 1.8 }, gear: { taildragger: true, mainX: 1, mainZ: 1.2, tailX: -5 } },
-  dc8: { archetype: 'airliner', body: { len: 16, r: 0.72, noseTaper: 0.32 }, wing: { span: 13, root: 3.8, tip: 1, sweep: 3, pos: 0.4, y: -0.18 }, engine: { r: 0.3, len: 2.1, y: -0.9, z: 0, count: 4, positions: [[0.8,2.8],[0.4,5.2]] }, tail: { hSpan: 5, hChord: 1.6, vH: 2.8, vChord: 2.8 }, gear: { noseX: 5.5, mainX: -0.5, mainZ: 2 }, winglet: null },
-  dc9: { archetype: 'reartwin', body: { len: 12, r: 0.55, noseTaper: 0.3 }, wing: { span: 10, root: 2.8, tip: 0.8, sweep: 2.2, pos: 0.1, y: -0.15 }, engine: { r: 0.35, len: 2, y: 0.15, z: 1.0, count: 2 }, tail: { hSpan: 4.2, hChord: 1.4, vH: 2.6, vChord: 2.5, tTail: true }, gear: { noseX: 4.5, mainX: -0.5, mainZ: 1.6 } },
-  dc10: { archetype: 'trijet', body: { len: 19, r: 0.88, noseTaper: 0.38 }, wing: { span: 16, root: 5, tip: 1.2, sweep: 3.5, pos: 0.8, y: -0.22 }, engine: { r: 0.6, len: 2.8, y: -1.0, z: 4, wingZ: 4, count: 3 }, tail: { hSpan: 6, hChord: 2, vH: 3.5, vChord: 3.5 }, gear: { noseX: 7, mainX: -1, mainZ: 2.8, extraBody: true } },
-  md80: { archetype: 'reartwin', body: { len: 14, r: 0.55, noseTaper: 0.3 }, wing: { span: 11, root: 3, tip: 0.8, sweep: 2.3, pos: 0.1, y: -0.15 }, engine: { r: 0.38, len: 2.2, y: 0.15, z: 1.0, count: 2 }, tail: { hSpan: 4.5, hChord: 1.5, vH: 2.8, vChord: 2.6, tTail: true }, gear: { noseX: 5.5, mainX: -0.5, mainZ: 1.6 } },
-  md11: { archetype: 'trijet', body: { len: 20, r: 0.88, noseTaper: 0.38 }, wing: { span: 17, root: 5, tip: 1.2, sweep: 3.8, pos: 0.8, y: -0.22 }, engine: { r: 0.58, len: 2.8, y: -1.0, z: 4.2, wingZ: 4.2, count: 3 }, tail: { hSpan: 6, hChord: 2, vH: 3.5, vChord: 3.5 }, gear: { noseX: 7.2, mainX: -1, mainZ: 2.9, extraBody: true }, winglet: 'fence' },
-
-  // ===================== RUSSISCHE JET-AIRLINER =====================
-  tu154: { archetype: 'trijet', body: { len: 14, r: 0.6, noseTaper: 0.3 }, wing: { span: 11, root: 3, tip: 0.8, sweep: 3, pos: 0.1, y: -0.18 }, engine: { r: 0.35, len: 2.1, y: 0.15, z: 1.1, wingZ: 0, count: 3 }, tail: { hSpan: 4.5, hChord: 1.5, vH: 2.8, vChord: 2.6, tTail: true }, gear: { noseX: 5.5, mainX: -0.5, mainZ: 1.7 } },
-  il62: { archetype: 'quadrear', body: { len: 16, r: 0.72, noseTaper: 0.32 }, wing: { span: 13, root: 3.8, tip: 1, sweep: 3.5, pos: 0, y: -0.15 }, engine: { r: 0.35, len: 2.1, y: 0.15, z: 0, count: 4, positions: [[0.5,1.0],[0.1,1.6]] }, tail: { hSpan: 5, hChord: 1.6, vH: 3, vChord: 2.8, tTail: true }, gear: { noseX: 5.8, mainX: -0.5, mainZ: 2 } },
-
-  // ===================== EARLY JETS =====================
-  comet: { archetype: 'airliner', body: { len: 13, r: 0.6, noseTaper: 0.35 }, wing: { span: 11, root: 4, tip: 1, sweep: 2, pos: 0.2, y: -0.1, buried: true }, engine: { r: 0.25, len: 1.6, y: -0.2, z: 0, count: 4, positions: [[0.3,1.5],[0.2,2.5]], buried: true }, tail: { hSpan: 4.5, hChord: 1.5, vH: 2.5, vChord: 2.5 }, gear: { noseX: 4.5, mainX: -0.5, mainZ: 1.5 }, winglet: null },
-  caravelle: { archetype: 'reartwin', body: { len: 11, r: 0.55, noseTaper: 0.35 }, wing: { span: 10, root: 3, tip: 0.8, sweep: 2, pos: 0.1, y: -0.15 }, engine: { r: 0.33, len: 1.9, y: 0.1, z: 0.95, count: 2 }, tail: { hSpan: 4, hChord: 1.3, vH: 2.4, vChord: 2.4 }, gear: { noseX: 4, mainX: -0.5, mainZ: 1.5 } },
-
-  // ===================== SUPERSONIC DELTAS =====================
-  concorde: { archetype: 'delta', body: { len: 18, r: 0.48, noseTaper: 0.5, droopNose: true }, wing: { span: 12, rootChord: 12, sweep: 5, y: -0.1, ogee: true }, engine: { r: 0.4, len: 3.2, y: -0.6, z: 1.5, count: 4 }, tail: { vH: 2.8, vChord: 3 }, gear: { noseX: 6, mainX: -1, mainZ: 1.8 } },
-  tu144: { archetype: 'delta', body: { len: 19, r: 0.5, noseTaper: 0.5, droopNose: true, canard: true }, wing: { span: 12, rootChord: 13, sweep: 5.5, y: -0.1, ogee: false }, engine: { r: 0.4, len: 3.4, y: -0.6, z: 1.2, count: 4 }, tail: { vH: 3, vChord: 3.2 }, gear: { noseX: 6.5, mainX: -1, mainZ: 1.8 } },
-
-  // ===================== REGIONAL JETS =====================
-  e190: { archetype: 'airliner', body: { len: 11, r: 0.52, noseTaper: 0.3 }, wing: { span: 10, root: 2.7, tip: 0.8, sweep: 2, pos: 0.3, y: -0.1 }, engine: { r: 0.4, len: 1.9, y: -0.65, z: 2.6, count: 2 }, tail: { hSpan: 4, hChord: 1.3, vH: 2.2, vChord: 2.3 }, gear: { noseX: 4, mainX: -0.5, mainZ: 1.6 }, winglet: 'curved' },
-  crj900: { archetype: 'reartwin', body: { len: 11.5, r: 0.48, noseTaper: 0.3 }, wing: { span: 9.5, root: 2.5, tip: 0.7, sweep: 2.2, pos: 0.1, y: -0.18 }, engine: { r: 0.32, len: 1.8, y: 0.1, z: 0.85, count: 2 }, tail: { hSpan: 3.8, hChord: 1.2, vH: 2.3, vChord: 2.2, tTail: true }, gear: { noseX: 4.5, mainX: -0.4, mainZ: 1.5 } },
-  bae146: { archetype: 'highwingjet', body: { len: 10, r: 0.55, noseTaper: 0.3 }, wing: { span: 10, root: 2.8, tip: 0.8, sweep: 0.3, pos: 0, y: 0.55 }, engine: { r: 0.28, len: 1.6, y: 0.4, z: 0, count: 4, positions: [[0.2,1.5],[-0.1,3.0]] }, tail: { hSpan: 4, hChord: 1.3, vH: 2.2, vChord: 2.2, tTail: true }, gear: { noseX: 4, mainX: -0.5, mainZ: 0.8 } },
-  fokker100: { archetype: 'reartwin', body: { len: 11, r: 0.5, noseTaper: 0.3 }, wing: { span: 9.5, root: 2.6, tip: 0.75, sweep: 1.8, pos: 0.1, y: -0.15 }, engine: { r: 0.33, len: 1.8, y: 0.1, z: 0.85, count: 2 }, tail: { hSpan: 4, hChord: 1.3, vH: 2.3, vChord: 2.2, tTail: true }, gear: { noseX: 4.2, mainX: -0.4, mainZ: 1.4 } },
-
-  // ===================== MODERNE NEUE =====================
-  c919: { archetype: 'airliner', body: { len: 12, r: 0.58, noseTaper: 0.35 }, wing: { span: 11, root: 3, tip: 0.9, sweep: 2.5, pos: 0.3, y: -0.1 }, engine: { r: 0.45, len: 2.1, y: -0.7, z: 3.2, count: 2 }, tail: { hSpan: 4.5, hChord: 1.5, vH: 2.4, vChord: 2.5 }, gear: { noseX: 4.5, mainX: -0.5, mainZ: 1.8 }, winglet: 'fence' },
-  ssj100: { archetype: 'airliner', body: { len: 10, r: 0.5, noseTaper: 0.32 }, wing: { span: 9, root: 2.5, tip: 0.7, sweep: 2, pos: 0.2, y: -0.12 }, engine: { r: 0.38, len: 1.8, y: -0.65, z: 2.4, count: 2 }, tail: { hSpan: 3.6, hChord: 1.2, vH: 2, vChord: 2.1 }, gear: { noseX: 3.8, mainX: -0.4, mainZ: 1.4 }, winglet: null },
-  mc21: { archetype: 'airliner', body: { len: 13, r: 0.6, noseTaper: 0.35 }, wing: { span: 11, root: 3, tip: 0.85, sweep: 2.5, pos: 0.3, y: -0.1 }, engine: { r: 0.48, len: 2.2, y: -0.75, z: 3.3, count: 2 }, tail: { hSpan: 4.5, hChord: 1.5, vH: 2.3, vChord: 2.5 }, gear: { noseX: 4.8, mainX: -0.5, mainZ: 1.8 }, winglet: 'curved' },
-
-  // ===================== HISTORIC PROPS =====================
-  ju52: { archetype: 'trimotorprop', body: { len: 10, r: 0.6, noseTaper: 0.28, corrugated: true, taildragger: true }, wing: { span: 11, root: 2.8, tip: 1.4, sweep: 0, pos: -0.3, y: 0.55, corrugated: true }, engine: { r: 0.32, len: 1.2, y: -0.2, z: 2.5, noseZ: 0, count: 3, radial: true, bladeCount: 3 }, tail: { hSpan: 4, hChord: 1.2, vH: 1.8, vChord: 1.8 }, gear: { taildragger: true, mainX: 0.8, mainZ: 1.2, tailX: -5 } },
-  fordtrimotor: { archetype: 'trimotorprop', body: { len: 9, r: 0.5, noseTaper: 0.3, corrugated: true, taildragger: true }, wing: { span: 11, root: 2.5, tip: 1.2, sweep: 0, pos: -0.3, y: 0.5, corrugated: true }, engine: { r: 0.28, len: 1.1, y: -0.15, z: 2.3, noseZ: 0, count: 3, radial: true, bladeCount: 2 }, tail: { hSpan: 3.8, hChord: 1.1, vH: 1.5, vChord: 1.5 }, gear: { taildragger: true, mainX: 0.8, mainZ: 1.1, tailX: -4.5 } },
-  constellation: { archetype: 'propquad', body: { len: 13, r: 0.55, noseTaper: 0.35, curved: true, taildragger: true }, wing: { span: 13, root: 3, tip: 0.9, sweep: 0.5, pos: 0.2, y: -0.12 }, engine: { r: 0.28, len: 1.8, y: -0.25, z: 0, count: 4, positions: [[0.3,2.2],[0.1,4.2]], radial: true, bladeCount: 3 }, tail: { triple: true, hSpan: 4.5, hChord: 1.3, vH: 1.5, vChord: 1.3 }, gear: { taildragger: true, mainX: 1, mainZ: 1.6, tailX: -6 } },
-
-  // ===================== BUSINESS JETS =====================
-  g650: { archetype: 'bizjet', body: { len: 10, r: 0.45, noseTaper: 0.35 }, wing: { span: 9.5, root: 2.5, tip: 0.6, sweep: 2.5, pos: 0.1, y: -0.15 }, engine: { r: 0.28, len: 1.5, y: 0.1, z: 0.8, count: 2 }, tail: { hSpan: 3.6, hChord: 1.1, vH: 2.2, vChord: 2, tTail: true }, gear: { noseX: 4, mainX: -0.4, mainZ: 1.3 }, winglet: 'raked' },
-  global7500: { archetype: 'bizjet', body: { len: 10.5, r: 0.48, noseTaper: 0.35 }, wing: { span: 10, root: 2.5, tip: 0.6, sweep: 2.5, pos: 0.1, y: -0.15 }, engine: { r: 0.3, len: 1.6, y: 0.1, z: 0.85, count: 2 }, tail: { hSpan: 3.6, hChord: 1.1, vH: 2.2, vChord: 2, tTail: true }, gear: { noseX: 4.2, mainX: -0.4, mainZ: 1.4 }, winglet: 'curved' },
-  falcon7x: { archetype: 'trijet', body: { len: 9.5, r: 0.45, noseTaper: 0.35 }, wing: { span: 9, root: 2.3, tip: 0.6, sweep: 2, pos: 0.1, y: -0.15 }, engine: { r: 0.25, len: 1.4, y: 0.1, z: 0.75, wingZ: 0, count: 3 }, tail: { hSpan: 3.4, hChord: 1, vH: 2.1, vChord: 1.9, tTail: true }, gear: { noseX: 3.8, mainX: -0.4, mainZ: 1.2 } },
-  citation: { archetype: 'bizjet', body: { len: 7, r: 0.38, noseTaper: 0.35 }, wing: { span: 7.5, root: 1.8, tip: 0.5, sweep: 0.5, pos: 0, y: -0.15 }, engine: { r: 0.24, len: 1.2, y: 0.08, z: 0.65, count: 2 }, tail: { hSpan: 2.8, hChord: 0.9, vH: 1.6, vChord: 1.5, tTail: true }, gear: { noseX: 2.8, mainX: -0.3, mainZ: 1 } },
-  hondajet: { archetype: 'hondajet', body: { len: 6, r: 0.35, noseTaper: 0.35 }, wing: { span: 7, root: 1.6, tip: 0.45, sweep: 0.4, pos: 0, y: -0.12 }, engine: { r: 0.22, len: 1.1, y: 0.3, z: 1.1, count: 2 }, tail: { hSpan: 2.6, hChord: 0.85, vH: 1.4, vChord: 1.4, tTail: true }, gear: { noseX: 2.5, mainX: -0.2, mainZ: 0.9 } },
-
-  // ===================== TURBOPROP REGIONALE =====================
-  atr72: { archetype: 'turbopropwing', body: { len: 11, r: 0.55, noseTaper: 0.35 }, wing: { span: 13, root: 2.4, tip: 0.8, sweep: 0.2, pos: 0, y: 0.5 }, engine: { r: 0.28, len: 1.8, y: 0.45, z: 2.8, count: 2, bladeCount: 6 }, tail: { hSpan: 4.2, hChord: 1.3, vH: 2.2, vChord: 2.2, tTail: true }, gear: { noseX: 4.5, mainX: -0.5, mainZ: 0.6, bodyMount: true } },
-  dash8: { archetype: 'turbopropwing', body: { len: 11, r: 0.55, noseTaper: 0.35 }, wing: { span: 12, root: 2.3, tip: 0.8, sweep: 0.3, pos: 0, y: 0.5 }, engine: { r: 0.28, len: 1.9, y: 0.45, z: 2.7, count: 2, bladeCount: 6 }, tail: { hSpan: 4, hChord: 1.3, vH: 2.4, vChord: 2.2, tTail: true }, gear: { noseX: 4.5, mainX: -0.5, mainZ: 0.6, bodyMount: true } },
-  do328: { archetype: 'turbopropwing', body: { len: 8, r: 0.5, noseTaper: 0.35 }, wing: { span: 10, root: 2, tip: 0.7, sweep: 0.2, pos: 0, y: 0.45 }, engine: { r: 0.25, len: 1.6, y: 0.4, z: 2.3, count: 2, bladeCount: 6 }, tail: { hSpan: 3.4, hChord: 1.1, vH: 1.8, vChord: 1.8, tTail: true }, gear: { noseX: 3.5, mainX: -0.4, mainZ: 0.55, bodyMount: true } },
-
-  // ===================== TURBOPROP SINGLE =====================
-  pc12: { archetype: 'propsingle', body: { len: 5.5, r: 0.4, noseTaper: 0.38, turboprop: true }, wing: { span: 7, root: 1.2, tip: 0.7, sweep: 0.1, pos: 0.1, y: -0.28 }, engine: { r: 0.28, noseZ: 0, bladeCount: 4 }, tail: { hSpan: 2.6, hChord: 0.85, vH: 1.4, vChord: 1.3 }, gear: { noseX: 1.8, mainX: -0.2, mainZ: 1 }, winglet: 'curved' },
 };
 
 // ============================================================
@@ -1758,54 +1707,19 @@ const GLB_AVAILABLE = new Set(['a320','a330','a340','a350','a380','b747','b757',
 // Props/Segler/Amphibien/Bizjets/Concorde bleiben bewusst prozedural, weil kein
 // sinnvolles GLB-Vorbild unter den vorhandenen Dateien existiert.
 const GLB_FALLBACK = {
-  // Narrow-Body 2-Triebwerk-Jets → a320
+  // Narrow-Body 2-Triebwerk → a320
   b737:       'a320',
   a220:       'a320',
   a321:       'a320',
   b717:       'a320',
-  dc9:        'a320',
-  md80:       'a320',
-  e190:       'a320',
-  crj900:     'a320',
-  fokker100:  'a320',
-  c919:       'a320',
-  ssj100:     'a320',
-  mc21:       'a320',
-  caravelle:  'a320',
-  // Wide-Body 2-Triebwerk-Jets
+  // Wide-Body 2-Triebwerk
   a300:       'a330',
   b767:       'a330',
   b777:       'b787',
-  // 4-Triebwerk (narrow/wide) → a340
+  // 4-Triebwerk → a340
   b707:       'a340',
-  dc8:        'a340',
-  il62:       'a340',
-  bae146:     'a340',
-  comet:      'a340',
-  // Trijets — Heck-zentraler ist optisch nicht ideal, aber besser als prozedural
+  // Trijet Boeing
   b727:       'b757',
-  tu154:      'b757',
-  dc10:       'a380',
-  md11:       'a380',
-  // Supersonic Deltas (4 Triebwerke, lang + schmal) → a340
-  concorde:   'a340',
-  tu144:      'a340',
-  // Historische Props/Trimotoren → narrowbody Platzhalter
-  dc3:        'a320',
-  ju52:       'a320',
-  fordtrimotor: 'a320',
-  constellation: 'a340',
-  // Business Jets → a320 (kleinster verfügbarer Narrowbody)
-  g650:       'a320',
-  global7500: 'a320',
-  falcon7x:   'a320',
-  citation:   'a320',
-  hondajet:   'a320',
-  // Turboprop Regional/Single → a320 Platzhalter
-  atr72:      'a320',
-  dash8:      'a320',
-  do328:      'a320',
-  pc12:       'a320',
 };
 
 export function loadAircraftModel(type) {

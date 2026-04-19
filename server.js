@@ -100,55 +100,6 @@ const AIRCRAFT_PHYSICS = {
   b727:  { mass: 86000,  wingArea: 157.9, liftCoeff: 1.4,  dragCoeff: 0.029, thrustMax: 213000,  stallSpeed: 56,  pitchRate: 1.3, rollRate: 1.7, yawRate: 0.8 },
   b767:  { mass: 155000, wingArea: 283.3, liftCoeff: 1.5,  dragCoeff: 0.027, thrustMax: 560000,  stallSpeed: 56,  pitchRate: 1.3, rollRate: 1.6, yawRate: 0.7 },
 
-  // --- DOUGLAS / MD ---
-  dc3:   { mass: 8000,   wingArea: 91.7,  liftCoeff: 1.5,  dragCoeff: 0.035, thrustMax: 17600,   stallSpeed: 30,  pitchRate: 1.4, rollRate: 1.5, yawRate: 0.8 },
-  dc8:   { mass: 135000, wingArea: 271,   liftCoeff: 1.4,  dragCoeff: 0.029, thrustMax: 320000,  stallSpeed: 58,  pitchRate: 1.2, rollRate: 1.4, yawRate: 0.7 },
-  dc9:   { mass: 48000,  wingArea: 93,    liftCoeff: 1.4,  dragCoeff: 0.030, thrustMax: 160000,  stallSpeed: 52,  pitchRate: 1.5, rollRate: 2.0, yawRate: 0.9 },
-  dc10:  { mass: 195000, wingArea: 367.7, liftCoeff: 1.55, dragCoeff: 0.027, thrustMax: 700000,  stallSpeed: 58,  pitchRate: 1.1, rollRate: 1.3, yawRate: 0.6 },
-  md80:  { mass: 58000,  wingArea: 112.3, liftCoeff: 1.4,  dragCoeff: 0.029, thrustMax: 182000,  stallSpeed: 54,  pitchRate: 1.4, rollRate: 1.8, yawRate: 0.8 },
-  md11:  { mass: 210000, wingArea: 338.9, liftCoeff: 1.55, dragCoeff: 0.026, thrustMax: 807000,  stallSpeed: 58,  pitchRate: 1.1, rollRate: 1.3, yawRate: 0.6 },
-
-  // --- RUSSISCHE ---
-  tu154: { mass: 82000,  wingArea: 202,   liftCoeff: 1.4,  dragCoeff: 0.030, thrustMax: 310000,  stallSpeed: 56,  pitchRate: 1.3, rollRate: 1.6, yawRate: 0.8 },
-  il62:  { mass: 105000, wingArea: 282,   liftCoeff: 1.4,  dragCoeff: 0.029, thrustMax: 460000,  stallSpeed: 55,  pitchRate: 1.2, rollRate: 1.5, yawRate: 0.7 },
-
-  // --- EARLY JETS ---
-  comet: { mass: 50000,  wingArea: 187,   liftCoeff: 1.3,  dragCoeff: 0.032, thrustMax: 188000,  stallSpeed: 52,  pitchRate: 1.2, rollRate: 1.5, yawRate: 0.7 },
-  caravelle: { mass: 32000, wingArea: 146.7, liftCoeff: 1.35, dragCoeff: 0.031, thrustMax: 115000, stallSpeed: 50, pitchRate: 1.5, rollRate: 1.9, yawRate: 0.9 },
-
-  // --- SUPERSONIC ---
-  concorde: { mass: 111000, wingArea: 358.25, liftCoeff: 0.6, dragCoeff: 0.035, thrustMax: 676000, stallSpeed: 80, pitchRate: 1.0, rollRate: 1.3, yawRate: 0.5 },
-  tu144:    { mass: 120000, wingArea: 438,    liftCoeff: 0.6, dragCoeff: 0.036, thrustMax: 784000, stallSpeed: 82, pitchRate: 1.0, rollRate: 1.3, yawRate: 0.5 },
-
-  // --- REGIONAL ---
-  e190:    { mass: 28000, wingArea: 92.5, liftCoeff: 1.4, dragCoeff: 0.029, thrustMax: 126000, stallSpeed: 48, pitchRate: 1.7, rollRate: 2.2, yawRate: 0.9 },
-  crj900:  { mass: 22000, wingArea: 70.6, liftCoeff: 1.4, dragCoeff: 0.030, thrustMax: 80000,  stallSpeed: 48, pitchRate: 1.7, rollRate: 2.3, yawRate: 0.9 },
-  bae146:  { mass: 26000, wingArea: 77.3, liftCoeff: 1.5, dragCoeff: 0.031, thrustMax: 122400, stallSpeed: 45, pitchRate: 1.6, rollRate: 2.0, yawRate: 0.8 },
-  fokker100: { mass: 24400, wingArea: 93.5, liftCoeff: 1.4, dragCoeff: 0.031, thrustMax: 122000, stallSpeed: 48, pitchRate: 1.6, rollRate: 2.1, yawRate: 0.9 },
-
-  // --- MODERNE NEUE ---
-  c919:    { mass: 42100, wingArea: 129.5, liftCoeff: 1.4, dragCoeff: 0.028, thrustMax: 260000, stallSpeed: 52, pitchRate: 1.5, rollRate: 2.0, yawRate: 0.8 },
-  ssj100:  { mass: 24250, wingArea: 77,    liftCoeff: 1.4, dragCoeff: 0.030, thrustMax: 142000, stallSpeed: 48, pitchRate: 1.7, rollRate: 2.2, yawRate: 0.9 },
-  mc21:    { mass: 41000, wingArea: 134.9, liftCoeff: 1.45, dragCoeff: 0.026, thrustMax: 275000, stallSpeed: 52, pitchRate: 1.5, rollRate: 2.0, yawRate: 0.8 },
-
-  // --- HISTORISCHE PROPS ---
-  ju52:         { mass: 5970,  wingArea: 110.5, liftCoeff: 1.55, dragCoeff: 0.040, thrustMax: 14000, stallSpeed: 25, pitchRate: 1.2, rollRate: 1.3, yawRate: 0.7 },
-  fordtrimotor: { mass: 3400,  wingArea: 77.6,  liftCoeff: 1.5,  dragCoeff: 0.042, thrustMax: 9500,  stallSpeed: 22, pitchRate: 1.2, rollRate: 1.3, yawRate: 0.7 },
-  constellation:{ mass: 39000, wingArea: 153.3, liftCoeff: 1.5,  dragCoeff: 0.034, thrustMax: 68000, stallSpeed: 42, pitchRate: 1.3, rollRate: 1.5, yawRate: 0.7 },
-
-  // --- BUSINESS JETS ---
-  g650:        { mass: 21000, wingArea: 119, liftCoeff: 1.4, dragCoeff: 0.024, thrustMax: 147000, stallSpeed: 48, pitchRate: 1.9, rollRate: 2.6, yawRate: 1.0 },
-  global7500:  { mass: 22500, wingArea: 131, liftCoeff: 1.4, dragCoeff: 0.024, thrustMax: 165000, stallSpeed: 48, pitchRate: 1.9, rollRate: 2.5, yawRate: 1.0 },
-  falcon7x:    { mass: 15000, wingArea: 70,  liftCoeff: 1.4, dragCoeff: 0.025, thrustMax: 101000, stallSpeed: 48, pitchRate: 2.0, rollRate: 2.7, yawRate: 1.0 },
-  citation:    { mass: 5400,  wingArea: 33,  liftCoeff: 1.35, dragCoeff: 0.028, thrustMax: 31000, stallSpeed: 46, pitchRate: 2.2, rollRate: 3.0, yawRate: 1.1 },
-  hondajet:    { mass: 4800,  wingArea: 17.4, liftCoeff: 1.35, dragCoeff: 0.026, thrustMax: 17200, stallSpeed: 46, pitchRate: 2.3, rollRate: 3.1, yawRate: 1.1 },
-
-  // --- TURBOPROP REGIONAL ---
-  atr72:  { mass: 13500, wingArea: 61,   liftCoeff: 1.5, dragCoeff: 0.035, thrustMax: 18600, stallSpeed: 40, pitchRate: 1.7, rollRate: 2.0, yawRate: 0.9 },
-  dash8:  { mass: 17200, wingArea: 63.1, liftCoeff: 1.5, dragCoeff: 0.035, thrustMax: 34000, stallSpeed: 42, pitchRate: 1.7, rollRate: 2.0, yawRate: 0.9 },
-  do328:  { mass: 8400,  wingArea: 40,   liftCoeff: 1.5, dragCoeff: 0.036, thrustMax: 15600, stallSpeed: 38, pitchRate: 1.8, rollRate: 2.2, yawRate: 1.0 },
-
-  pc12:     { mass: 2700, wingArea: 25.8, liftCoeff: 1.5,  dragCoeff: 0.034, thrustMax: 7800, stallSpeed: 32, pitchRate: 2.0, rollRate: 2.3, yawRate: 1.1 },
 };
 const DEFAULT_PHYSICS = AIRCRAFT_PHYSICS.a320;
 
