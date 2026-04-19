@@ -437,6 +437,84 @@ export const AIRLINES = {
 };
 
 // ============================================================
+// LIVERY-DEFAULTS & Sonderfälle
+// ============================================================
+// Livery-Schema: { color1, color2, belly, engine, cheatline, cheatlineY,
+//                  titles, tailStyle, tailExtra }
+//   tailStyle: 'solid'|'stripe'|'split'|'sweep'|'tricolor'|'eurowhite'
+//   cheatlineY: 0..1 — Höhe relativ zum Rumpf (0=Mitte, 1=oben)
+// Fehlt ein Feld, werden sinnvolle Defaults aus color1/color2 berechnet.
+
+const LIVERY_OVERRIDES = {
+  // Europa — markante Airlines
+  lufthansa:  { tailStyle: 'solid',   engine: '#05164d', titles: '#05164d', cheatline: '#ffc72c' },
+  eurowings:  { belly: '#a5027d',     engine: '#a5027d', titles: '#ffffff', cheatline: '#ffffff' },
+  condor:     { tailStyle: 'stripe',  belly: '#ffcc00', engine: '#1a1a1a' },
+  swiss:      { tailStyle: 'solid',   engine: '#d81e05', titles: '#d81e05' },
+  british:    { tailStyle: 'sweep',   cheatline: '#eb2226', titles: '#1b3d6f' },
+  airfrance:  { tailStyle: 'tricolor', cheatline: '#e4002b', titles: '#002157' },
+  klm:        { belly: '#00a1de',     engine: '#00a1de', titles: '#00a1de' },
+  iberia:     { tailStyle: 'sweep',   titles: '#d81e05' },
+  norwegian:  { tailStyle: 'solid',   titles: '#d81939' },
+  ryanair:    { tailStyle: 'solid',   cheatline: '#f1c933', engine: '#ffffff' },
+  easyjet:    { belly: '#ff6600',     engine: '#ff6600', tailStyle: 'solid', titles: '#ffffff' },
+  turkishair: { tailStyle: 'solid',   cheatline: '#c8102e' },
+  aeroflot:   { tailStyle: 'sweep',   cheatline: '#e31e24' },
+  // Nordamerika
+  united:     { tailStyle: 'solid',   engine: '#0066b2', cheatline: '#0066b2' },
+  delta:      { tailStyle: 'sweep',   cheatline: '#c8102e' },
+  american:   { belly: '#b2b2b2',    tailStyle: 'tricolor', engine: '#0078d2' },
+  southwest:  { tailStyle: 'tricolor', belly: '#ffbf27', engine: '#304cb2' },
+  jetblue:    { tailStyle: 'stripe',  engine: '#003876' },
+  alaska:     { tailStyle: 'solid',   engine: '#01426a' },
+  aircanada:  { tailStyle: 'solid',   engine: '#f01428' },
+  // Asien
+  emirates:   { tailStyle: 'solid',   engine: '#d71921', cheatline: '#d71921' },
+  qatar:      { tailStyle: 'sweep',   cheatline: '#5c0632', engine: '#5c0632' },
+  etihad:     { tailStyle: 'sweep',   cheatline: '#bd8b13' },
+  singapore:  { belly: '#f5c518',     tailStyle: 'split', engine: '#1a3668' },
+  cathay:     { tailStyle: 'sweep',   cheatline: '#006564', engine: '#006564' },
+  ana:        { tailStyle: 'solid',   cheatline: '#0078c8', engine: '#003399' },
+  jal:        { tailStyle: 'solid',   cheatline: '#c8102e' },
+  korean:     { belly: '#b5b5b5',    tailStyle: 'solid', engine: '#005baa' },
+  thai:       { tailStyle: 'sweep',   cheatline: '#e31d93' },
+  airchina:   { tailStyle: 'solid',   cheatline: '#ffd700' },
+  chinaeastern:{tailStyle: 'sweep',   cheatline: '#ed1c24' },
+  chinasouthern:{tailStyle: 'solid',  cheatline: '#e31d1a' },
+  // Ozeanien/Süd/Afrika
+  qantas:     { tailStyle: 'solid',   engine: '#e31837' },
+  airnz:      { tailStyle: 'solid',   cheatline: '#ffffff', engine: '#1c1c1c' },
+  latam:      { tailStyle: 'sweep',   cheatline: '#e4002b' },
+  ethiopian:  { tailStyle: 'tricolor',cheatline: '#ffcc00' },
+};
+
+export function getLivery(airlineId) {
+  const al = AIRLINES[airlineId];
+  if (!al) {
+    return {
+      color1: '#05164d', color2: '#ffc72c',
+      belly: '#eaeaec', engine: '#f2f2f4', cheatline: '#05164d',
+      cheatlineY: 0.02, titles: '#05164d', tailStyle: 'solid',
+      iata: 'LH', airlineName: '',
+    };
+  }
+  const ov = LIVERY_OVERRIDES[airlineId] || {};
+  return {
+    color1:      al.color1,
+    color2:      al.color2,
+    belly:       ov.belly       || '#eaeaec',
+    engine:      ov.engine      || '#f2f2f4',
+    cheatline:   ov.cheatline   || al.color1,
+    cheatlineY:  ov.cheatlineY  ?? 0.02,
+    titles:      ov.titles      || al.color1,
+    tailStyle:   ov.tailStyle   || 'solid',
+    tailExtra:   ov.tailExtra   || al.color2,
+    iata:        al.iata,
+    airlineName: al.name,
+  };
+}
+
+// ============================================================
 // Hilfsfunktionen
 // ============================================================
 

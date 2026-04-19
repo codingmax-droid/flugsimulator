@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+import { AIRCRAFT_TYPES } from './airlines.js';
 
 // ============================================================
 // FLUGZEUG-GEOMETRIE-PARAMETER PRO TYP
@@ -114,28 +115,88 @@ const CONFIGS = {
 // ============================================================
 // MATERIAL-FACTORY (PBR wie GLB-Modelle)
 // ============================================================
-function buildMats(color1, color2) {
-  return {
-    white: new THREE.MeshStandardMaterial({ color: 0xf5f6f8, metalness: 0.55, roughness: 0.32, envMapIntensity: 1.3 }),
-    tailMat: new THREE.MeshStandardMaterial({ color: new THREE.Color(color1), metalness: 0.45, roughness: 0.35, envMapIntensity: 1.2 }),
-    accentMat: new THREE.MeshStandardMaterial({ color: new THREE.Color(color2), metalness: 0.4, roughness: 0.4, envMapIntensity: 1.1 }),
-    chrome: new THREE.MeshStandardMaterial({ color: 0xc8ccd0, metalness: 0.98, roughness: 0.18, envMapIntensity: 1.6 }),
-    dark: new THREE.MeshStandardMaterial({ color: 0x15181b, metalness: 0.7, roughness: 0.55, envMapIntensity: 0.9 }),
-    rubber: new THREE.MeshStandardMaterial({ color: 0x0a0a0c, metalness: 0.0, roughness: 0.95 }),
-    glass: new THREE.MeshStandardMaterial({ color: 0x0a1626, metalness: 0.92, roughness: 0.08, envMapIntensity: 1.8, transparent: true, opacity: 0.78 }),
-    cockpit: new THREE.MeshStandardMaterial({ color: 0x06101c, metalness: 0.95, roughness: 0.05, envMapIntensity: 2.2, transparent: true, opacity: 0.7 }),
-    corrugated: new THREE.MeshStandardMaterial({ color: 0x9ea2a8, metalness: 0.75, roughness: 0.45 }),
-    fabric: new THREE.MeshStandardMaterial({ color: 0xd4cda8, metalness: 0.05, roughness: 0.85 }),
+function buildMats(livery) {
+  // Livery kann ein Objekt {color1,color2,belly,engine,cheatline,titles,...}
+  // oder (Backwards-Compat) nur zwei CSS-Strings sein.
+  const L = typeof livery === 'object' ? livery : {
+    color1: livery || '#05164d', color2: arguments[1] || '#ffc72c',
+    belly: '#eaeaec', engine: '#f2f2f4', cheatline: livery || '#05164d',
+    titles: livery || '#05164d', tailStyle: 'solid',
   };
+  return {
+    L,
+    white:      new THREE.MeshStandardMaterial({ color: 0xf5f6f8, metalness: 0.55, roughness: 0.32, envMapIntensity: 1.3 }),
+    tailMat:    new THREE.MeshStandardMaterial({ color: new THREE.Color(L.color1), metalness: 0.45, roughness: 0.35, envMapIntensity: 1.2 }),
+    tailExtra:  new THREE.MeshStandardMaterial({ color: new THREE.Color(L.tailExtra || L.color2), metalness: 0.45, roughness: 0.35, envMapIntensity: 1.2 }),
+    accentMat:  new THREE.MeshStandardMaterial({ color: new THREE.Color(L.color2), metalness: 0.4, roughness: 0.4, envMapIntensity: 1.1 }),
+    bellyMat:   new THREE.MeshStandardMaterial({ color: new THREE.Color(L.belly || '#eaeaec'), metalness: 0.55, roughness: 0.35, envMapIntensity: 1.2 }),
+    engineMat:  new THREE.MeshStandardMaterial({ color: new THREE.Color(L.engine || '#f2f2f4'), metalness: 0.7, roughness: 0.25, envMapIntensity: 1.4 }),
+    cheatMat:   new THREE.MeshStandardMaterial({ color: new THREE.Color(L.cheatline || L.color1), metalness: 0.4, roughness: 0.45, envMapIntensity: 1.0 }),
+    titlesMat:  new THREE.MeshStandardMaterial({ color: new THREE.Color(L.titles || L.color1), metalness: 0.3, roughness: 0.5, envMapIntensity: 0.8 }),
+    chrome:     new THREE.MeshStandardMaterial({ color: 0xc8ccd0, metalness: 0.98, roughness: 0.18, envMapIntensity: 1.6 }),
+    dark:       new THREE.MeshStandardMaterial({ color: 0x15181b, metalness: 0.7, roughness: 0.55, envMapIntensity: 0.9 }),
+    rubber:     new THREE.MeshStandardMaterial({ color: 0x0a0a0c, metalness: 0.0, roughness: 0.95 }),
+    glass:      new THREE.MeshStandardMaterial({ color: 0x0a1626, metalness: 0.92, roughness: 0.08, envMapIntensity: 1.8, transparent: true, opacity: 0.78 }),
+    cockpit:    new THREE.MeshStandardMaterial({ color: 0x06101c, metalness: 0.95, roughness: 0.05, envMapIntensity: 2.2, transparent: true, opacity: 0.7 }),
+    corrugated: new THREE.MeshStandardMaterial({ color: 0x9ea2a8, metalness: 0.75, roughness: 0.45 }),
+    fabric:     new THREE.MeshStandardMaterial({ color: 0xd4cda8, metalness: 0.05, roughness: 0.85 }),
+  };
+}
+
+// IATA-Titel als Canvas-Textur (Sprite auf Rumpf)
+function createTitleSprite(text, colorHex, bodyR) {
+  if (!text) return null;
+  const canvas = document.createElement('canvas');
+  canvas.width = 512; canvas.height = 128;
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0, 0, 512, 128);
+  ctx.fillStyle = colorHex || '#05164d';
+  ctx.font = 'bold 96px "Helvetica Neue", Arial, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(text, 256, 72);
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.anisotropy = 4;
+  const mat = new THREE.MeshBasicMaterial({ map: tex, transparent: true, side: THREE.DoubleSide });
+  const geo = new THREE.PlaneGeometry(bodyR * 3.2, bodyR * 0.8);
+  const m = new THREE.Mesh(geo, mat);
+  m.userData.isTitle = true;
+  return m;
 }
 
 // ============================================================
 // HAUPT-DISPATCHER
 // ============================================================
 
-export function buildAircraft(type = 'a320', color1 = '#ffffff', color2 = '#cc0000') {
+// Echte Welt-Länge pro Typ aus AIRCRAFT_TYPES; fällt auf CONFIGS.body.len zurück.
+export function getRealLength(type) {
+  const t = AIRCRAFT_TYPES[type];
+  if (t && t.length) return t.length;
+  const C = CONFIGS[type];
+  return C ? C.body.len : 12;
+}
+
+// Skalierungsfaktor, der ein CONFIG-basiertes Mesh auf echte Meter bringt.
+function getRealScale(type) {
   const C = CONFIGS[type] || CONFIGS.a320;
-  const M = buildMats(color1, color2);
+  const configLen = C.body?.len || C.wing?.rootChord || 12;
+  const realLen = getRealLength(type);
+  return realLen / configLen;
+}
+
+export function buildAircraft(type = 'a320', liveryOrColor1 = '#ffffff', color2 = '#cc0000') {
+  const C = CONFIGS[type] || CONFIGS.a320;
+  // Backwards-Compat: Strings akzeptieren, Objekte bevorzugen
+  const livery = (typeof liveryOrColor1 === 'object' && liveryOrColor1)
+    ? liveryOrColor1
+    : {
+        color1: liveryOrColor1, color2,
+        belly: '#eaeaec', engine: '#f2f2f4',
+        cheatline: liveryOrColor1, titles: liveryOrColor1,
+        tailStyle: 'solid',
+      };
+  const M = buildMats(livery);
   const arch = C.archetype || 'airliner';
   let inner;
   switch (arch) {
@@ -162,6 +223,12 @@ export function buildAircraft(type = 'a320', color1 = '#ffffff', color2 = '#cc00
   inner.rotation.y = -Math.PI / 2;
   const wrapper = new THREE.Group();
   wrapper.add(inner);
+  const realScale = getRealScale(type);
+  wrapper.scale.setScalar(realScale);
+  wrapper.userData.realLength = getRealLength(type);
+  // Boden-Offset: wie weit das Flugzeug unterhalb seiner Origin reicht (Räder)
+  const box = new THREE.Box3().setFromObject(wrapper);
+  wrapper.userData.groundOffset = Math.max(0, -box.min.y);
   return wrapper;
 }
 
@@ -1030,6 +1097,16 @@ function addFuselage(group, C, M) {
   bodyMesh.receiveShadow = true;
   group.add(bodyMesh);
 
+  // Belly: untere Hälfte in Livery-Farbe (leicht nach innen gesetzt, damit keine Z-Fighting)
+  const bellyGeo = new THREE.LatheGeometry(pts, 36, 0, Math.PI);
+  bellyGeo.rotateZ(-Math.PI / 2);
+  bellyGeo.rotateX(Math.PI);
+  const belly = new THREE.Mesh(bellyGeo, M.bellyMat);
+  belly.scale.setScalar(0.998);
+  belly.castShadow = true;
+  belly.receiveShadow = true;
+  group.add(belly);
+
   // Zurück-Kompatibilität für alten Code (nicht mehr benutzt, aber z. B. Buckel)
   if (B.hump) {
     const humpLen = B.len * 0.45;
@@ -1052,6 +1129,35 @@ function addFuselage(group, C, M) {
     const dd = new THREE.Mesh(ddGeo, M.white);
     dd.position.y = B.r * 0.15;
     group.add(dd);
+  }
+
+  // Weißes Heck-Positionslicht
+  const tailLightMat = new THREE.MeshStandardMaterial({
+    color: 0xffffff, emissive: 0xffffff, emissiveIntensity: 0.9,
+    metalness: 0.1, roughness: 0.3,
+  });
+  const tailLight = new THREE.Mesh(new THREE.SphereGeometry(0.05, 8, 6), tailLightMat);
+  tailLight.position.set(-halfLen - tailL * 0.95, 0, 0);
+  group.add(tailLight);
+
+  // Anti-Collision-Beacon (rot, Rücken + Bauch mittig)
+  const beaconMat = new THREE.MeshStandardMaterial({
+    color: 0xff1010, emissive: 0xff2020, emissiveIntensity: 1.0,
+    metalness: 0.1, roughness: 0.4,
+  });
+  const beaconTop = new THREE.Mesh(new THREE.SphereGeometry(0.07, 8, 6), beaconMat);
+  beaconTop.position.set(halfLen * 0.1, B.r * 1.02, 0);
+  group.add(beaconTop);
+  const beaconBot = new THREE.Mesh(new THREE.SphereGeometry(0.07, 8, 6), beaconMat);
+  beaconBot.position.set(halfLen * 0.1, -B.r * 1.02, 0);
+  group.add(beaconBot);
+
+  // Pitot-Tubes seitlich an der Nase
+  for (const side of [0.9, -0.9]) {
+    const pitot = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.02, 0.3, 6), M.chrome);
+    pitot.rotation.z = Math.PI / 2;
+    pitot.position.set(halfLen + noseL * 0.55, -B.r * 0.05, side * B.r * 0.6);
+    group.add(pitot);
   }
 }
 
@@ -1111,16 +1217,16 @@ function addPassengerWindows(group, C, M) {
       }
     }
   }
-  // Zierstreifen der Airline (unterhalb der Fenster)
-  const stripeGeo = new THREE.TorusGeometry(B.r * 1.002, 0.025, 6, 36);
-  stripeGeo.rotateY(Math.PI / 2);
-  const stripe = new THREE.Mesh(stripeGeo, M.accentMat);
-  stripe.position.x = 0;
-  stripe.scale.set(B.len * 0.85 / (B.r * 2), 1, 1);
-  // Statt skaliertem Torus einfach zwei flache Streifenlinien
-  const s = new THREE.Mesh(new THREE.BoxGeometry(B.len * 0.82, 0.04, B.r * 2.02), M.accentMat);
-  s.position.y = B.r * 0.1;
-  group.add(s);
+  // Cheatline: zwei flache Streifen unter der Fensterreihe (Livery-Farbe)
+  const cheatY = B.r * (M.L.cheatlineY ?? 0.02) + B.r * 0.08;
+  const cheat = new THREE.Mesh(new THREE.BoxGeometry(B.len * 0.82, 0.05, B.r * 2.02), M.cheatMat);
+  cheat.position.y = cheatY;
+  group.add(cheat);
+  // Belly-Kante (dünner dunkler Trennstrich unten, damit Belly visuell abgesetzt wirkt)
+  const bellyLine = new THREE.Mesh(new THREE.BoxGeometry(B.len * 0.86, 0.03, B.r * 2.005), M.dark);
+  bellyLine.position.y = -B.r * 0.1;
+  group.add(bellyLine);
+
   // Türen (markante dunkle Rechtecke)
   const doorPositions = [halfLen * 0.4, -halfLen * 0.1, -halfLen * 0.5];
   for (const dx of doorPositions) {
@@ -1130,6 +1236,17 @@ function addPassengerWindows(group, C, M) {
       door.position.set(dx, B.r * 0.35, side * B.r * 1.002);
       door.rotation.y = side > 0 ? Math.PI / 2 : -Math.PI / 2;
       group.add(door);
+    }
+  }
+
+  // IATA-Titles (Airline-Code) vorne am Rumpf, beidseitig
+  if (M.L.iata) {
+    for (const side of [1, -1]) {
+      const t = createTitleSprite(M.L.iata, M.L.titles, B.r);
+      if (!t) continue;
+      t.position.set(halfLen * 0.35, B.r * 0.55, side * B.r * 1.003);
+      t.rotation.y = side > 0 ? Math.PI / 2 : -Math.PI / 2;
+      group.add(t);
     }
   }
 }
@@ -1153,6 +1270,23 @@ function addWings(group, W, wingletType, M, wingMat) {
     wMesh.position.set(W.pos, W.y, 0);
     if (side === -1) wMesh.scale.z = -1;
     group.add(wMesh);
+    // Nav-Leuchte an der Flügelspitze (rot links, grün rechts)
+    const navColor = side > 0 ? 0x00ff55 : 0xff2020;
+    const navMat = new THREE.MeshStandardMaterial({
+      color: navColor, emissive: navColor, emissiveIntensity: 1.4,
+      metalness: 0.1, roughness: 0.4,
+    });
+    const navLight = new THREE.Mesh(new THREE.SphereGeometry(0.06, 8, 6), navMat);
+    navLight.position.set(W.pos + W.sweep * 0.95, W.y + 0.05, side * (W.span / 2 - 0.05));
+    group.add(navLight);
+    // Weißer Strobe als kleine Scheibe daneben
+    const strobeMat = new THREE.MeshStandardMaterial({
+      color: 0xffffff, emissive: 0xffffff, emissiveIntensity: 0.7,
+      metalness: 0.1, roughness: 0.3,
+    });
+    const strobe = new THREE.Mesh(new THREE.SphereGeometry(0.05, 8, 6), strobeMat);
+    strobe.position.set(W.pos + W.sweep * 0.9, W.y + 0.04, side * (W.span / 2 - 0.15));
+    group.add(strobe);
     if (wingletType === 'fence') {
       const wl = new THREE.Mesh(new THREE.BoxGeometry(W.tip * 0.7, W.span * 0.04, 0.04), mat);
       wl.position.set(W.pos + W.sweep, W.y + W.span * 0.02, side * W.span / 2);
@@ -1212,7 +1346,7 @@ function addJetEngine(group, ex, ey, ez, E, W, M, opts = {}) {
   np(-L * 0.5 + 0.03, E.r * 0.65);
   const nacGeo = new THREE.LatheGeometry(nacPts, 28);
   nacGeo.rotateZ(-Math.PI / 2);
-  const nacelle = new THREE.Mesh(nacGeo, M.chrome);
+  const nacelle = new THREE.Mesh(nacGeo, M.engineMat);
   nacelle.castShadow = true;
   eg.add(nacelle);
   // Dunkler Einlauf-Innenring
@@ -1360,6 +1494,49 @@ function addPropellerEngine(group, x, y, z, E, M, opts = {}) {
 // LEITWERKE
 // ============================================================
 
+function buildTailFin(T, M) {
+  // Seitenleitwerk nach Livery.tailStyle; liefert Group mit Finnen
+  const g = new THREE.Group();
+  const style = (M.L?.tailStyle) || 'solid';
+  const base = new THREE.Mesh(createFinGeo(T.vH, T.vChord), M.tailMat);
+  g.add(base);
+  if (style === 'stripe') {
+    // Horizontaler Streifen auf halber Höhe
+    const s = new THREE.Mesh(new THREE.BoxGeometry(T.vChord * 0.9, T.vH * 0.22, 0.08), M.tailExtra);
+    s.position.set(-T.vChord * 0.45, T.vH * 0.45, 0);
+    g.add(s);
+  } else if (style === 'split') {
+    // Oben Livery-Primary, unten Tail-Extra/Secondary
+    const bot = new THREE.Mesh(createFinGeo(T.vH * 0.5, T.vChord), M.tailExtra);
+    g.add(bot);
+  } else if (style === 'sweep') {
+    // Diagonal-Sweep: Dreieck aus Secondary über Finne
+    const tri = new THREE.Shape();
+    tri.moveTo(0, 0); tri.lineTo(-T.vChord, 0); tri.lineTo(-T.vChord * 0.35, T.vH);
+    const sw = new THREE.Mesh(new THREE.ExtrudeGeometry(tri, { depth: 0.07, bevelEnabled: false }), M.tailExtra);
+    sw.position.z = -0.035;
+    sw.scale.set(0.95, 0.55, 1);  // nur unterer Teil
+    g.add(sw);
+  } else if (style === 'tricolor') {
+    // Drei horizontale Bänder
+    for (let i = 0; i < 3; i++) {
+      const band = new THREE.Mesh(
+        new THREE.BoxGeometry(T.vChord * 0.85, T.vH * 0.22, 0.07),
+        [M.tailMat, M.tailExtra, M.accentMat][i % 3]
+      );
+      band.position.set(-T.vChord * 0.4, T.vH * (0.18 + i * 0.28), 0);
+      g.add(band);
+    }
+  } else if (style === 'eurowhite') {
+    // Weiße Finne mit Logo-Fleck (Primary)
+    base.material = M.white;
+    const logo = new THREE.Mesh(new THREE.CircleGeometry(T.vH * 0.18, 16), M.tailMat);
+    logo.position.set(-T.vChord * 0.5, T.vH * 0.55, 0.05);
+    g.add(logo);
+  }
+  return g;
+}
+
 function addConventionalTail(group, C, M) {
   const B = C.body;
   const T = C.tail;
@@ -1370,9 +1547,9 @@ function addConventionalTail(group, C, M) {
     if (side === -1) hs.scale.z = -1;
     group.add(hs);
   }
-  const vf = new THREE.Mesh(createFinGeo(T.vH, T.vChord), M.tailMat);
-  vf.position.set(tailX, B.r, 0);
-  group.add(vf);
+  const fin = buildTailFin(T, M);
+  fin.position.set(tailX, B.r, 0);
+  group.add(fin);
   const fa = new THREE.Mesh(new THREE.BoxGeometry(T.vChord * 0.3, T.vH * 0.25, 0.06), M.accentMat);
   fa.position.set(tailX - T.vChord * 0.15, B.r + T.vH * 0.55, 0);
   group.add(fa);
@@ -1383,10 +1560,10 @@ function addTail(group, C, M) {
   const T = C.tail;
   if (!T) return;
   const tailX = -B.len / 2 - B.len * 0.15;
-  // Seitenleitwerk
-  const vf = new THREE.Mesh(createFinGeo(T.vH, T.vChord), M.tailMat);
-  vf.position.set(tailX, B.r, 0);
-  group.add(vf);
+  // Seitenleitwerk (mit Livery-Style)
+  const fin = buildTailFin(T, M);
+  fin.position.set(tailX, B.r, 0);
+  group.add(fin);
   const fa = new THREE.Mesh(new THREE.BoxGeometry(T.vChord * 0.3, T.vH * 0.25, 0.06), M.accentMat);
   fa.position.set(tailX - T.vChord * 0.15, B.r + T.vH * 0.55, 0);
   group.add(fa);
@@ -1409,12 +1586,41 @@ function addAirlinerGear(group, C, M) {
   const B = C.body;
   const G = C.gear;
   if (!G) return;
+  // Bug-Fahrwerk: 2 Räder auf einer Achse
   addGearAssembly(group, G.noseX, -B.r - 0.2, 0, 0.14, 1.0, M.chrome, M.rubber);
-  addGearAssembly(group, G.mainX, -B.r - 0.2, G.mainZ, 0.2, 1.3, M.chrome, M.rubber);
-  addGearAssembly(group, G.mainX, -B.r - 0.2, -G.mainZ, 0.2, 1.3, M.chrome, M.rubber);
+  // Haupt-Fahrwerk: Bogie-Größe anhand der Flugzeuggröße
+  const mainAxleCount = B.len >= 20 ? 3 : (B.len >= 15 ? 2 : 1);  // 6/4/2 Räder
+  addMainBogie(group, G.mainX, -B.r - 0.2,  G.mainZ, mainAxleCount, M);
+  addMainBogie(group, G.mainX, -B.r - 0.2, -G.mainZ, mainAxleCount, M);
   if (G.extraBody) {
-    addGearAssembly(group, G.mainX + 1.5, -B.r - 0.2, G.mainZ * 0.4, 0.18, 1.2, M.chrome, M.rubber);
-    addGearAssembly(group, G.mainX + 1.5, -B.r - 0.2, -G.mainZ * 0.4, 0.18, 1.2, M.chrome, M.rubber);
+    // Zusätzliches Rumpf-Hauptfahrwerk (747/777/a380/dc10)
+    addMainBogie(group, G.mainX + 1.5, -B.r - 0.2,  G.mainZ * 0.4, mainAxleCount, M);
+    addMainBogie(group, G.mainX + 1.5, -B.r - 0.2, -G.mainZ * 0.4, mainAxleCount, M);
+  }
+}
+
+// Bogie: axleCount Achsen (2 Räder pro Achse) auf einem Träger
+function addMainBogie(group, x, y, z, axleCount, M) {
+  const strutH = 1.3;
+  const wheelR = 0.22;
+  const axleSpace = 0.6;
+  const strut = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, strutH, 8), M.chrome);
+  strut.position.set(x, y - strutH / 2, z);
+  group.add(strut);
+  // Quer-Träger
+  const bogieLen = Math.max(0.4, (axleCount - 1) * axleSpace + 0.4);
+  const beam = new THREE.Mesh(new THREE.BoxGeometry(bogieLen, 0.08, 0.15), M.dark);
+  beam.position.set(x, y - strutH, z);
+  group.add(beam);
+  for (let i = 0; i < axleCount; i++) {
+    const ax = x + (i - (axleCount - 1) / 2) * axleSpace;
+    for (const dz of [-0.2, 0.2]) {
+      const wGeo = new THREE.CylinderGeometry(wheelR, wheelR, 0.14, 16);
+      wGeo.rotateX(Math.PI / 2);
+      const w = new THREE.Mesh(wGeo, M.rubber);
+      w.position.set(ax, y - strutH, z + dz);
+      group.add(w);
+    }
   }
 }
 
@@ -1563,33 +1769,31 @@ function createFinGeo(height, chord) {
 // PUBLIC API
 // ============================================================
 
-export function createAircraftForType(type, color1, color2) {
-  return buildAircraft(type, color1, color2);
+export function createAircraftForType(type, liveryOrColor1, color2) {
+  return buildAircraft(type, liveryOrColor1, color2);
 }
 
-export function createProceduralAirplane(id) {
+export function createProceduralAirplane() {
   return buildAircraft('a320', '#05164d', '#ffc72c');
 }
 
 const _glbCache = new Map();
 const _loader = new GLTFLoader();
 
-const TARGET_LEN = {
-  a320: 12, a330: 20, a340: 22, a350: 20, a380: 24,
-  b737: 12, b747: 22, b757: 15, b777: 22, b787: 19,
-};
+// Typen mit vorhandenen GLB-Dateien unter /public/models/*.glb
+const GLB_AVAILABLE = new Set(['a320','a330','a340','a350','a380','b747','b757','b787']);
 
 const GLB_FALLBACK = {
-  b737: 'a320', b777: 'b787', b757: 'a320',
+  b737: 'a320', b777: 'b787',
 };
 
 export function loadAircraftModel(type) {
-  // Für neu hinzugefügte Archetypen gibt es keine GLB-Dateien → direkt prozedural
-  if (!TARGET_LEN[type]) return Promise.resolve(null);
+  if (!GLB_AVAILABLE.has(type) && !GLB_FALLBACK[type]) return Promise.resolve(null);
   if (_glbCache.has(type)) return _glbCache.get(type);
   const p = new Promise((resolve) => {
+    const srcType = GLB_AVAILABLE.has(type) ? type : GLB_FALLBACK[type];
     _loader.load(
-      `/models/${type}.glb`,
+      `/models/${srcType}.glb`,
       (gltf) => {
         const root = gltf.scene;
         const box = new THREE.Box3().setFromObject(root);
@@ -1597,12 +1801,16 @@ export function loadAircraftModel(type) {
         const center = new THREE.Vector3(); box.getCenter(center);
         const maxDim = Math.max(size.x, size.y, size.z);
         if (maxDim === 0) { resolve(null); return; }
-        const target = TARGET_LEN[type] || 15;
+        const target = getRealLength(type);
         const s = target / maxDim;
         const wrap = new THREE.Group();
         root.position.sub(center).multiplyScalar(s);
         root.scale.setScalar(s);
         wrap.add(root);
+        wrap.userData.realLength = target;
+        // Boden-Offset nach Skalierung ermitteln
+        const scaledBox = new THREE.Box3().setFromObject(wrap);
+        wrap.userData.groundOffset = Math.max(0, -scaledBox.min.y);
         wrap.traverse((o) => {
           if (!o.isMesh) return;
           o.castShadow = true; o.receiveShadow = true;
@@ -1616,13 +1824,7 @@ export function loadAircraftModel(type) {
         resolve(wrap);
       },
       undefined,
-      async () => {
-        const alt = GLB_FALLBACK[type];
-        if (alt) {
-          const fallback = await loadAircraftModel(alt);
-          resolve(fallback ? fallback.clone(true) : null);
-        } else resolve(null);
-      },
+      () => resolve(null),
     );
   });
   _glbCache.set(type, p);
@@ -1643,7 +1845,7 @@ export class AircraftPreview {
     this.container = container;
     this.scene = new THREE.Scene();
     this.scene.background = new THREE.Color(0x0d1524);
-    this.camera = new THREE.PerspectiveCamera(30, 2, 0.1, 300);
+    this.camera = new THREE.PerspectiveCamera(30, 2, 0.1, 2000);
     this.camera.position.set(20, 10, 20);
     this.camera.lookAt(0, 0, 0);
     this.renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -1662,7 +1864,7 @@ export class AircraftPreview {
     const rim = new THREE.DirectionalLight(0x4a9eff, 0.4);
     rim.position.set(-15, 5, -10);
     this.scene.add(rim);
-    const ground = new THREE.Mesh(new THREE.PlaneGeometry(80, 80), new THREE.MeshLambertMaterial({ color: 0x151e2d }));
+    const ground = new THREE.Mesh(new THREE.PlaneGeometry(500, 500), new THREE.MeshLambertMaterial({ color: 0x151e2d }));
     ground.rotation.x = -Math.PI / 2;
     ground.position.y = -3;
     this.scene.add(ground);
@@ -1678,16 +1880,18 @@ export class AircraftPreview {
     this.camera.updateProjectionMatrix();
     this.renderer.setSize(w, h);
   }
-  setAircraft(type, color1, color2) {
+  setAircraft(type, liveryOrColor1, color2) {
     if (this.model) this.scene.remove(this.model);
-    this.model = buildAircraft(type, color1, color2);
+    this.model = buildAircraft(type, liveryOrColor1, color2);
     this.scene.add(this.model);
+    this._realLen = this.model.userData.realLength || 12;
     this.resize();
     const reqType = type;
     createGLBInstance(type).then((glb) => {
       if (!glb || this._lastType !== reqType) return;
       this.scene.remove(this.model);
       this.model = glb;
+      this._realLen = glb.userData.realLength || this._realLen;
       this.scene.add(this.model);
     });
     this._lastType = type;
@@ -1702,13 +1906,15 @@ export class AircraftPreview {
         }
       });
     }
-    const dist = 25;
+    // Kamera-Abstand passt sich automatisch an echte Flugzeuglänge an
+    const len = this._realLen || 12;
+    const dist = Math.max(18, len * 1.6);
     this.camera.position.set(
       Math.sin(this.angle * 0.4) * dist,
-      7 + Math.sin(this.angle * 0.25) * 2,
+      Math.max(5, len * 0.35) + Math.sin(this.angle * 0.25) * len * 0.08,
       Math.cos(this.angle * 0.4) * dist
     );
-    this.camera.lookAt(0, 0, 0);
+    this.camera.lookAt(0, len * 0.05, 0);
     this.renderer.render(this.scene, this.camera);
   }
 }

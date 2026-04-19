@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { TerrainManager } from './terrain.js';
 import { createAircraftForType, createProceduralAirplane, AircraftPreview, createGLBInstance } from './airplane.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
-import { AIRCRAFT_TYPES, AIRLINES, getAirlinesForAircraft } from './airlines.js';
+import { AIRCRAFT_TYPES, AIRLINES, getAirlinesForAircraft, getLivery } from './airlines.js';
 import { AIRPORTS, searchAirports } from './airports.js';
 import { Cockpit } from './cockpit.js';
 import { GamepadManager } from './gamepad.js';
@@ -113,21 +113,22 @@ function getPlayerMesh(id, aircraftType, airline) {
   }
 
   if (!playerMeshes.has(id)) {
-    let c1 = '#05164d', c2 = '#ffc72c';
+    // Airline-ID aus Namen ermitteln, dann vollständige Livery laden
+    let airlineId = null;
     if (airline) {
-      const al = Object.values(AIRLINES).find(a => a.name === airline);
-      if (al) { c1 = al.color1; c2 = al.color2; }
+      const e = Object.entries(AIRLINES).find(([, a]) => a.name === airline);
+      if (e) airlineId = e[0];
     }
+    const livery = getLivery(airlineId);
     const type = aircraftType || 'a320';
     const wrapper = new THREE.Group();
-    // Sofort ein prozedurales Fallback-Mesh, damit etwas sichtbar ist
-    const proc = createAircraftForType(type, c1, c2);
+    // Prozedurales Mesh ist bereits in echten Metern skaliert (buildAircraft)
+    const proc = createAircraftForType(type, livery);
     wrapper.add(proc);
     const acData = AIRCRAFT_TYPES[type];
-    const s = acData ? acData.scale * 0.45 : 1;
-    wrapper.scale.setScalar(s);
     wrapper.userData._key = key;
     wrapper.userData._hasGLB = false;
+    wrapper.userData.realLength = acData?.length || proc.userData.realLength || 12;
     scene.add(wrapper);
     playerMeshes.set(id, wrapper);
 
@@ -139,6 +140,7 @@ function getPlayerMesh(id, aircraftType, airline) {
       current.remove(proc);
       current.add(glb);
       current.userData._hasGLB = true;
+      current.userData.realLength = glb.userData.realLength || current.userData.realLength;
     });
   }
   return playerMeshes.get(id);
@@ -328,10 +330,14 @@ const smoothPos = new THREE.Vector3();
 const smoothLook = new THREE.Vector3();
 
 function updateCamera(mesh) {
-  // Third person, always behind
-  const off = new THREE.Vector3(0, 7, -28).applyQuaternion(mesh.quaternion);
+  // Kamera-Abstand skaliert mit echter Flugzeuglänge (MSFS-artige Chase-Kamera)
+  const len = mesh.userData.realLength || 12;
+  const back = Math.max(14, len * 0.95);
+  const up = Math.max(4, len * 0.22);
+  const ahead = Math.max(10, len * 0.7);
+  const off = new THREE.Vector3(0, up, -back).applyQuaternion(mesh.quaternion);
   const tPos = mesh.position.clone().add(off);
-  const tLook = mesh.position.clone().add(new THREE.Vector3(0, 1, 25).applyQuaternion(mesh.quaternion));
+  const tLook = mesh.position.clone().add(new THREE.Vector3(0, up * 0.15, ahead).applyQuaternion(mesh.quaternion));
 
   smoothPos.lerp(tPos, 0.07);
   smoothLook.lerp(tLook, 0.07);
@@ -739,8 +745,7 @@ function showAircraftDetail(id) {
 
 function updatePreview() {
   if (preview) {
-    const al = AIRLINES[selectedAirline];
-    preview.setAircraft(selectedAircraft, al?.color1 || '#05164d', al?.color2 || '#ffc72c');
+    preview.setAircraft(selectedAircraft, getLivery(selectedAirline));
   }
 }
 
@@ -859,7 +864,11 @@ function animate() {
 
   for (const p of latestState) {
     const mesh = getPlayerMesh(p.id, p.aircraftType, p.airline);
-    mesh.position.lerp(new THREE.Vector3(p.x, p.y, p.z), 0.2);
+    // Server legt Boden bei y=2 fest (Altminimum). Wir heben jedes Flugzeug um
+    // seinen eigenen Rad-zu-Origin-Offset, damit Räder visuell den Grund berühren.
+    const groundOffset = mesh.userData.groundOffset || 0;
+    const visualY = p.y - 2 + groundOffset;
+    mesh.position.lerp(new THREE.Vector3(p.x, visualY, p.z), 0.2);
     const euler = new THREE.Euler(p.pitch, p.yaw, -p.roll, 'YXZ');
     mesh.quaternion.slerp(new THREE.Quaternion().setFromEuler(euler), 0.2);
     mesh.traverse(c => { if (c.userData.isPropeller) c.rotation.x += p.throttle*0.8+0.15; });
