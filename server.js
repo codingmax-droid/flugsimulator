@@ -19,8 +19,9 @@ const crypto = require('crypto');
 const ACCESS_FILE = path.join(__dirname, 'access-codes.json');
 // Key = Benutzername (kleingeschrieben). Passwort = Early-Access-Code.
 const DEFAULT_USERS = {
-  admin:  { role: 'admin',  label: 'Admin',  password: 'FS-ADMIN-9K3M-X7R2-4PQ8', deviceId: null, boundAt: null, lastSeen: null },
-  tester: { role: 'tester', label: 'Tester', password: 'FS-TEST-5N8V-H2J4-6DB9',  deviceId: null, boundAt: null, lastSeen: null },
+  admin:   { role: 'admin',  label: 'Admin',    password: 'FS-ADMIN-9K3M-X7R2-4PQ8', deviceId: null, boundAt: null, lastSeen: null },
+  tester:  { role: 'tester', label: 'Tester',   password: 'FS-TEST-5N8V-H2J4-6DB9',  deviceId: null, boundAt: null, lastSeen: null },
+  tester2: { role: 'tester', label: 'Tester 2', password: 'FS-TEST2-7W4C-P9Y3-R6K1', deviceId: null, boundAt: null, lastSeen: null },
 };
 let accessUsers = loadAccessUsers();
 
@@ -238,6 +239,8 @@ function createPlayer(id, aircraftType = 'a320', spawnOpts = {}) {
     groundSpeed: 0, verticalSpeed: 0, aoa: 0,
     fuelPercent: 100,
     input: { pitch: 0, roll: 0, yaw: 0, throttle: 0 },
+    // Vom Client gemeldete Terrain-Höhe (Raycast). null = unbekannt → 0 als Floor.
+    terrainHeight: 0,
     alive: true, crashReason: '', onGround: false,
     phys,
   };
@@ -312,7 +315,8 @@ function updatePhysics(p) {
   const drag = q * ph.wingArea * dragCoeff;
   const thrust = p.throttle * ph.thrustMax * fuelMult;
   p.aoa = p.pitch;
-  p.stallWarning = v < ph.stallSpeed * 1.3 && p.y > GROUND_LEVEL + 15;
+  const groundY = Math.max(GROUND_LEVEL, p.terrainHeight || 0);
+  p.stallWarning = v < ph.stallSpeed * 1.3 && p.y > groundY + 15;
   const sf = v < ph.stallSpeed ? Math.max(0.15, v / ph.stallSpeed) : 1.0;
   const windX = Math.sin(currentWeather.windDir) * currentWeather.windSpeed * DT;
   const windZ = Math.cos(currentWeather.windDir) * currentWeather.windSpeed * DT;
@@ -333,9 +337,24 @@ function updatePhysics(p) {
   p.groundSpeed = Math.sqrt(dx * dx + dz * dz) / DT;
   p.verticalSpeed = (dy + (vertAccel - GRAVITY * sp) * DT * 0.3) / DT;
 
-  p.onGround = p.y <= GROUND_LEVEL + 3;
-  if (p.y < GROUND_LEVEL + 2) {
-    p.y = GROUND_LEVEL + 2;
+  p.onGround = p.y <= groundY + 3;
+  if (p.y < groundY + 2) {
+    // Impact-Geschwindigkeit: je höher das Gelände über der alten Annahme,
+    // desto eher CFIT (Controlled Flight Into Terrain)
+    const sinkRate = -p.verticalSpeed; // m/s
+    const hardHit = sinkRate > 8 || p.speed > 110;
+    const steep   = Math.abs(p.pitch) > 0.4 || Math.abs(p.roll) > 0.6;
+    const overTerrain = groundY > 10; // nicht auf Runway-Niveau
+
+    p.y = groundY + 2;
+    if (overTerrain && (hardHit || steep)) {
+      p.alive = false;
+      p.crashReason = 'CFIT — Aufprall am Gelände';
+      stats.totalCrashes++;
+      incrStat(stats.crashReasons, p.crashReason);
+      addEvent('crash', `#${p.id} ${p.aircraftType.toUpperCase()} — ${p.crashReason}`);
+      return;
+    }
     if (p.speed > 85 || Math.abs(p.pitch) > 0.4 || Math.abs(p.roll) > 0.6) {
       p.alive = false;
       if (!p.gear) p.crashReason = 'Belly Landing — Gear eingefahren';
@@ -358,7 +377,7 @@ function updatePhysics(p) {
     p.alive = false; p.crashReason = `Strukturversagen (${p.gForce.toFixed(1)}G)`;
     stats.totalCrashes++; incrStat(stats.crashReasons, 'Strukturversagen'); addEvent('crash', `#${p.id} — Strukturversagen`);
   }
-  if (p.y < -50) {
+  if (p.y < groundY - 50) {
     p.alive = false; p.crashReason = 'CFIT';
     stats.totalCrashes++; incrStat(stats.crashReasons, 'CFIT'); addEvent('crash', `#${p.id} — CFIT`);
   }
@@ -405,6 +424,10 @@ wss.on('connection', (ws) => {
         player.input.roll = clamp(msg.roll || 0, -1, 1);
         player.input.yaw = clamp(msg.yaw || 0, -1, 1);
         player.input.throttle = clamp(msg.throttle || 0, -1, 1);
+        if (typeof msg.terrainHeight === 'number' && Number.isFinite(msg.terrainHeight)) {
+          // Clamp auf plausiblen Bereich (Ozean-Tiefen bis höchste Berge)
+          player.terrainHeight = clamp(msg.terrainHeight, -500, 9000);
+        }
       }
       if (msg.type === 'login') {
         const name = String(msg.name || '').trim().slice(0, 20);
@@ -427,7 +450,7 @@ wss.on('connection', (ws) => {
         }
       }
       if (msg.type === 'flaps') player.flaps = clamp(Math.round(msg.value), 0, 4);
-      if (msg.type === 'gear' && player.y > GROUND_LEVEL + 10) player.gear = !player.gear;
+      if (msg.type === 'gear' && player.y > Math.max(GROUND_LEVEL, player.terrainHeight || 0) + 10) player.gear = !player.gear;
       if (msg.type === 'brakes') player.brakes = !!msg.value;
       if (msg.type === 'parkingBrake') player.parkingBrake = !player.parkingBrake;
       if (msg.type === 'lights') player.lights = !player.lights;
