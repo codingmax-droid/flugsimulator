@@ -6,7 +6,7 @@ import { AIRCRAFT_TYPES, AIRLINES, getAirlinesForAircraft, getLivery } from './a
 import { AIRPORTS, searchAirports } from './airports.js';
 import { Cockpit } from './cockpit.js';
 import { GamepadManager } from './gamepad.js';
-import * as Career from './career.js?v=8';
+import * as Career from './career.js?v=9';
 
 // ============================================================
 // STATE
@@ -132,32 +132,137 @@ function renderCareer() {
   renderOpsPanel();
 }
 
+let _selectedStageN = null;
+let _treeState = { scale: 1, tx: 0, ty: 0, drag: null };
+
 function renderStagesPanel() {
   const panel = document.getElementById('c-panel-stages');
   const s = careerState;
-  const html = Career.CAREER_STAGES.map(st => {
+  if (_selectedStageN == null) _selectedStageN = s.stage;
+  const sel = Career.CAREER_STAGES[_selectedStageN - 1] || Career.CAREER_STAGES[0];
+
+  // Edges
+  const edges = Career.CAREER_EDGES.map(([a, b]) => {
+    const A = Career.CAREER_LAYOUT[a];
+    const B = Career.CAREER_LAYOUT[b];
+    if (!A || !B) return '';
+    const cls = b <= s.stage ? 'done' : a <= s.stage ? 'reach' : 'locked';
+    // leichte Bézier-Kurve für organischeren Look
+    const mx = (A[0] + B[0]) / 2;
+    const my = (A[1] + B[1]) / 2;
+    return `<path class="c-tree-edge ${cls}" d="M${A[0]},${A[1]} Q${mx},${my} ${B[0]},${B[1]}"/>`;
+  }).join('');
+
+  // Nodes
+  const nodes = Career.CAREER_STAGES.map(st => {
+    const pos = Career.CAREER_LAYOUT[st.n];
+    if (!pos) return '';
+    const [x, y] = pos;
     const isCurrent = st.n === s.stage;
     const isDone = st.n < s.stage;
-    const cls = isCurrent ? 'current' : isDone ? 'done' : st.n > s.stage ? 'locked' : '';
-    const unlocks = st.unlocks.map(id => `<span class="c-chip">${Career.AIRCRAFT_SHOP[id]?.name || id}</span>`).join('');
-    const perks = (st.perks || []).map(p => `<span class="c-chip perk">${p}</span>`).join('');
-    const statusChip = isCurrent ? '<span class="c-chip done">AKTUELL</span>'
-                      : isDone   ? '<span class="c-chip done">✓</span>' : '';
+    const isSelected = st.n === _selectedStageN;
+    const cls = [
+      isCurrent ? 'current' : '',
+      isDone ? 'done' : '',
+      st.n > s.stage ? 'locked' : '',
+      isSelected ? 'selected' : '',
+    ].filter(Boolean).join(' ');
+    // Radius skaliert mit Tier (Stufen 1-10 klein, 11-20 mittel, 21-30 groß)
+    const r = 26 + Math.min(14, Math.floor((st.n - 1) / 10) * 6);
     return `
-      <div class="c-stage ${cls}">
-        <div class="c-stage-num">STUFE ${String(st.n).padStart(2, '0')}</div>
-        <div class="c-stage-title">${st.title} ${statusChip}</div>
-        <div class="c-stage-desc">${st.desc}</div>
-        <div class="c-stage-req">
-          <span><b>${Career.fmtHours(st.req.hours)}</b>Stunden</span>
-          <span><b>${Career.fmtMoney(st.req.money)}</b>Kapital</span>
-          <span><b>${st.req.rep}</b>Reputation</span>
-        </div>
-        <div class="c-stage-unlocks">${unlocks}${perks}</div>
-      </div>
+      <g class="c-tree-node ${cls}" data-stage="${st.n}" transform="translate(${x},${y})">
+        <circle r="${r + 6}" class="c-tree-halo"/>
+        <circle r="${r}"/>
+        <text dy=".35em">${st.n}</text>
+        <text class="c-tree-label" y="${r + 18}">${st.title}</text>
+      </g>
     `;
   }).join('');
-  panel.innerHTML = `<div class="c-stage-list">${html}</div>`;
+
+  const unlocks = sel.unlocks.map(id => `<span class="c-chip">${Career.AIRCRAFT_SHOP[id]?.name || id}</span>`).join('');
+  const perks = (sel.perks || []).map(p => `<span class="c-chip perk">${p}</span>`).join('');
+  const selStatus = sel.n === s.stage ? 'AKTUELL'
+                  : sel.n < s.stage  ? 'ABGESCHLOSSEN'
+                  : 'GESPERRT';
+
+  panel.innerHTML = `
+    <div class="c-tree-wrap" id="c-tree-wrap">
+      <div class="c-tree-inner" id="c-tree-inner">
+        <svg viewBox="0 0 2100 900" class="c-tree-svg" preserveAspectRatio="xMidYMid meet">
+          <defs>
+            <radialGradient id="c-tree-halo-g"><stop offset="0%" stop-color="#4a9eff" stop-opacity=".35"/><stop offset="100%" stop-color="#4a9eff" stop-opacity="0"/></radialGradient>
+          </defs>
+          <g class="c-tree-edges">${edges}</g>
+          <g class="c-tree-nodes">${nodes}</g>
+        </svg>
+      </div>
+      <div class="c-tree-zoom">
+        <button class="c-tree-zbtn" id="c-tree-zin">+</button>
+        <button class="c-tree-zbtn" id="c-tree-zout">−</button>
+        <button class="c-tree-zbtn" id="c-tree-zreset">⟳</button>
+      </div>
+      <div class="c-tree-detail">
+        <div class="c-tree-detail-status">${selStatus}</div>
+        <div class="c-tree-detail-num">STUFE ${String(sel.n).padStart(2,'0')} / 30</div>
+        <div class="c-tree-detail-title">${sel.title}</div>
+        <div class="c-tree-detail-desc">${sel.desc}</div>
+        <div class="c-tree-detail-req">
+          <div><span>Stunden</span><b>${Career.fmtHours(sel.req.hours)}</b></div>
+          <div><span>Kapital</span><b>${Career.fmtMoney(sel.req.money)}</b></div>
+          <div><span>Reputation</span><b>${sel.req.rep}</b></div>
+        </div>
+        <div class="c-tree-detail-unlocks">${unlocks}${perks}</div>
+      </div>
+    </div>
+  `;
+
+  // Event wiring
+  const wrap = document.getElementById('c-tree-wrap');
+  const inner = document.getElementById('c-tree-inner');
+  const applyTransform = () => {
+    inner.style.transform = `translate(${_treeState.tx}px, ${_treeState.ty}px) scale(${_treeState.scale})`;
+  };
+  applyTransform();
+
+  wrap.querySelectorAll('.c-tree-node').forEach(n => {
+    n.addEventListener('click', (e) => {
+      e.stopPropagation();
+      _selectedStageN = +n.dataset.stage;
+      renderStagesPanel();
+    });
+  });
+
+  document.getElementById('c-tree-zin')?.addEventListener('click', () => { _treeState.scale = Math.min(2, _treeState.scale * 1.2); applyTransform(); });
+  document.getElementById('c-tree-zout')?.addEventListener('click', () => { _treeState.scale = Math.max(0.4, _treeState.scale / 1.2); applyTransform(); });
+  document.getElementById('c-tree-zreset')?.addEventListener('click', () => { _treeState = { scale: 1, tx: 0, ty: 0, drag: null }; applyTransform(); });
+
+  wrap.addEventListener('wheel', (e) => {
+    e.preventDefault();
+    const rect = wrap.getBoundingClientRect();
+    const px = e.clientX - rect.left, py = e.clientY - rect.top;
+    const factor = e.deltaY < 0 ? 1.12 : 1/1.12;
+    const newScale = Math.min(2, Math.max(0.4, _treeState.scale * factor));
+    const ratio = newScale / _treeState.scale;
+    _treeState.tx = px - (px - _treeState.tx) * ratio;
+    _treeState.ty = py - (py - _treeState.ty) * ratio;
+    _treeState.scale = newScale;
+    applyTransform();
+  }, { passive: false });
+
+  wrap.addEventListener('mousedown', (e) => {
+    if (e.target.closest('.c-tree-node') || e.target.closest('.c-tree-zoom')) return;
+    _treeState.drag = { x: e.clientX, y: e.clientY, tx: _treeState.tx, ty: _treeState.ty };
+    wrap.classList.add('dragging');
+  });
+  window.addEventListener('mousemove', (e) => {
+    if (!_treeState.drag) return;
+    _treeState.tx = _treeState.drag.tx + (e.clientX - _treeState.drag.x);
+    _treeState.ty = _treeState.drag.ty + (e.clientY - _treeState.drag.y);
+    applyTransform();
+  });
+  window.addEventListener('mouseup', () => {
+    if (_treeState.drag) { _treeState.drag = null; wrap.classList.remove('dragging'); }
+  });
 }
 
 function renderFleetPanel() {
