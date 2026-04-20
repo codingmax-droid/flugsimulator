@@ -1782,12 +1782,12 @@ function getDeviceId() {
   return id;
 }
 
-async function verifyAccessCode(code) {
+async function verifyAccessCode(code, password) {
   try {
     const r = await fetch('/api/access', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ code, deviceId: getDeviceId() }),
+      body: JSON.stringify({ code, password, deviceId: getDeviceId() }),
     });
     return await r.json();
   } catch {
@@ -1799,10 +1799,11 @@ function initLogin() {
   const loginScreen = document.getElementById('login-screen');
   const loginInput = document.getElementById('login-name');
   const accessInput = document.getElementById('login-access');
+  const passwordInput = document.getElementById('login-password');
   const accessHint = document.getElementById('login-access-hint');
   const loginBtn = document.getElementById('login-btn');
 
-  // Auto-fill
+  // Auto-fill (Passwort NIE persistent)
   if (pilotName && pilotName.length >= 3) loginInput.value = pilotName;
   const savedCode = localStorage.getItem('flugsim_access_code') || '';
   if (savedCode) accessInput.value = savedCode;
@@ -1810,14 +1811,20 @@ function initLogin() {
   function updateBtn() {
     const nameOk = loginInput.value.trim().length >= 3;
     const codeOk = accessInput.value.trim().length >= 6;
-    loginBtn.disabled = !(nameOk && codeOk);
+    const pwOk   = passwordInput.value.length >= 4;
+    loginBtn.disabled = !(nameOk && codeOk && pwOk);
   }
   updateBtn();
 
   loginInput.addEventListener('input', updateBtn);
+  passwordInput.addEventListener('input', () => {
+    accessHint.textContent = 'Code gerätgebunden — nur auf diesem Gerät nutzbar';
+    accessHint.style.color = '';
+    updateBtn();
+  });
   accessInput.addEventListener('input', () => {
     accessInput.value = accessInput.value.toUpperCase();
-    accessHint.textContent = 'Gerätgebunden — nur auf diesem Gerät nutzbar';
+    accessHint.textContent = 'Code gerätgebunden — nur auf diesem Gerät nutzbar';
     accessHint.style.color = '';
     updateBtn();
   });
@@ -1825,23 +1832,27 @@ function initLogin() {
   const onEnter = (e) => { if (e.code === 'Enter' && !loginBtn.disabled) doLogin(); };
   loginInput.addEventListener('keydown', onEnter);
   accessInput.addEventListener('keydown', onEnter);
+  passwordInput.addEventListener('keydown', onEnter);
   loginBtn.addEventListener('click', doLogin);
 
   async function doLogin() {
     const code = accessInput.value.trim().toUpperCase();
+    const password = passwordInput.value;
     const name = loginInput.value.trim().slice(0, 20);
-    if (name.length < 3 || code.length < 6) return;
+    if (name.length < 3 || code.length < 6 || password.length < 4) return;
 
     loginBtn.disabled = true;
     const prevText = loginBtn.textContent;
     loginBtn.textContent = 'PRÜFE …';
-    accessHint.textContent = 'Prüfe Code …';
+    accessHint.textContent = 'Prüfe Zugangsdaten …';
     accessHint.style.color = 'rgba(255,255,255,.35)';
 
-    const res = await verifyAccessCode(code);
+    const res = await verifyAccessCode(code, password);
     if (!res.ok) {
       const msg = res.error === 'bound-other-device'
         ? 'Code ist bereits an ein anderes Gerät gebunden'
+        : res.error === 'bad-password'
+        ? 'Falsches Passwort'
         : res.error === 'network'
         ? 'Server nicht erreichbar'
         : 'Ungültiger Code';
@@ -1849,6 +1860,8 @@ function initLogin() {
       accessHint.style.color = '#ff5a5a';
       loginBtn.textContent = prevText;
       loginBtn.disabled = false;
+      passwordInput.value = '';
+      updateBtn();
       return;
     }
 

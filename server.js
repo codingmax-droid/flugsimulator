@@ -15,10 +15,11 @@ app.use(express.static(path.join(__dirname, 'public')));
 // EARLY ACCESS CODES  (each code binds to exactly one device)
 // ============================================================
 
+const crypto = require('crypto');
 const ACCESS_FILE = path.join(__dirname, 'access-codes.json');
 const DEFAULT_CODES = {
-  'FS-ADMIN-9K3M-X7R2-4PQ8':  { role: 'admin',  label: 'Admin',  deviceId: null, boundAt: null, lastSeen: null },
-  'FS-TEST-5N8V-H2J4-6DB9':   { role: 'tester', label: 'Tester', deviceId: null, boundAt: null, lastSeen: null },
+  'FS-ADMIN-9K3M-X7R2-4PQ8':  { role: 'admin',  label: 'Admin',  password: 'Skyline-Alpha-2026!',  deviceId: null, boundAt: null, lastSeen: null },
+  'FS-TEST-5N8V-H2J4-6DB9':   { role: 'tester', label: 'Tester', password: 'Approach-Delta-2026!', deviceId: null, boundAt: null, lastSeen: null },
 };
 let accessCodes = loadAccessCodes();
 
@@ -27,6 +28,7 @@ function loadAccessCodes() {
     const raw = JSON.parse(fs.readFileSync(ACCESS_FILE, 'utf8'));
     for (const k of Object.keys(DEFAULT_CODES)) {
       if (!raw[k]) raw[k] = { ...DEFAULT_CODES[k] };
+      else if (!raw[k].password) raw[k].password = DEFAULT_CODES[k].password;
     }
     return raw;
   } catch {
@@ -39,12 +41,23 @@ function saveAccessCodes() {
   catch (e) { console.error('access-codes save failed:', e.message); }
 }
 
+function timingSafeEq(a, b) {
+  const ba = Buffer.from(String(a));
+  const bb = Buffer.from(String(b));
+  if (ba.length !== bb.length) return false;
+  return crypto.timingSafeEqual(ba, bb);
+}
+
 app.post('/api/access', (req, res) => {
   const code = String(req.body?.code || '').trim().toUpperCase();
+  const password = String(req.body?.password || '');
   const deviceId = String(req.body?.deviceId || '').trim().slice(0, 128);
-  if (!code || !deviceId) return res.json({ ok: false, error: 'missing' });
+  if (!code || !password || !deviceId) return res.json({ ok: false, error: 'missing' });
   const entry = accessCodes[code];
   if (!entry) return res.json({ ok: false, error: 'invalid' });
+  if (!timingSafeEq(password, entry.password || '')) {
+    return res.json({ ok: false, error: 'bad-password' });
+  }
   if (entry.deviceId && entry.deviceId !== deviceId) {
     return res.json({ ok: false, error: 'bound-other-device' });
   }
