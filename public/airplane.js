@@ -1830,7 +1830,7 @@ export class AircraftPreview {
     this.scene.add(rim);
     const ground = new THREE.Mesh(new THREE.PlaneGeometry(500, 500), new THREE.MeshLambertMaterial({ color: 0x151e2d }));
     ground.rotation.x = -Math.PI / 2;
-    ground.position.y = -3;
+    ground.position.y = 0;
     this.scene.add(ground);
     this.model = null;
     this.angle = 0;
@@ -1847,6 +1847,7 @@ export class AircraftPreview {
   setAircraft(type, liveryOrColor1, color2) {
     if (this.model) this.scene.remove(this.model);
     this.model = buildAircraft(type, liveryOrColor1, color2);
+    this.model.position.y = this.model.userData.groundOffset || 0;
     this.scene.add(this.model);
     this._realLen = this.model.userData.realLength || 12;
     this.resize();
@@ -1857,6 +1858,7 @@ export class AircraftPreview {
       applyLiveryToGLB(glb, livery);
       this.scene.remove(this.model);
       this.model = glb;
+      this.model.position.y = this.model.userData.groundOffset || 0;
       this._realLen = glb.userData.realLength || this._realLen;
       this.scene.add(this.model);
     });
@@ -1882,12 +1884,13 @@ export class AircraftPreview {
     const distH = (span * 0.6) / Math.tan(hFov / 2);
     const distV = diag / Math.tan(vFov / 2);
     const dist = Math.max(distH, distV, 18);
+    const baseY = (this.model?.position.y || 0);
     this.camera.position.set(
       Math.sin(this.angle * 0.4) * dist,
-      Math.max(5, len * 0.28) + Math.sin(this.angle * 0.25) * len * 0.06,
+      baseY + Math.max(5, len * 0.28) + Math.sin(this.angle * 0.25) * len * 0.06,
       Math.cos(this.angle * 0.4) * dist
     );
-    this.camera.lookAt(0, len * 0.05, 0);
+    this.camera.lookAt(0, baseY + len * 0.08, 0);
     this.renderer.render(this.scene, this.camera);
   }
 }
