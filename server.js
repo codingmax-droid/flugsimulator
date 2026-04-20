@@ -334,19 +334,12 @@ wss.on('connection', (ws) => {
       }
       if (msg.type === 'selectAircraft') {
         if (AIRCRAFT_PHYSICS[msg.aircraft]) {
-          player.aircraftType = msg.aircraft;
-          player.phys = AIRCRAFT_PHYSICS[msg.aircraft];
+          const yaw = msg.spawnYaw !== undefined ? msg.spawnYaw : player.yaw;
+          const pname = player.pilotName;
+          Object.assign(player, createPlayer(id, msg.aircraft, { yaw, y: 3, onRunway: true }));
+          player.pilotName = pname;
           player.airline = msg.airline || '';
           player.airport = msg.airport || '';
-          // Spawn auf Runway
-          if (msg.spawnYaw !== undefined) {
-            player.yaw = msg.spawnYaw;
-            player.y = 50;
-            player.speed = 0;
-            player.throttle = 0;
-            player.parkingBrake = true;
-            player.gear = true;
-          }
           incrStat(stats.aircraftStats, msg.aircraft.toUpperCase());
           if (msg.airline) incrStat(stats.airlineStats, msg.airline);
           if (msg.airport) incrStat(stats.airportStats, msg.airport);

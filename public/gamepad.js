@@ -195,12 +195,21 @@ export class GamepadManager {
 
   // Muss jeden Frame aufgerufen werden
   poll() {
-    if (!this.connected || !this.activeProfile) return null;
+    // Aktiv nach Gamepads suchen — Browser feuern `gamepadconnected` oft erst
+    // nach User-Interaktion. So erkennen wir auch nachträglich angesteckte oder
+    // beim Laden bereits verbundene Sticks.
+    if (!this.connected || !this.activeProfile) {
+      const all = navigator.getGamepads ? navigator.getGamepads() : [];
+      for (const g of all) {
+        if (g && g.connected) { this.detectProfile(g); break; }
+      }
+      if (!this.connected || !this.activeProfile) return null;
+    }
 
     // Gamepads neu lesen (Chrome braucht das)
     const gamepads = navigator.getGamepads();
     const gp = gamepads[this.activeGamepad.index];
-    if (!gp) return null;
+    if (!gp) { this.connected = false; return null; }
 
     const profile = this.activeProfile;
     const dz = profile.axisDeadzone || 0.08;
