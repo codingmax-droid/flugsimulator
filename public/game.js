@@ -32,6 +32,84 @@ let selectedWeather = 'fewClouds';
 const settings = { terrainZoom: 11, terrainRadius: 3, shadows: true, units: 'metric' };
 
 // ============================================================
+// MARKETPLACE — Premium Aircraft (€2,99 each)
+// ============================================================
+
+const MARKETPLACE_ITEMS = {
+  b747: { price: 2.99, image: 'https://images.unsplash.com/photo-1583846783214-7229a91b20ed?w=900&q=75&fit=crop' },
+  a380: { price: 2.99, image: 'https://images.unsplash.com/photo-1569154941061-e231b4725ef1?w=900&q=75&fit=crop' },
+};
+
+function loadOwnedAircraft() {
+  try { return new Set(JSON.parse(localStorage.getItem('flugsim_owned') || '[]')); }
+  catch { return new Set(); }
+}
+let ownedAircraft = loadOwnedAircraft();
+
+function isAircraftOwned(id) {
+  return !MARKETPLACE_ITEMS[id] || ownedAircraft.has(id);
+}
+
+function buyAircraft(id) {
+  if (!MARKETPLACE_ITEMS[id]) return;
+  ownedAircraft.add(id);
+  localStorage.setItem('flugsim_owned', JSON.stringify([...ownedAircraft]));
+  renderMarketplace();
+  buildAircraftPanel();
+}
+
+function formatPrice(p) {
+  return p.toFixed(2).replace('.', ',') + '\u00a0€';
+}
+
+function renderMarketplace() {
+  const grid = document.getElementById('market-grid');
+  if (!grid) return;
+  grid.innerHTML = '';
+  for (const [id, item] of Object.entries(MARKETPLACE_ITEMS)) {
+    const ac = AIRCRAFT_TYPES[id];
+    if (!ac) continue;
+    const owned = ownedAircraft.has(id);
+    const card = document.createElement('div');
+    card.className = 'market-card';
+    card.innerHTML = `
+      <div class="market-card-img" style="background-image:url('${item.image}')"></div>
+      <div class="market-card-body">
+        <div>
+          <div class="market-card-mfr">${ac.manufacturer.toUpperCase()}</div>
+          <div class="market-card-name">${ac.name}</div>
+        </div>
+        <div class="market-specs">
+          <span class="market-spec">${ac.engines} ENG</span>
+          <span class="market-spec">${ac.passengers} PAX</span>
+          <span class="market-spec">${ac.range.toLocaleString('de-DE')} km</span>
+          <span class="market-spec">MTOW ${(ac.mtow/1000).toFixed(0)}t</span>
+        </div>
+        <div class="market-card-foot">
+          <div class="market-price">${formatPrice(item.price)}</div>
+          <button class="market-buy${owned?' owned':''}" data-buy="${id}" ${owned?'disabled':''}>
+            ${owned ? 'GEKAUFT' : 'KAUFEN'}
+          </button>
+        </div>
+      </div>
+    `;
+    grid.appendChild(card);
+  }
+  grid.querySelectorAll('[data-buy]').forEach(btn => {
+    btn.addEventListener('click', () => buyAircraft(btn.dataset.buy));
+  });
+}
+
+function openMarketplace() {
+  renderMarketplace();
+  document.getElementById('marketplace-screen').classList.remove('hidden');
+}
+
+function closeMarketplace() {
+  document.getElementById('marketplace-screen').classList.add('hidden');
+}
+
+// ============================================================
 // INIT THREE.JS
 // ============================================================
 
@@ -494,11 +572,16 @@ function initDashboard() {
       else if (which === 'career') showSetup('aircraft');
       else if (which === 'challenge') showSetup('weather');
       else if (which === 'worldphoto') showSetup('fly');
+      else if (which === 'marketplace') openMarketplace();
     });
   });
 
   document.querySelector('[data-dash-icon="settings"]')?.addEventListener('click', () => showSetup('settings'));
   document.getElementById('topbar-back')?.addEventListener('click', showDash);
+  document.getElementById('market-close')?.addEventListener('click', closeMarketplace);
+  document.getElementById('marketplace-screen')?.addEventListener('click', (e) => {
+    if (e.target.id === 'marketplace-screen' || e.target.classList.contains('overlay-bg')) closeMarketplace();
+  });
 
   document.getElementById('dash-pilot-name').textContent = pilotName;
 
@@ -796,14 +879,24 @@ function buildAircraftPanel() {
     animatePreview();
   }
 
+  // Falls aktuell ausgewähltes Flugzeug gesperrt ist, auf A320 zurückfallen
+  if (!isAircraftOwned(selectedAircraft)) selectedAircraft = 'a320';
+
   const list = document.getElementById('ac-type-list');
   const types = Object.entries(AIRCRAFT_TYPES);
   list.innerHTML = '';
-  types.forEach(([id, ac], i) => {
+  types.forEach(([id, ac]) => {
+    const locked = !isAircraftOwned(id);
+    const price = MARKETPLACE_ITEMS[id]?.price;
     const el = document.createElement('div');
-    el.className = 'ac-type-item' + (id===selectedAircraft?' active':'');
-    el.innerHTML = `<div class="ac-t-name">${ac.name}</div><div class="ac-t-sub">${ac.manufacturer} / ${ac.type.toUpperCase()} / ${ac.engines} Engines</div>`;
+    el.className = 'ac-type-item' + (id===selectedAircraft?' active':'') + (locked?' locked':'');
+    const priceTag = locked && price != null
+      ? `<span class="ac-price-tag">${formatPrice(price)}</span>`
+      : '';
+    const lockIcon = locked ? '<span class="ac-lock-icon">🔒</span>' : '';
+    el.innerHTML = `<div class="ac-t-name">${lockIcon}${ac.name}${priceTag}</div><div class="ac-t-sub">${ac.manufacturer} / ${ac.type.toUpperCase()} / ${ac.engines} Engines</div>`;
     el.addEventListener('click', () => {
+      if (locked) { openMarketplace(); return; }
       list.querySelectorAll('.ac-type-item').forEach(x => x.classList.remove('active'));
       el.classList.add('active');
       selectedAircraft = id;
