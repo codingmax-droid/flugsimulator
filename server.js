@@ -17,27 +17,46 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 const crypto = require('crypto');
 const ACCESS_FILE = path.join(__dirname, 'access-codes.json');
-const DEFAULT_CODES = {
-  'FS-ADMIN-9K3M-X7R2-4PQ8':  { role: 'admin',  label: 'Admin',  password: 'Skyline-Alpha-2026!',  deviceId: null, boundAt: null, lastSeen: null },
-  'FS-TEST-5N8V-H2J4-6DB9':   { role: 'tester', label: 'Tester', password: 'Approach-Delta-2026!', deviceId: null, boundAt: null, lastSeen: null },
+// Key = Benutzername (kleingeschrieben). Passwort = Early-Access-Code.
+const DEFAULT_USERS = {
+  admin:  { role: 'admin',  label: 'Admin',  password: 'FS-ADMIN-9K3M-X7R2-4PQ8', deviceId: null, boundAt: null, lastSeen: null },
+  tester: { role: 'tester', label: 'Tester', password: 'FS-TEST-5N8V-H2J4-6DB9',  deviceId: null, boundAt: null, lastSeen: null },
 };
-let accessCodes = loadAccessCodes();
+let accessUsers = loadAccessUsers();
 
-function loadAccessCodes() {
+function loadAccessUsers() {
   try {
     const raw = JSON.parse(fs.readFileSync(ACCESS_FILE, 'utf8'));
-    for (const k of Object.keys(DEFAULT_CODES)) {
-      if (!raw[k]) raw[k] = { ...DEFAULT_CODES[k] };
-      else if (!raw[k].password) raw[k].password = DEFAULT_CODES[k].password;
+    // Migration: altes Format mit Code als Key → username als Key
+    const migrated = {};
+    for (const [k, v] of Object.entries(raw)) {
+      if (k.toUpperCase().startsWith('FS-') && v && v.role) {
+        const uname = (v.role || '').toLowerCase();
+        migrated[uname] = {
+          role: v.role,
+          label: v.label || (uname.charAt(0).toUpperCase() + uname.slice(1)),
+          password: k,                    // alter Code wird Passwort
+          deviceId: v.deviceId || null,
+          boundAt:  v.boundAt  || null,
+          lastSeen: v.lastSeen || null,
+        };
+      } else {
+        migrated[k.toLowerCase()] = v;
+      }
     }
-    return raw;
+    for (const k of Object.keys(DEFAULT_USERS)) {
+      if (!migrated[k]) migrated[k] = { ...DEFAULT_USERS[k] };
+      else if (!migrated[k].password) migrated[k].password = DEFAULT_USERS[k].password;
+    }
+    fs.writeFileSync(ACCESS_FILE, JSON.stringify(migrated, null, 2));
+    return migrated;
   } catch {
-    fs.writeFileSync(ACCESS_FILE, JSON.stringify(DEFAULT_CODES, null, 2));
-    return JSON.parse(JSON.stringify(DEFAULT_CODES));
+    fs.writeFileSync(ACCESS_FILE, JSON.stringify(DEFAULT_USERS, null, 2));
+    return JSON.parse(JSON.stringify(DEFAULT_USERS));
   }
 }
-function saveAccessCodes() {
-  try { fs.writeFileSync(ACCESS_FILE, JSON.stringify(accessCodes, null, 2)); }
+function saveAccessUsers() {
+  try { fs.writeFileSync(ACCESS_FILE, JSON.stringify(accessUsers, null, 2)); }
   catch (e) { console.error('access-codes save failed:', e.message); }
 }
 
@@ -49,12 +68,12 @@ function timingSafeEq(a, b) {
 }
 
 app.post('/api/access', (req, res) => {
-  const code = String(req.body?.code || '').trim().toUpperCase();
-  const password = String(req.body?.password || '');
+  const username = String(req.body?.username || '').trim().toLowerCase().slice(0, 32);
+  const password = String(req.body?.password || '').trim();
   const deviceId = String(req.body?.deviceId || '').trim().slice(0, 128);
-  if (!code || !password || !deviceId) return res.json({ ok: false, error: 'missing' });
-  const entry = accessCodes[code];
-  if (!entry) return res.json({ ok: false, error: 'invalid' });
+  if (!username || !password || !deviceId) return res.json({ ok: false, error: 'missing' });
+  const entry = accessUsers[username];
+  if (!entry) return res.json({ ok: false, error: 'invalid-user' });
   if (!timingSafeEq(password, entry.password || '')) {
     return res.json({ ok: false, error: 'bad-password' });
   }
@@ -64,10 +83,10 @@ app.post('/api/access', (req, res) => {
   if (!entry.deviceId) {
     entry.deviceId = deviceId;
     entry.boundAt = Date.now();
-    addEvent('access', `${entry.role.toUpperCase()} code an Gerät gebunden`);
+    addEvent('access', `${username.toUpperCase()} an Gerät gebunden`);
   }
   entry.lastSeen = Date.now();
-  saveAccessCodes();
+  saveAccessUsers();
   res.json({ ok: true, role: entry.role, label: entry.label });
 });
 

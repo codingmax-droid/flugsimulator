@@ -1782,12 +1782,12 @@ function getDeviceId() {
   return id;
 }
 
-async function verifyAccessCode(code, password) {
+async function verifyAccessCode(username, password) {
   try {
     const r = await fetch('/api/access', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ code, password, deviceId: getDeviceId() }),
+      body: JSON.stringify({ username, password, deviceId: getDeviceId() }),
     });
     return await r.json();
   } catch {
@@ -1805,26 +1805,26 @@ function initLogin() {
 
   // Auto-fill (Passwort NIE persistent)
   if (pilotName && pilotName.length >= 3) loginInput.value = pilotName;
-  const savedCode = localStorage.getItem('flugsim_access_code') || '';
-  if (savedCode) accessInput.value = savedCode;
+  const savedUser = localStorage.getItem('flugsim_access_user') || '';
+  if (savedUser) accessInput.value = savedUser;
 
   function updateBtn() {
     const nameOk = loginInput.value.trim().length >= 3;
-    const codeOk = accessInput.value.trim().length >= 6;
+    const userOk = accessInput.value.trim().length >= 3;
     const pwOk   = passwordInput.value.length >= 4;
-    loginBtn.disabled = !(nameOk && codeOk && pwOk);
+    loginBtn.disabled = !(nameOk && userOk && pwOk);
   }
   updateBtn();
 
   loginInput.addEventListener('input', updateBtn);
   passwordInput.addEventListener('input', () => {
-    accessHint.textContent = 'Code gerätgebunden — nur auf diesem Gerät nutzbar';
+    accessHint.textContent = 'Konto gerätgebunden — nur auf diesem Gerät nutzbar';
     accessHint.style.color = '';
     updateBtn();
   });
   accessInput.addEventListener('input', () => {
-    accessInput.value = accessInput.value.toUpperCase();
-    accessHint.textContent = 'Code gerätgebunden — nur auf diesem Gerät nutzbar';
+    accessInput.value = accessInput.value.toLowerCase();
+    accessHint.textContent = 'Konto gerätgebunden — nur auf diesem Gerät nutzbar';
     accessHint.style.color = '';
     updateBtn();
   });
@@ -1836,10 +1836,10 @@ function initLogin() {
   loginBtn.addEventListener('click', doLogin);
 
   async function doLogin() {
-    const code = accessInput.value.trim().toUpperCase();
+    const username = accessInput.value.trim().toLowerCase();
     const password = passwordInput.value;
     const name = loginInput.value.trim().slice(0, 20);
-    if (name.length < 3 || code.length < 6 || password.length < 4) return;
+    if (name.length < 3 || username.length < 3 || password.length < 4) return;
 
     loginBtn.disabled = true;
     const prevText = loginBtn.textContent;
@@ -1847,15 +1847,17 @@ function initLogin() {
     accessHint.textContent = 'Prüfe Zugangsdaten …';
     accessHint.style.color = 'rgba(255,255,255,.35)';
 
-    const res = await verifyAccessCode(code, password);
+    const res = await verifyAccessCode(username, password);
     if (!res.ok) {
       const msg = res.error === 'bound-other-device'
-        ? 'Code ist bereits an ein anderes Gerät gebunden'
+        ? 'Konto ist bereits an ein anderes Gerät gebunden'
         : res.error === 'bad-password'
         ? 'Falsches Passwort'
+        : res.error === 'invalid-user'
+        ? 'Unbekannter Benutzer'
         : res.error === 'network'
         ? 'Server nicht erreichbar'
-        : 'Ungültiger Code';
+        : 'Zugang verweigert';
       accessHint.textContent = msg;
       accessHint.style.color = '#ff5a5a';
       loginBtn.textContent = prevText;
@@ -1865,7 +1867,7 @@ function initLogin() {
       return;
     }
 
-    localStorage.setItem('flugsim_access_code', code);
+    localStorage.setItem('flugsim_access_user', username);
     localStorage.setItem('flugsim_access_role', res.role);
 
     pilotName = name;
