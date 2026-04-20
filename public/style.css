@@ -343,7 +343,8 @@ canvas{display:block}
 .market-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;padding:24px 28px;overflow-y:auto}
 .market-card{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);border-radius:12px;overflow:hidden;display:flex;flex-direction:column;transition:.2s}
 .market-card:hover{border-color:rgba(74,158,255,.3);transform:translateY(-2px)}
-.market-card-img{height:160px;background-size:cover;background-position:center;background-color:#0a1424;border-bottom:1px solid rgba(255,255,255,.04)}
+.market-card-preview{height:200px;background:#0d1524;border-bottom:1px solid rgba(255,255,255,.04);overflow:hidden;position:relative}
+.market-card-preview canvas{width:100%!important;height:100%!important;display:block}
 .market-card-body{padding:18px 20px;display:flex;flex-direction:column;gap:10px;flex:1}
 .market-card-name{font-size:16px;font-weight:700}
 .market-card-mfr{font-size:10px;letter-spacing:2px;font-weight:600;color:rgba(255,255,255,.35)}

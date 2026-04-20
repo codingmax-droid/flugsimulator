@@ -36,13 +36,19 @@ const settings = { terrainZoom: 11, terrainRadius: 3, shadows: true, units: 'met
 // ============================================================
 
 const MARKETPLACE_ITEMS = {
-  b747: { price: 2.99, image: 'https://images.unsplash.com/photo-1583846783214-7229a91b20ed?w=900&q=75&fit=crop' },
-  a380: { price: 2.99, image: 'https://images.unsplash.com/photo-1569154941061-e231b4725ef1?w=900&q=75&fit=crop' },
+  b747: { price: 2.99 },
+  a380: { price: 2.99 },
 };
 
+function ownedKey() {
+  return `flugsim_owned_${pilotName || 'guest'}`;
+}
 function loadOwnedAircraft() {
-  try { return new Set(JSON.parse(localStorage.getItem('flugsim_owned') || '[]')); }
+  try { return new Set(JSON.parse(localStorage.getItem(ownedKey()) || '[]')); }
   catch { return new Set(); }
+}
+function saveOwnedAircraft() {
+  localStorage.setItem(ownedKey(), JSON.stringify([...ownedAircraft]));
 }
 let ownedAircraft = loadOwnedAircraft();
 
@@ -53,8 +59,8 @@ function isAircraftOwned(id) {
 function buyAircraft(id) {
   if (!MARKETPLACE_ITEMS[id]) return;
   ownedAircraft.add(id);
-  localStorage.setItem('flugsim_owned', JSON.stringify([...ownedAircraft]));
-  renderMarketplace();
+  saveOwnedAircraft();
+  updateMarketButtons();
   buildAircraftPanel();
 }
 
@@ -62,18 +68,19 @@ function formatPrice(p) {
   return p.toFixed(2).replace('.', ',') + '\u00a0€';
 }
 
-function renderMarketplace() {
+const marketPreviews = new Map(); // id -> { preview, card }
+let marketAnimId = null;
+
+function buildMarketplace() {
   const grid = document.getElementById('market-grid');
-  if (!grid) return;
-  grid.innerHTML = '';
+  if (!grid || grid.childElementCount > 0) return;
   for (const [id, item] of Object.entries(MARKETPLACE_ITEMS)) {
     const ac = AIRCRAFT_TYPES[id];
     if (!ac) continue;
-    const owned = ownedAircraft.has(id);
     const card = document.createElement('div');
     card.className = 'market-card';
     card.innerHTML = `
-      <div class="market-card-img" style="background-image:url('${item.image}')"></div>
+      <div class="market-card-preview"></div>
       <div class="market-card-body">
         <div>
           <div class="market-card-mfr">${ac.manufacturer.toUpperCase()}</div>
@@ -87,26 +94,54 @@ function renderMarketplace() {
         </div>
         <div class="market-card-foot">
           <div class="market-price">${formatPrice(item.price)}</div>
-          <button class="market-buy${owned?' owned':''}" data-buy="${id}" ${owned?'disabled':''}>
-            ${owned ? 'GEKAUFT' : 'KAUFEN'}
-          </button>
+          <button class="market-buy" data-buy="${id}">KAUFEN</button>
         </div>
       </div>
     `;
     grid.appendChild(card);
+
+    const previewContainer = card.querySelector('.market-card-preview');
+    const preview = new AircraftPreview(previewContainer);
+    preview.setAircraft(id, getLivery('lufthansa'));
+    marketPreviews.set(id, { preview, card });
+
+    card.querySelector('[data-buy]').addEventListener('click', () => buyAircraft(id));
   }
-  grid.querySelectorAll('[data-buy]').forEach(btn => {
-    btn.addEventListener('click', () => buyAircraft(btn.dataset.buy));
-  });
+  updateMarketButtons();
+}
+
+function updateMarketButtons() {
+  for (const [id, { card }] of marketPreviews) {
+    const owned = ownedAircraft.has(id);
+    const btn = card.querySelector('[data-buy]');
+    btn.classList.toggle('owned', owned);
+    btn.disabled = owned;
+    btn.textContent = owned ? 'GEKAUFT' : 'KAUFEN';
+  }
+}
+
+function startMarketAnim() {
+  if (marketAnimId) return;
+  const loop = () => {
+    marketAnimId = requestAnimationFrame(loop);
+    for (const { preview } of marketPreviews.values()) preview.render();
+  };
+  loop();
+}
+function stopMarketAnim() {
+  if (marketAnimId) { cancelAnimationFrame(marketAnimId); marketAnimId = null; }
 }
 
 function openMarketplace() {
-  renderMarketplace();
+  buildMarketplace();
+  updateMarketButtons();
   document.getElementById('marketplace-screen').classList.remove('hidden');
+  startMarketAnim();
 }
 
 function closeMarketplace() {
   document.getElementById('marketplace-screen').classList.add('hidden');
+  stopMarketAnim();
 }
 
 // ============================================================
@@ -1133,6 +1168,9 @@ function initLogin() {
     pilotName = loginInput.value.trim().slice(0, 20);
     if (pilotName.length < 3) return;
     localStorage.setItem('flugsim_pilot', pilotName);
+    ownedAircraft = loadOwnedAircraft();
+    selectedAircraft = 'a320';
+    selectedAirline = 'lufthansa';
 
     loginScreen.classList.add('hidden');
     document.getElementById('main-menu').classList.remove('hidden');
