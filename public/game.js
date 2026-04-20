@@ -6,7 +6,7 @@ import { AIRCRAFT_TYPES, AIRLINES, getAirlinesForAircraft, getLivery } from './a
 import { AIRPORTS, searchAirports } from './airports.js';
 import { Cockpit } from './cockpit.js';
 import { GamepadManager } from './gamepad.js';
-import * as Career from './career.js?v=9';
+import * as Career from './career.js?v=10';
 
 // ============================================================
 // STATE
@@ -125,11 +125,115 @@ function renderCareer() {
     document.getElementById('cpb-rep-txt').textContent = '—';
   }
 
+  renderHqPanel();
   renderStagesPanel();
   renderFleetPanel();
   renderShopPanel();
   renderJobsPanel();
   renderOpsPanel();
+}
+
+let _hqPreview = null;
+let _hqAnimId = null;
+let _hqBuilt = false;
+let _hqLastFlagshipId = null;
+
+function renderHqPanel() {
+  const panel = document.getElementById('c-panel-hq');
+  const s = careerState;
+  const stage = Career.currentStage(s);
+  const next = Career.nextStage(s);
+
+  const flagship = s.fleet[s.fleet.length - 1];
+  const flagshipShop = flagship ? Career.AIRCRAFT_SHOP[flagship.id] : null;
+  const flagshipName = flagshipShop ? flagshipShop.name : '—';
+
+  const xp = Math.round(s.flightHours * 60);
+  const xpNext = next ? Math.round(next.req.hours * 60) : Math.max(xp, 1);
+  const xpPct = next ? Math.min(100, (xp / xpNext) * 100) : 100;
+  const repPct = Math.min(100, s.reputation);
+
+  if (!_hqBuilt) {
+    panel.innerHTML = `
+      <div class="c-hq">
+        <div class="c-hq-top">
+          <div class="c-hq-left">
+            <div class="c-hq-subtitle">CAREER MODE</div>
+            <div class="c-hq-h1">HAUPTQUARTIER</div>
+          </div>
+          <div class="c-hq-right">
+            <div class="c-hq-stage-big" id="c-hq-st">St. 01</div>
+            <div class="c-hq-stage-label" id="c-hq-stitle">—</div>
+          </div>
+        </div>
+        <div class="c-hq-hero">
+          <div class="c-hq-hero-canvas" id="c-hq-canvas"></div>
+          <div class="c-hq-hero-bg"></div>
+          <div class="c-hq-hero-grad"></div>
+          <div class="c-hq-hero-bars">
+            <div class="c-hq-bar">
+              <div class="c-hq-bar-top"><span id="c-hq-xp-label">EXP</span><span class="c-hq-bar-val" id="c-hq-xp-val">0 / 0 xp</span></div>
+              <div class="c-hq-bar-track"><div class="c-hq-bar-fill" id="c-hq-xp-fill"></div></div>
+            </div>
+            <div class="c-hq-bar rep">
+              <div class="c-hq-bar-top"><span>REPUTATIONSSTUFE</span><span class="c-hq-bar-val" id="c-hq-rep-val">0 / 100</span></div>
+              <div class="c-hq-bar-track"><div class="c-hq-bar-fill" id="c-hq-rep-fill"></div></div>
+            </div>
+          </div>
+        </div>
+        <div class="c-hq-tiles" id="c-hq-tiles"></div>
+      </div>
+    `;
+    panel.addEventListener('click', (e) => {
+      const tile = e.target.closest('.c-hq-tile');
+      if (!tile) return;
+      const goto = tile.dataset.goto;
+      document.querySelectorAll('.c-tab').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.c-panel').forEach(p => p.classList.remove('active'));
+      document.querySelector(`.c-tab[data-c-tab="${goto}"]`)?.classList.add('active');
+      document.getElementById(`c-panel-${goto}`)?.classList.add('active');
+    });
+    _hqBuilt = true;
+  }
+
+  // Dynamische Werte aktualisieren
+  document.getElementById('c-hq-st').textContent = `St. ${String(s.stage).padStart(2, '0')}`;
+  document.getElementById('c-hq-stitle').textContent = stage.title.toUpperCase();
+  document.getElementById('c-hq-xp-label').textContent = `EXP · ${flagshipName.toUpperCase()}`;
+  document.getElementById('c-hq-xp-val').textContent = `${xp.toLocaleString('de-DE')} / ${xpNext.toLocaleString('de-DE')} xp`;
+  document.getElementById('c-hq-xp-fill').style.width = `${xpPct}%`;
+  document.getElementById('c-hq-rep-val').textContent = `${s.reputation.toFixed(0)} / 100`;
+  document.getElementById('c-hq-rep-fill').style.width = `${repPct}%`;
+
+  // Tiles dynamisch
+  const tiles = [
+    { goto: 'stages', icon: '🎓', label: 'Zertifizierung', right: `Stufe <b>${s.stage}</b>` },
+    { goto: 'fleet',  icon: '✈',  label: 'Flotte',         right: `<b>${s.fleet.length}</b> Maschinen` },
+    { goto: 'shop',   icon: '🏷',  label: 'Hangar',         right: 'Flugzeuge kaufen' },
+    { goto: 'jobs',   icon: '📋', label: 'Aufträge',        right: `<b>${s.passiveJobs.length}</b> aktiv · ${s.jobOffers.length} offen` },
+    { goto: 'ops',    icon: '🏢', label: 'Unternehmen',     right: s.stage >= 24 ? `<b>${s.crewHired}</b> Crew` : 'Ab Stufe 24' },
+  ];
+  document.getElementById('c-hq-tiles').innerHTML = tiles.map(t => `
+    <div class="c-hq-tile" data-goto="${t.goto}">
+      <div class="c-hq-tile-icon">${t.icon}</div>
+      <div class="c-hq-tile-label">${t.label}</div>
+      <div class="c-hq-tile-count">${t.right}</div>
+    </div>
+  `).join('');
+
+  // 3D Preview: nur bauen/tauschen wenn Flaggschiff wechselt
+  const canvasContainer = document.getElementById('c-hq-canvas');
+  if (canvasContainer && flagship && flagshipShop) {
+    if (!_hqPreview) {
+      _hqPreview = new AircraftPreview(canvasContainer);
+      const loop = () => { _hqAnimId = requestAnimationFrame(loop); _hqPreview.render(); };
+      loop();
+    }
+    if (_hqLastFlagshipId !== flagship.id) {
+      _hqPreview.setAircraft(flagshipShop.flyType, getLivery('lufthansa'));
+      _hqLastFlagshipId = flagship.id;
+    }
+  }
 }
 
 let _selectedStageN = null;

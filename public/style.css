@@ -367,6 +367,44 @@ canvas{display:block}
 .c-panel{display:none;position:absolute;inset:0;padding:20px 28px;overflow-y:auto}
 .c-panel.active{display:block}
 
+/* HAUPTQUARTIER */
+#c-panel-hq{padding:0!important}
+.c-hq{position:absolute;inset:0;display:flex;flex-direction:column;overflow:hidden}
+.c-hq-top{display:flex;justify-content:space-between;align-items:flex-end;padding:18px 24px 10px;border-bottom:1px solid rgba(255,255,255,.05);position:relative;z-index:2}
+.c-hq-left{display:flex;flex-direction:column;gap:2px}
+.c-hq-subtitle{font-size:10px;letter-spacing:2.5px;font-weight:700;color:#4a9eff}
+.c-hq-h1{font-size:30px;font-weight:800;letter-spacing:2px;line-height:1}
+.c-hq-right{text-align:right}
+.c-hq-stage-big{font-family:'JetBrains Mono',monospace;font-size:30px;font-weight:800;color:#fff;line-height:1}
+.c-hq-stage-label{font-size:10px;letter-spacing:2px;color:rgba(255,255,255,.4);margin-top:2px}
+
+.c-hq-hero{position:relative;flex:1;min-height:260px;overflow:hidden;background:linear-gradient(180deg,#10203a 0%,#050b17 100%)}
+.c-hq-hero-canvas{position:absolute;inset:0}
+.c-hq-hero-canvas canvas{width:100%!important;height:100%!important;display:block}
+.c-hq-hero-bg{position:absolute;inset:0;background-image:url('https://images.unsplash.com/photo-1583846783214-7229a91b20ed?w=1800&q=80&fit=crop');background-size:cover;background-position:center;opacity:.35;mix-blend-mode:lighten}
+.c-hq-hero-grad{position:absolute;inset:0;background:linear-gradient(180deg,transparent 40%,rgba(6,13,26,.85) 100%);pointer-events:none}
+.c-hq-hero-bars{position:absolute;left:24px;right:24px;bottom:18px;display:flex;flex-direction:column;gap:10px;z-index:2}
+.c-hq-bar{background:rgba(0,0,0,.55);backdrop-filter:blur(6px);border:1px solid rgba(255,255,255,.08);border-radius:10px;padding:10px 14px}
+.c-hq-bar-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;font-size:10px;letter-spacing:2px;font-weight:700;color:rgba(255,255,255,.75)}
+.c-hq-bar-val{font-family:'JetBrains Mono',monospace;color:#fff;letter-spacing:1px}
+.c-hq-bar-track{height:7px;background:rgba(255,255,255,.12);border-radius:4px;overflow:hidden}
+.c-hq-bar-fill{height:100%;width:0;background:linear-gradient(90deg,#4a9eff,#7abcff);border-radius:4px;transition:width .4s}
+.c-hq-bar.rep .c-hq-bar-fill{background:linear-gradient(90deg,#ffc72c,#ff8c00)}
+
+.c-hq-tiles{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;padding:14px 24px 20px}
+.c-hq-tile{background:linear-gradient(145deg,rgba(255,255,255,.05),rgba(255,255,255,.02));border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:16px;cursor:pointer;transition:.25s;display:flex;flex-direction:column;gap:6px;min-height:80px;position:relative;overflow:hidden}
+.c-hq-tile::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse at top right,rgba(74,158,255,.15),transparent 60%);opacity:0;transition:.25s}
+.c-hq-tile:hover{border-color:rgba(74,158,255,.5);transform:translateY(-2px);box-shadow:0 8px 24px rgba(0,0,0,.35)}
+.c-hq-tile:hover::before{opacity:1}
+.c-hq-tile-icon{font-size:22px}
+.c-hq-tile-label{font-size:12px;letter-spacing:1.5px;font-weight:700;color:#fff}
+.c-hq-tile-count{font-size:11px;color:rgba(255,255,255,.55);font-family:'JetBrains Mono',monospace;margin-top:auto}
+.c-hq-tile-count b{color:#4a9eff;font-weight:700}
+
+@media (max-width: 900px){
+  .c-hq-tiles{grid-template-columns:repeat(2,1fr)}
+}
+
 /* STAGES — SKILL TREE */
 .c-tree-wrap{position:absolute;inset:0;overflow:hidden;cursor:grab;background:radial-gradient(ellipse at center,#0f1f38 0%,#060d1a 80%);border-radius:10px;user-select:none}
 .c-tree-wrap.dragging{cursor:grabbing}
