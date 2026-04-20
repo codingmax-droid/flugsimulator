@@ -1770,31 +1770,92 @@ function animate() {
 // LOGIN
 // ============================================================
 
+function getDeviceId() {
+  let id = localStorage.getItem('flugsim_device_id');
+  if (!id) {
+    const rnd = (crypto.randomUUID && crypto.randomUUID()) ||
+      ([1e7] + -1e3 + -4e3 + -8e3 + -1e11).replace(/[018]/g, c =>
+        (c ^ (crypto.getRandomValues(new Uint8Array(1))[0] & (15 >> (c / 4)))).toString(16));
+    id = 'dev_' + rnd;
+    localStorage.setItem('flugsim_device_id', id);
+  }
+  return id;
+}
+
+async function verifyAccessCode(code) {
+  try {
+    const r = await fetch('/api/access', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ code, deviceId: getDeviceId() }),
+    });
+    return await r.json();
+  } catch {
+    return { ok: false, error: 'network' };
+  }
+}
+
 function initLogin() {
   const loginScreen = document.getElementById('login-screen');
   const loginInput = document.getElementById('login-name');
+  const accessInput = document.getElementById('login-access');
+  const accessHint = document.getElementById('login-access-hint');
   const loginBtn = document.getElementById('login-btn');
 
-  // Auto-fill wenn schon eingeloggt
-  if (pilotName && pilotName.length >= 3) {
-    loginInput.value = pilotName;
-    loginBtn.disabled = false;
+  // Auto-fill
+  if (pilotName && pilotName.length >= 3) loginInput.value = pilotName;
+  const savedCode = localStorage.getItem('flugsim_access_code') || '';
+  if (savedCode) accessInput.value = savedCode;
+
+  function updateBtn() {
+    const nameOk = loginInput.value.trim().length >= 3;
+    const codeOk = accessInput.value.trim().length >= 6;
+    loginBtn.disabled = !(nameOk && codeOk);
   }
+  updateBtn();
 
-  loginInput.addEventListener('input', () => {
-    const val = loginInput.value.trim();
-    loginBtn.disabled = val.length < 3;
+  loginInput.addEventListener('input', updateBtn);
+  accessInput.addEventListener('input', () => {
+    accessInput.value = accessInput.value.toUpperCase();
+    accessHint.textContent = 'Gerätgebunden — nur auf diesem Gerät nutzbar';
+    accessHint.style.color = '';
+    updateBtn();
   });
 
-  loginInput.addEventListener('keydown', (e) => {
-    if (e.code === 'Enter' && !loginBtn.disabled) doLogin();
-  });
-
+  const onEnter = (e) => { if (e.code === 'Enter' && !loginBtn.disabled) doLogin(); };
+  loginInput.addEventListener('keydown', onEnter);
+  accessInput.addEventListener('keydown', onEnter);
   loginBtn.addEventListener('click', doLogin);
 
-  function doLogin() {
-    pilotName = loginInput.value.trim().slice(0, 20);
-    if (pilotName.length < 3) return;
+  async function doLogin() {
+    const code = accessInput.value.trim().toUpperCase();
+    const name = loginInput.value.trim().slice(0, 20);
+    if (name.length < 3 || code.length < 6) return;
+
+    loginBtn.disabled = true;
+    const prevText = loginBtn.textContent;
+    loginBtn.textContent = 'PRÜFE …';
+    accessHint.textContent = 'Prüfe Code …';
+    accessHint.style.color = 'rgba(255,255,255,.35)';
+
+    const res = await verifyAccessCode(code);
+    if (!res.ok) {
+      const msg = res.error === 'bound-other-device'
+        ? 'Code ist bereits an ein anderes Gerät gebunden'
+        : res.error === 'network'
+        ? 'Server nicht erreichbar'
+        : 'Ungültiger Code';
+      accessHint.textContent = msg;
+      accessHint.style.color = '#ff5a5a';
+      loginBtn.textContent = prevText;
+      loginBtn.disabled = false;
+      return;
+    }
+
+    localStorage.setItem('flugsim_access_code', code);
+    localStorage.setItem('flugsim_access_role', res.role);
+
+    pilotName = name;
     localStorage.setItem('flugsim_pilot', pilotName);
     ownedAircraft = loadOwnedAircraft();
     careerState = Career.loadCareer(pilotName);

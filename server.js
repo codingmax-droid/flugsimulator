@@ -2,12 +2,61 @@ const express = require('express');
 const http = require('http');
 const { WebSocketServer } = require('ws');
 const path = require('path');
+const fs = require('fs');
 
 const app = express();
 const server = http.createServer(app);
 const wss = new WebSocketServer({ server });
 
+app.use(express.json({ limit: '32kb' }));
 app.use(express.static(path.join(__dirname, 'public')));
+
+// ============================================================
+// EARLY ACCESS CODES  (each code binds to exactly one device)
+// ============================================================
+
+const ACCESS_FILE = path.join(__dirname, 'access-codes.json');
+const DEFAULT_CODES = {
+  'FS-ADMIN-9K3M-X7R2-4PQ8':  { role: 'admin',  label: 'Admin',  deviceId: null, boundAt: null, lastSeen: null },
+  'FS-TEST-5N8V-H2J4-6DB9':   { role: 'tester', label: 'Tester', deviceId: null, boundAt: null, lastSeen: null },
+};
+let accessCodes = loadAccessCodes();
+
+function loadAccessCodes() {
+  try {
+    const raw = JSON.parse(fs.readFileSync(ACCESS_FILE, 'utf8'));
+    for (const k of Object.keys(DEFAULT_CODES)) {
+      if (!raw[k]) raw[k] = { ...DEFAULT_CODES[k] };
+    }
+    return raw;
+  } catch {
+    fs.writeFileSync(ACCESS_FILE, JSON.stringify(DEFAULT_CODES, null, 2));
+    return JSON.parse(JSON.stringify(DEFAULT_CODES));
+  }
+}
+function saveAccessCodes() {
+  try { fs.writeFileSync(ACCESS_FILE, JSON.stringify(accessCodes, null, 2)); }
+  catch (e) { console.error('access-codes save failed:', e.message); }
+}
+
+app.post('/api/access', (req, res) => {
+  const code = String(req.body?.code || '').trim().toUpperCase();
+  const deviceId = String(req.body?.deviceId || '').trim().slice(0, 128);
+  if (!code || !deviceId) return res.json({ ok: false, error: 'missing' });
+  const entry = accessCodes[code];
+  if (!entry) return res.json({ ok: false, error: 'invalid' });
+  if (entry.deviceId && entry.deviceId !== deviceId) {
+    return res.json({ ok: false, error: 'bound-other-device' });
+  }
+  if (!entry.deviceId) {
+    entry.deviceId = deviceId;
+    entry.boundAt = Date.now();
+    addEvent('access', `${entry.role.toUpperCase()} code an Gerät gebunden`);
+  }
+  entry.lastSeen = Date.now();
+  saveAccessCodes();
+  res.json({ ok: true, role: entry.role, label: entry.label });
+});
 
 // ============================================================
 // STATISTICS TRACKING
