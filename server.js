@@ -207,7 +207,7 @@ function updatePhysics(p) {
   // Autopilot
   if (p.autopilot) {
     if (p.apHdgHold) {
-      const tgt = -p.apHdg * Math.PI / 180;
+      const tgt = Math.PI - p.apHdg * Math.PI / 180;
       let diff = tgt - p.yaw;
       while (diff > Math.PI) diff -= Math.PI * 2;
       while (diff < -Math.PI) diff += Math.PI * 2;

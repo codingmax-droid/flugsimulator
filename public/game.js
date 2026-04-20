@@ -360,9 +360,11 @@ function connectWS() {
     // Pilotname senden
     ws.send(JSON.stringify({ type: 'login', name: pilotName }));
 
-    // Runway-Heading in Radians
+    // Runway-Heading → Yaw. Welt-Konvention: +X=Ost, +Z=Süd, -Z=Nord.
+    // Mesh-Nase zeigt bei yaw=0 nach +Z (Süden). Heading 0° = Norden = -Z
+    // verlangt yaw=π. Allgemein: yaw = π − heading.
     const rwyHdg = selectedAirport?.rwy?.[0]?.hdg || 0;
-    const spawnYaw = -rwyHdg * Math.PI / 180;
+    const spawnYaw = Math.PI - rwyHdg * Math.PI / 180;
     ws.send(JSON.stringify({
       type: 'selectAircraft',
       aircraft: selectedAircraft,
@@ -472,7 +474,7 @@ function updateHUD() {
   const alt = m ? s.y.toFixed(0) : (s.y*3.281).toFixed(0);
   const vs = s.verticalSpeed * (m ? 60 : 196.85);
   const gs = m ? (s.groundSpeed*3.6).toFixed(0) : (s.groundSpeed*1.944).toFixed(0);
-  const hdg = (((-s.yaw*180/Math.PI)%360)+360)%360;
+  const hdg = ((((Math.PI - s.yaw)*180/Math.PI)%360)+360)%360;
 
   document.getElementById('pfd-spd').textContent = spd;
   document.getElementById('pfd-alt').textContent = alt;
