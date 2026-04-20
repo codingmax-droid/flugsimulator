@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { TerrainManager } from './terrain.js';
-import { createAircraftForType, createProceduralAirplane, AircraftPreview, createGLBInstance, applyLiveryToGLB } from './airplane.js';
+import { createAircraftForType, createProceduralAirplane, AircraftPreview, createGLBInstance, applyLiveryToGLB } from './airplane.js?v=5';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { AIRCRAFT_TYPES, AIRLINES, getAirlinesForAircraft, getLivery } from './airlines.js';
 import { AIRPORTS, searchAirports } from './airports.js';

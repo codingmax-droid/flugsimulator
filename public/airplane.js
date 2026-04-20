@@ -1770,6 +1770,11 @@ export function loadAircraftModel(type) {
         const wrap = new THREE.Group();
         root.position.sub(center).multiplyScalar(s);
         root.scale.setScalar(s);
+        // GLB-Modelle haben Nase am +X (wie procedural inner). Wir drehen
+        // identisch zu `inner.rotation.y = -π/2` in buildAircraft, damit die
+        // Nase im Wrapper bei yaw=0 auf +Z zeigt — konsistent mit Physik
+        // und Kamera.
+        root.rotation.y = -Math.PI / 2;
         wrap.add(root);
         wrap.userData.realLength = target;
         // Boden-Offset nach Skalierung ermitteln
