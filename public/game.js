@@ -7,7 +7,8 @@ import { AIRCRAFT_TYPES, AIRLINES, getAirlinesForAircraft, getLivery } from './a
 import { AIRPORTS, searchAirports } from './airports.js';
 import { Cockpit } from './cockpit.js';
 import { GamepadManager } from './gamepad.js';
-import * as Career from './career.js?v=10';
+import * as Career from './career.js?v=11';
+import * as Missions from './missions.js?v=1';
 
 // ============================================================
 // STATE
@@ -426,6 +427,155 @@ function renderFleetPanel() {
   });
 }
 
+// ============================================================
+// MISSION-FLOW (MSFS-24-artig)
+// ============================================================
+
+function findAirportByIcao(icao) {
+  return AIRPORTS.find(a => a.icao === icao) || null;
+}
+
+function showMissionBriefing(missionUid) {
+  const m = careerState.missionOffers.find(x => x.uid === missionUid);
+  if (!m) return;
+  const t = Missions.MISSION_TYPES[m.type];
+  alert(
+    `MISSION-BRIEFING — ${m.typeLabel}\n` +
+    `${m.description}\n\n` +
+    `Route:      ${m.originIcao} (${m.originName}) → ${m.destIcao} (${m.destName})\n` +
+    `Distanz:    ${m.distanceKm} km · Zeitbudget: ${m.timeBudgetMin} min\n` +
+    `Flugzeug:   ${m.aircraftName}\n` +
+    `Ladung:     ${m.payload} ${m.payloadLabel}\n` +
+    `Payout:     ${Career.fmtMoney(m.payout)}  (max. ×1.2 bei Spitzen-Score)\n` +
+    `XP:         +${m.xpReward}\n` +
+    `Landetol.:  VS ≤ ${m.vsTolerance} m/s · Roll ≤ ${(m.rollTolerance*57.3).toFixed(0)}°`
+  );
+}
+
+function startMissionFlight(missionUid) {
+  const m = careerState.missionOffers.find(x => x.uid === missionUid);
+  if (!m) return;
+  if (careerState.activeMission) { showToast('Andere Mission läuft'); return; }
+  // Flugzeug aus Flotte
+  const fleet = careerState.fleet.find(f => f.uid === m.aircraftUid && !f.inShop)
+             || careerState.fleet.find(f => f.id === m.aircraftId && !f.inShop);
+  if (!fleet) { showToast('Flugzeug nicht mehr einsatzbereit'); return; }
+  const origin = findAirportByIcao(m.originIcao);
+  if (!origin) { showToast('Origin-Airport unbekannt'); return; }
+
+  // Mission aktivieren
+  Career.startMission(careerState, m);
+  careerState.missionOffers = careerState.missionOffers.filter(x => x.uid !== m.uid);
+  saveCareerNow();
+
+  // Flug-Setup vorbelegen
+  const shop = Career.AIRCRAFT_SHOP[fleet.id];
+  selectedAirport = origin;
+  selectedAircraft = shop?.flyType || fleet.id;
+  careerFlightActive = true;
+  careerFlightFleetId = fleet.id;
+  closeCareer();
+  // Direkt Ladebildschirm triggern (statt manueller Bestätigung)
+  showToast(`Mission gestartet: ${m.originIcao} → ${m.destIcao}`);
+  startFlight();
+}
+
+function resumeActiveMission(mission) {
+  const origin = findAirportByIcao(mission.originIcao);
+  if (!origin) return;
+  const fleet = careerState.fleet.find(f => f.uid === mission.aircraftUid && !f.inShop)
+             || careerState.fleet.find(f => f.id === mission.aircraftId && !f.inShop);
+  if (!fleet) { showToast('Flugzeug nicht verfügbar'); return; }
+  const shop = Career.AIRCRAFT_SHOP[fleet.id];
+  selectedAirport = origin;
+  selectedAircraft = shop?.flyType || fleet.id;
+  careerFlightActive = true;
+  careerFlightFleetId = fleet.id;
+  closeCareer();
+  startFlight();
+}
+
+function updateMissionHUD() {
+  const hud = document.getElementById('mission-hud');
+  const m = careerState.activeMission;
+  if (!m || !myState) { if (hud) hud.classList.add('hidden'); return; }
+  if (!hud) return;
+  hud.classList.remove('hidden');
+  const dest = findAirportByIcao(m.destIcao);
+  if (!dest) return;
+  const origin = findAirportByIcao(m.originIcao);
+  // Welt-km pro Breiten-/Längengrad grob über origin (wir simulieren planar)
+  // Tatsächlich ist der Player auf x/z im Meter-Raum relativ zum selectedAirport-Ursprung.
+  // Wenn wir am Origin-Airport spawnen, ist (0,0,0) == origin. Ziel in Welt-km: haversine.
+  const distTotalKm = m.distanceKm;
+  // Distanz von aktuellem Ort zu dest über eine Mischung aus flugzeit und restlicher Entfernung
+  // Approximation: Player-Welt-Distanz zum Ursprung + verbleibende Distanz bis Ziel
+  const playerKm = Math.sqrt((myState.x||0)**2 + (myState.z||0)**2) / 1000;
+  const remainKm = Math.max(0, distTotalKm - playerKm);
+  const elapsedMin = (Date.now() - (m.startedAt || Date.now())) / 60000;
+  const timeLeft = Math.max(0, m.timeBudgetMin - elapsedMin);
+  document.getElementById('mis-hud-type').textContent = m.typeLabel;
+  document.getElementById('mis-hud-route').textContent = `${m.originIcao} → ${m.destIcao}`;
+  document.getElementById('mis-hud-remain').textContent = `${remainKm.toFixed(0)} km`;
+  document.getElementById('mis-hud-time').textContent = `${timeLeft.toFixed(0)} min`;
+  document.getElementById('mis-hud-payout').textContent = Career.fmtMoney(m.payout);
+}
+
+function tryCompleteActiveMission(landing) {
+  const m = careerState.activeMission;
+  if (!m || !myState) return;
+  // Welches Airport ist am nächsten?
+  const myX = myState.x || 0, myZ = myState.z || 0;
+  // Origin ist (0,0). Für dest: kein direkter Welt-Koordinaten-Mapping,
+  // daher prüfen wir: Wenn Ziel=Origin (Sightseeing), reicht On-Ground + nahe (0,0).
+  // Wenn Ziel ≠ Origin, vergleichen wir Strecke: mindestens distanceKm·0.7 geflogen und on-ground + langsam.
+  const playerKm = Math.sqrt(myX*myX + myZ*myZ) / 1000;
+  const nearOrigin = playerKm < 3;
+  const reachedDest = !m.roundTrip && playerKm >= m.distanceKm * 0.7;
+  const onGround = myState.onGround && myState.speed < 15;
+  if (!onGround) return;
+
+  let landedIcao;
+  if (m.roundTrip && nearOrigin) landedIcao = m.originIcao;
+  else if (reachedDest) landedIcao = m.destIcao;
+  else landedIcao = 'UNKNOWN';
+
+  const result = {
+    landedIcao,
+    verticalSpeed: landing?.verticalSpeed ?? flightRecord?.lastVs ?? 0,
+    roll: landing?.roll ?? flightRecord?.lastRoll ?? 0,
+    gear: landing?.gear ?? flightRecord?.lastGear ?? true,
+    crashed: !!landing?.crashed,
+    durationMin: flightRecord ? (Date.now() - flightRecord.startTime) / 60000 : 0,
+    distanceKm: playerKm,
+  };
+  const score = Missions.scoreMission(m, result);
+  const outcome = Career.completeMission(careerState, m, result, score);
+  saveCareerNow();
+  showMissionComplete(m, score, outcome);
+}
+
+function showMissionComplete(mission, score, outcome) {
+  const el = document.getElementById('mission-complete');
+  if (!el) return;
+  el.classList.remove('hidden');
+  const success = score.success;
+  el.querySelector('.mc-title').textContent = success ? 'MISSION ERFOLGREICH' : 'MISSION FEHLGESCHLAGEN';
+  el.querySelector('.mc-title').style.color = success ? '#2dd07e' : '#ff5a5a';
+  el.querySelector('.mc-sub').textContent = `${mission.typeLabel} · ${mission.originIcao} → ${mission.destIcao}`;
+  el.querySelector('.mc-score-val').textContent = `${(score.score * 100).toFixed(0)}%`;
+  el.querySelector('.mc-payout').textContent = Career.fmtMoney(outcome.payout);
+  el.querySelector('.mc-xp').textContent = `+${outcome.xp} XP`;
+  el.querySelector('.mc-rep').textContent = (outcome.repDelta >= 0 ? '+' : '') + outcome.repDelta;
+  el.querySelector('.mc-reasons').innerHTML = score.reasons.map(r => `<li>${escapeHtml(r)}</li>`).join('');
+  if (outcome.promoted) {
+    const p = document.createElement('div');
+    p.className = 'mc-promo';
+    p.textContent = `🎉 BEFÖRDERT: ${outcome.promoted.title}`;
+    el.querySelector('.mc-body').appendChild(p);
+  }
+}
+
 function startCareerFlight(fleetUid) {
   const f = careerState.fleet.find(a => a.uid === fleetUid);
   if (!f) return;
@@ -488,6 +638,80 @@ function renderShopPanel() {
   });
 }
 
+function escapeHtml(s) {
+  return String(s ?? '').replace(/[&<>"']/g, (c) => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+  }[c]));
+}
+function escapeAttr(s) { return escapeHtml(s); }
+
+function renderMissionBoard(panel) {
+  const s = careerState;
+  const origin = selectedAirport?.icao || 'EDDF';
+  // Missionen pro Origin cachen — bei Wechsel neu generieren
+  if (!s.missionOffers.length || s.missionOffersOrigin !== origin) {
+    s.missionOffers = Missions.generateMissions(origin, s, 6);
+    s.missionOffersOrigin = origin;
+  }
+  const active = s.activeMission;
+  const offers = s.missionOffers;
+
+  const activeHtml = active ? `
+    <div class="c-card mission-active" style="border-color:${escapeAttr(Missions.MISSION_TYPES[active.type]?.color || '#2a7fff')}">
+      <div class="c-card-head">
+        <div>
+          <div class="c-card-name">AKTIVE MISSION — ${escapeHtml(active.typeLabel)}</div>
+          <div class="c-card-sub">${escapeHtml(active.originIcao)} → ${escapeHtml(active.destIcao)} · ${active.distanceKm} km · ${active.aircraftName}</div>
+        </div>
+        <div class="c-card-price">${Career.fmtMoney(active.payout)}</div>
+      </div>
+      <div class="c-card-actions">
+        <button class="c-btn" id="mis-continue">WEITERFLIEGEN</button>
+        <button class="c-btn ghost" id="mis-abort">MISSION ABBRECHEN (-2 Ruf)</button>
+      </div>
+    </div>
+  ` : '';
+
+  const offerHtml = offers.map(m => {
+    const t = Missions.MISSION_TYPES[m.type];
+    const canFly = s.fleet.some(f => f.uid === m.aircraftUid && !f.inShop)
+                || s.fleet.some(f => f.id === m.aircraftId && !f.inShop);
+    return `
+      <div class="c-card mission-card">
+        <div class="c-card-head">
+          <div>
+            <div class="c-card-name">
+              <span class="mis-chip" style="background:${escapeAttr(t?.color || '#444')}">${escapeHtml(m.typeLabel)}</span>
+              ${escapeHtml(m.originIcao)} → ${escapeHtml(m.destIcao)}
+            </div>
+            <div class="c-card-sub">${escapeHtml(m.destName)} · ${m.distanceKm} km · ${m.timeBudgetMin} min Budget</div>
+          </div>
+          <div class="c-card-price">${Career.fmtMoney(m.payout)}</div>
+        </div>
+        <div class="c-card-sub" style="margin-top:4px">
+          ${escapeHtml(m.aircraftName)} · ${m.payload} ${escapeHtml(m.payloadLabel)} · +${m.xpReward} XP
+          ${m.requiresSmooth ? ' · <span style="color:#9ec8f0">weiche Landung erforderlich</span>' : ''}
+        </div>
+        <div class="c-card-actions">
+          <button class="c-btn" data-act="start-mission" data-uid="${escapeAttr(m.uid)}" ${canFly && !active ? '' : 'disabled'}>
+            ${active ? 'ANDERE MISSION LÄUFT' : canFly ? 'MISSION STARTEN' : 'FLUGZEUG FEHLT'}
+          </button>
+          <button class="c-btn ghost" data-act="brief" data-uid="${escapeAttr(m.uid)}">BRIEFING</button>
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  return `
+    <div class="c-section-hdr" style="display:flex;align-items:center">
+      MISSIONS-BOARD · ${escapeHtml(origin)}
+      <button class="c-btn-refresh" id="c-refresh-missions">NEU WÜRFELN</button>
+    </div>
+    ${activeHtml}
+    <div class="c-mission-list">${offerHtml || '<p style="color:rgba(255,255,255,.4)">Keine Missionen — Flotte leer oder Airport zuerst wählen.</p>'}</div>
+  `;
+}
+
 function renderJobsPanel() {
   const panel = document.getElementById('c-panel-jobs');
   const s = careerState;
@@ -535,17 +759,20 @@ function renderJobsPanel() {
     `;
   }).join('');
 
+  const missionBoard = renderMissionBoard(panel);
+
   panel.innerHTML = `
+    ${missionBoard}
     ${active ? `
-      <div class="c-active-jobs">
+      <div class="c-active-jobs" style="margin-top:18px">
         <div class="c-section-hdr" style="display:flex;align-items:center">
-          AKTIVE VERTRÄGE (${s.passiveJobs.length})
+          PASSIVE VERTRÄGE (${s.passiveJobs.length})
         </div>
         <div class="c-job-list">${active}</div>
       </div>
     ` : ''}
-    <div class="c-section-hdr" style="display:flex;align-items:center">
-      VERFÜGBARE AUFTRÄGE
+    <div class="c-section-hdr" style="display:flex;align-items:center;margin-top:14px">
+      PASSIVE AUFTRÄGE
       <button class="c-btn-refresh" id="c-refresh-jobs">NEU WÜRFELN</button>
     </div>
     <div class="c-job-list">${offers || '<p style="color:rgba(255,255,255,.4)">Keine Aufträge. Refresh versuchen.</p>'}</div>
@@ -561,6 +788,30 @@ function renderJobsPanel() {
     Career.generateJobOffers(careerState);
     saveCareerNow();
     renderCareer();
+  });
+  panel.querySelector('#c-refresh-missions')?.addEventListener('click', () => {
+    const origin = selectedAirport?.icao || 'EDDF';
+    careerState.missionOffers = Missions.generateMissions(origin, careerState, 6);
+    careerState.missionOffersOrigin = origin;
+    saveCareerNow();
+    renderCareer();
+  });
+  panel.querySelectorAll('[data-act="start-mission"]').forEach(b => {
+    b.addEventListener('click', () => startMissionFlight(b.dataset.uid));
+  });
+  panel.querySelectorAll('[data-act="brief"]').forEach(b => {
+    b.addEventListener('click', () => showMissionBriefing(b.dataset.uid));
+  });
+  panel.querySelector('#mis-continue')?.addEventListener('click', () => {
+    const m = careerState.activeMission;
+    if (!m) return;
+    resumeActiveMission(m);
+  });
+  panel.querySelector('#mis-abort')?.addEventListener('click', () => {
+    Career.abortMission(careerState);
+    saveCareerNow();
+    renderCareer();
+    showToast('Mission abgebrochen');
   });
 }
 
@@ -1145,7 +1396,11 @@ function showCrash() {
   document.getElementById('cr-spd').textContent = (myState.speed*3.6).toFixed(0);
   document.getElementById('cr-alt').textContent = myState.y.toFixed(0);
   document.getElementById('cr-g').textContent = myState.gForce.toFixed(1);
-  creditCurrentFlight({ crashed: true });
+  if (careerState.activeMission) {
+    tryCompleteActiveMission({ crashed: true });
+  } else {
+    creditCurrentFlight({ crashed: true });
+  }
 }
 
 function creditCurrentFlight(override = {}) {
@@ -1461,8 +1716,12 @@ function initMenu() {
     location.reload();
   });
   document.getElementById('btn-end-flight').addEventListener('click', () => {
-    if (flightRecord?.wasAirborne && !flightRecord.credited) creditCurrentFlight();
-    location.reload();
+    if (careerState.activeMission) {
+      tryCompleteActiveMission();
+    } else if (flightRecord?.wasAirborne && !flightRecord.credited) {
+      creditCurrentFlight();
+    }
+    setTimeout(() => location.reload(), careerState.activeMission ? 2500 : 0);
   });
   document.getElementById('btn-wx-pause').addEventListener('click', () => {
     // Quick cycle weather
@@ -1779,6 +2038,7 @@ function animate() {
   }
 
   updateHUD();
+  updateMissionHUD();
   renderer.render(scene, camera);
 }
 

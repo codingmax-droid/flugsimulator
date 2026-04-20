@@ -386,6 +386,43 @@
     <div class="warning stall hidden" id="warn-stall">STALL</div>
     <div class="warning ovspd hidden" id="warn-ovspd">OVERSPEED</div>
     <div class="warning gpws hidden" id="warn-gpws">PULL UP</div>
+
+    <!-- MSFS-24-style mission objective -->
+    <div id="mission-hud" class="hidden">
+      <div class="mis-hud-hdr">
+        <span class="mis-hud-dot"></span>
+        <span class="mis-hud-type" id="mis-hud-type">Mission</span>
+      </div>
+      <div class="mis-hud-route" id="mis-hud-route">---</div>
+      <div class="mis-hud-grid">
+        <div><span>DIST</span><b id="mis-hud-remain">—</b></div>
+        <div><span>ZEIT</span><b id="mis-hud-time">—</b></div>
+        <div><span>PAYOUT</span><b id="mis-hud-payout">—</b></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== MISSION COMPLETE ==================== -->
+  <div id="mission-complete" class="hidden">
+    <div class="overlay-bg"></div>
+    <div class="mc-box">
+      <div class="mc-eyebrow">MISSION-DEBRIEFING</div>
+      <div class="mc-title">—</div>
+      <div class="mc-sub">—</div>
+      <div class="mc-score">
+        <div class="mc-score-label">SCORE</div>
+        <div class="mc-score-val">0%</div>
+      </div>
+      <div class="mc-body">
+        <div class="mc-rewards">
+          <div class="mc-reward"><span>Payout</span><b class="mc-payout">€0</b></div>
+          <div class="mc-reward"><span>XP</span><b class="mc-xp">+0</b></div>
+          <div class="mc-reward"><span>Reputation</span><b class="mc-rep">0</b></div>
+        </div>
+        <ul class="mc-reasons"></ul>
+      </div>
+      <button class="menu-btn" onclick="location.reload()">ZURÜCK ZUM HAUPTMENÜ</button>
+    </div>
   </div>
 
   <!-- ==================== COCKPIT PANEL (Tab) ==================== -->

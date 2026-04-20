@@ -164,6 +164,7 @@ const DEFAULT_STATE = () => ({
   stage: 1,
   money: 5_000,             // Startkapital
   reputation: 50,           // 0..100
+  xp: 0,                    // Mission-XP (MSFS-24-artig)
   flightHours: 0,
   totalFlights: 0,
   totalDistanceKm: 0,
@@ -172,6 +173,10 @@ const DEFAULT_STATE = () => ({
   crewHired: 0,
   passiveJobs: [],          // aktive passive Aufträge
   jobOffers: [],            // angebotene Aufträge
+  missionOffers: [],        // aktive Mission-Angebote (dynamisch gefüllt)
+  missionOffersOrigin: '',  // Origin-ICAO, unter dem die Angebote generiert wurden
+  activeMission: null,      // aktuell aktive Mission (während Flug)
+  completedMissions: 0,
   completedJobs: 0,
   lastDailyTick: Date.now(),
   history: [],
@@ -496,4 +501,65 @@ export function fmtMoney(v) {
 export function fmtHours(h) {
   if (h < 1) return `${(h * 60).toFixed(0)} min`;
   return `${h.toFixed(1)} h`;
+}
+
+// ------------------------------------------------------------
+// MISSION-ABSCHLUSS — MSFS-24-artig aktives Missions-Modell
+// ------------------------------------------------------------
+
+export function startMission(state, mission) {
+  state.activeMission = {
+    ...mission,
+    startedAt: Date.now(),
+  };
+  state.history.push({ type: 'mission_start', at: Date.now(), uid: mission.uid, dest: mission.destIcao });
+  return { ok: true };
+}
+
+export function abortMission(state) {
+  if (!state.activeMission) return { ok: false };
+  state.history.push({ type: 'mission_abort', at: Date.now(), uid: state.activeMission.uid });
+  state.activeMission = null;
+  state.reputation = Math.max(0, state.reputation - 2);
+  return { ok: true };
+}
+
+// result: { landedIcao, verticalSpeed, roll, gear, crashed, durationMin, distanceKm }
+// score: { success, mult, score, reasons } (aus scoreMission)
+export function completeMission(state, mission, result, score) {
+  const payout = Math.round((mission.payout || 0) * (score.mult || 0));
+  const xp = Math.max(0, Math.round((mission.xpReward || 0) * (score.mult || 0)));
+  state.money += payout;
+  state.xp = (state.xp || 0) + xp;
+  state.completedMissions = (state.completedMissions || 0) + (score.success ? 1 : 0);
+  state.totalFlights += 1;
+  state.flightHours += (result.durationMin || 0) / 60;
+  state.totalDistanceKm += result.distanceKm || mission.distanceKm || 0;
+
+  // Reputation: Erfolg → +Score·5, Misserfolg → -3
+  let repDelta;
+  if (score.success) {
+    repDelta = Math.round(score.score * 5);
+  } else if (result.crashed) {
+    repDelta = -10;
+    state.crashes += 1;
+    const shop = AIRCRAFT_SHOP[mission.aircraftId];
+    if (shop) state.money = Math.max(0, state.money - Math.round(shop.price * 0.15));
+  } else {
+    repDelta = -3;
+  }
+  state.reputation = Math.max(0, Math.min(100, state.reputation + repDelta));
+
+  // Wear auf Mission-Flugzeug
+  const f = state.fleet.find(a => a.uid === mission.aircraftUid) || state.fleet.find(a => a.id === mission.aircraftId);
+  if (f) f.wear = Math.min(1, (f.wear || 0) + (result.durationMin || 0) / 600);
+
+  state.history.push({
+    type: 'mission_done', at: Date.now(),
+    uid: mission.uid, success: !!score.success, score: score.score, payout, xp, repDelta,
+  });
+
+  const promoted = checkPromotion(state);
+  state.activeMission = null;
+  return { payout, xp, repDelta, promoted };
 }

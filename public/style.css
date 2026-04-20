@@ -548,3 +548,36 @@ canvas{display:block}
 .crash-title{font-size:28px;font-weight:700;letter-spacing:5px}
 .crash-reason{font-size:14px;color:rgba(255,255,255,.5);margin-bottom:4px}
 .crash-data{display:flex;gap:20px;font-family:'JetBrains Mono',monospace;font-size:11px;color:rgba(255,255,255,.3);margin-bottom:12px}
+
+/* ==================== MISSION HUD & DEBRIEF ==================== */
+#mission-hud{position:fixed;top:14px;left:50%;transform:translateX(-50%);z-index:50;background:rgba(8,12,20,.82);border:1px solid rgba(74,158,255,.35);border-radius:10px;padding:10px 16px;backdrop-filter:blur(10px);min-width:340px;color:#fff;font-family:'Inter',sans-serif;pointer-events:none}
+#mission-hud.hidden{display:none}
+.mis-hud-hdr{display:flex;align-items:center;gap:8px;font-size:10px;letter-spacing:2.5px;color:#9ec8f0;margin-bottom:2px}
+.mis-hud-dot{width:7px;height:7px;border-radius:50%;background:#2a7fff;box-shadow:0 0 8px #2a7fff;animation:mis-pulse 2s infinite}
+@keyframes mis-pulse{0%,100%{opacity:1}50%{opacity:.5}}
+.mis-hud-route{font-size:15px;font-weight:700;letter-spacing:2px;margin-bottom:6px}
+.mis-hud-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;font-family:'JetBrains Mono',monospace}
+.mis-hud-grid > div{display:flex;flex-direction:column}
+.mis-hud-grid span{font-size:8px;letter-spacing:1.5px;color:rgba(255,255,255,.35)}
+.mis-hud-grid b{font-size:14px;color:#fff}
+
+.mission-card .mis-chip{display:inline-block;padding:2px 8px;border-radius:4px;color:#fff;font-size:9px;letter-spacing:1.5px;margin-right:6px;vertical-align:middle}
+.mission-active{background:rgba(42,127,255,.08)}
+.c-mission-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(360px,1fr));gap:10px;margin-top:10px}
+
+#mission-complete{position:fixed;inset:0;z-index:115;display:flex;align-items:center;justify-content:center}
+#mission-complete.hidden{display:none}
+.mc-box{position:relative;z-index:1;background:rgba(8,12,20,.98);border:1px solid rgba(74,158,255,.2);border-radius:14px;padding:36px 40px;width:520px;max-width:90vw;color:#fff;font-family:'Inter',sans-serif;text-align:center}
+.mc-eyebrow{font-size:10px;letter-spacing:4px;color:rgba(255,255,255,.35);margin-bottom:8px}
+.mc-title{font-size:24px;font-weight:800;letter-spacing:3px;margin-bottom:4px}
+.mc-sub{font-size:13px;color:rgba(255,255,255,.55);margin-bottom:18px}
+.mc-score{margin:10px 0 18px}
+.mc-score-label{font-size:10px;letter-spacing:3px;color:rgba(255,255,255,.35)}
+.mc-score-val{font-size:54px;font-weight:800;color:#2dd07e;font-family:'JetBrains Mono',monospace;letter-spacing:2px}
+.mc-rewards{display:flex;gap:14px;justify-content:center;margin-bottom:14px}
+.mc-reward{background:rgba(255,255,255,.04);border-radius:8px;padding:10px 16px;min-width:110px}
+.mc-reward span{display:block;font-size:9px;letter-spacing:2px;color:rgba(255,255,255,.35)}
+.mc-reward b{display:block;font-size:16px;font-family:'JetBrains Mono',monospace;margin-top:3px}
+.mc-reasons{list-style:none;padding:0;margin:0 0 14px;font-size:12px;color:rgba(255,255,255,.7);text-align:left}
+.mc-reasons li{padding:4px 0;border-bottom:1px solid rgba(255,255,255,.04)}
+.mc-promo{margin-top:10px;padding:10px;background:rgba(45,208,126,.12);border:1px solid rgba(45,208,126,.35);border-radius:8px;font-weight:700;color:#2dd07e;letter-spacing:2px}
