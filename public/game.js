@@ -6,7 +6,7 @@ import { AIRCRAFT_TYPES, AIRLINES, getAirlinesForAircraft, getLivery } from './a
 import { AIRPORTS, searchAirports } from './airports.js';
 import { Cockpit } from './cockpit.js';
 import { GamepadManager } from './gamepad.js';
-import * as Career from './career.js?v=7';
+import * as Career from './career.js?v=8';
 
 // ============================================================
 // STATE
@@ -60,6 +60,8 @@ let ownedAircraft = loadOwnedAircraft();
 let careerState = Career.loadCareer(pilotName);
 let careerTick = null;
 let flightRecord = null; // { startTime, startX, startZ, aircraftId, hoursAtStart }
+let careerFlightActive = false; // true, wenn Flug aus der Karriere gestartet wurde
+let careerFlightFleetId = null; // Career-Aircraft-ID für Flight-Credit
 
 function saveCareerNow() { Career.saveCareer(pilotName, careerState); }
 
@@ -184,6 +186,9 @@ function renderFleetPanel() {
           <div class="c-wear-bar"><div class="c-wear-fill" style="width:${f.wear * 100}%"></div></div>
         </div>
         <div class="c-card-actions">
+          <button class="c-btn" data-act="fly" data-uid="${f.uid}" ${aog ? 'disabled' : ''}>
+            ${aog ? 'AOG' : 'FLIEGEN'}
+          </button>
           <button class="c-btn warn" data-act="repair" data-uid="${f.uid}" ${f.wear < 0.05 || s.money < repairCost ? 'disabled' : ''}>
             WARTUNG ${repairCost > 0 ? `€${(repairCost/1000).toFixed(0)}k` : ''}
           </button>
@@ -206,6 +211,32 @@ function renderFleetPanel() {
       if (res.ok) { saveCareerNow(); renderCareer(); showToast(`Verkauft für ${Career.fmtMoney(res.refund)}`); }
     });
   });
+  panel.querySelectorAll('[data-act="fly"]').forEach(b => {
+    b.addEventListener('click', () => startCareerFlight(b.dataset.uid));
+  });
+}
+
+function startCareerFlight(fleetUid) {
+  const f = careerState.fleet.find(a => a.uid === fleetUid);
+  if (!f) return;
+  const shop = Career.AIRCRAFT_SHOP[f.id];
+  if (!shop) return;
+  // Tatsächliches In-Game-Flugzeug aus flyType
+  selectedAircraft = shop.flyType;
+  careerFlightActive = true;
+  careerFlightFleetId = f.id;  // Career-ID für Credit
+  closeCareer();
+  // In den Flight-Setup wechseln, damit Spieler Airport & Wetter wählen kann
+  document.getElementById('dashboard-view').classList.add('hidden');
+  document.getElementById('flight-setup').classList.remove('hidden');
+  // Tabs zurücksetzen auf Fly-Panel
+  document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.querySelector('[data-panel="fly"]')?.classList.add('active');
+  document.getElementById('panel-fly')?.classList.add('active');
+  // Preview/Info aktualisieren
+  buildAircraftPanel();
+  showToast(`${shop.name} ist startbereit — Airport wählen und FLY NOW`);
 }
 
 function renderShopPanel() {
@@ -1201,7 +1232,16 @@ function initMenu() {
     paused=false; document.getElementById('pause-menu').classList.add('hidden');
     if (flightRecord) flightRecord = { ...flightRecord, credited: false, startTime: Date.now(), startX: myState?.x || 0, startZ: myState?.z || 0, wasAirborne: false };
   });
-  document.getElementById('btn-quit').addEventListener('click', () => location.reload());
+  document.getElementById('btn-quit').addEventListener('click', () => {
+    if (careerFlightActive && flightRecord?.wasAirborne && !flightRecord.credited) {
+      creditCurrentFlight();
+    }
+    location.reload();
+  });
+  document.getElementById('btn-end-flight').addEventListener('click', () => {
+    if (flightRecord?.wasAirborne && !flightRecord.credited) creditCurrentFlight();
+    location.reload();
+  });
   document.getElementById('btn-wx-pause').addEventListener('click', () => {
     // Quick cycle weather
     const presets = ['clear','fewClouds','scattered','overcast','stormy'];
@@ -1451,7 +1491,8 @@ async function startFlight() {
     startTime: Date.now(),
     startX: 0, startZ: 0,
     maxSpeed: 0,
-    aircraftId: selectedAircraft,
+    aircraftId: careerFlightActive && careerFlightFleetId ? careerFlightFleetId : selectedAircraft,
+    career: careerFlightActive,
     credited: false,
     wasAirborne: false,
     lastVs: 0,
