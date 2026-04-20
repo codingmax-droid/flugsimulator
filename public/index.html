@@ -392,6 +392,54 @@
     <div class="cockpit-body" id="cockpit-body"></div>
   </div>
 
+  <!-- ==================== CAREER ==================== -->
+  <div id="career-screen" class="hidden">
+    <div class="overlay-bg"></div>
+    <div class="career-box">
+      <div class="career-header">
+        <div class="career-head-left">
+          <div class="career-eyebrow">CAREER MODE</div>
+          <div class="career-title" id="career-stage-title">Flugschüler</div>
+          <div class="career-sub" id="career-stage-sub">Stufe 1 / 30</div>
+        </div>
+        <div class="career-head-right">
+          <div class="career-stat"><span class="career-stat-label">KAPITAL</span><span class="career-stat-val" id="career-money">€5k</span></div>
+          <div class="career-stat"><span class="career-stat-label">REPUTATION</span><span class="career-stat-val" id="career-rep">50</span></div>
+          <div class="career-stat"><span class="career-stat-label">FLUGSTUNDEN</span><span class="career-stat-val" id="career-hours">0 h</span></div>
+          <button class="career-close" id="career-close" title="Schließen">&#10005;</button>
+        </div>
+      </div>
+
+      <div class="career-progress">
+        <div class="career-progress-label">
+          <span id="career-next-label">NÄCHSTE STUFE</span>
+          <span id="career-next-name">Solo-Flugschüler</span>
+        </div>
+        <div class="career-progress-bars">
+          <div class="cpb"><span>Stunden</span><div class="cpb-bar"><div class="cpb-fill" id="cpb-hours"></div></div><span id="cpb-hours-txt">0 / 5</span></div>
+          <div class="cpb"><span>Kapital</span><div class="cpb-bar"><div class="cpb-fill money" id="cpb-money"></div></div><span id="cpb-money-txt">€0 / €15k</span></div>
+          <div class="cpb"><span>Ruf</span><div class="cpb-bar"><div class="cpb-fill rep" id="cpb-rep"></div></div><span id="cpb-rep-txt">0 / 5</span></div>
+        </div>
+      </div>
+
+      <div class="career-tabs">
+        <button class="c-tab active" data-c-tab="stages">STUFEN</button>
+        <button class="c-tab" data-c-tab="fleet">FLOTTE</button>
+        <button class="c-tab" data-c-tab="shop">HANGAR</button>
+        <button class="c-tab" data-c-tab="jobs">AUFTRÄGE</button>
+        <button class="c-tab" data-c-tab="ops">OPERATIONS</button>
+      </div>
+
+      <div class="career-body">
+        <div class="c-panel active" id="c-panel-stages"></div>
+        <div class="c-panel" id="c-panel-fleet"></div>
+        <div class="c-panel" id="c-panel-shop"></div>
+        <div class="c-panel" id="c-panel-jobs"></div>
+        <div class="c-panel" id="c-panel-ops"></div>
+      </div>
+    </div>
+  </div>
+
   <!-- ==================== MARKETPLACE ==================== -->
   <div id="marketplace-screen" class="hidden">
     <div class="overlay-bg"></div>
@@ -446,6 +494,6 @@
     }
   }
   </script>
-  <script type="module" src="game.js?v=6"></script>
+  <script type="module" src="game.js?v=7"></script>
 </body>
 </html>

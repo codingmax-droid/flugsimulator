@@ -1,11 +1,12 @@
 import * as THREE from 'three';
 import { TerrainManager } from './terrain.js';
-import { createAircraftForType, createProceduralAirplane, AircraftPreview, createGLBInstance, applyLiveryToGLB } from './airplane.js?v=6';
+import { createAircraftForType, createProceduralAirplane, AircraftPreview, createGLBInstance, applyLiveryToGLB } from './airplane.js?v=7';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { AIRCRAFT_TYPES, AIRLINES, getAirlinesForAircraft, getLivery } from './airlines.js';
 import { AIRPORTS, searchAirports } from './airports.js';
 import { Cockpit } from './cockpit.js';
 import { GamepadManager } from './gamepad.js';
+import * as Career from './career.js?v=7';
 
 // ============================================================
 // STATE
@@ -51,6 +52,321 @@ function saveOwnedAircraft() {
   localStorage.setItem(ownedKey(), JSON.stringify([...ownedAircraft]));
 }
 let ownedAircraft = loadOwnedAircraft();
+
+// ============================================================
+// CAREER
+// ============================================================
+
+let careerState = Career.loadCareer(pilotName);
+let careerTick = null;
+let flightRecord = null; // { startTime, startX, startZ, aircraftId, hoursAtStart }
+
+function saveCareerNow() { Career.saveCareer(pilotName, careerState); }
+
+function openCareer() {
+  renderCareer();
+  document.getElementById('career-screen').classList.remove('hidden');
+  if (!careerTick) {
+    careerTick = setInterval(() => {
+      Career.runDailyTick(careerState);
+      Career.tickPassiveJobs(careerState);
+      saveCareerNow();
+      renderCareer();
+    }, 1000);
+  }
+}
+function closeCareer() {
+  document.getElementById('career-screen').classList.add('hidden');
+  if (careerTick) { clearInterval(careerTick); careerTick = null; }
+}
+
+function showToast(text, cls = '') {
+  const el = document.createElement('div');
+  el.className = `c-toast ${cls}`;
+  el.textContent = text;
+  document.body.appendChild(el);
+  requestAnimationFrame(() => el.classList.add('show'));
+  setTimeout(() => {
+    el.classList.remove('show');
+    setTimeout(() => el.remove(), 320);
+  }, 3200);
+}
+
+function renderCareer() {
+  const s = careerState;
+  const stage = Career.currentStage(s);
+  const next = Career.nextStage(s);
+  document.getElementById('career-stage-title').textContent = stage.title;
+  document.getElementById('career-stage-sub').textContent = `Stufe ${stage.n} / 30`;
+  document.getElementById('career-money').textContent = Career.fmtMoney(s.money);
+  document.getElementById('career-rep').textContent = s.reputation.toFixed(0);
+  document.getElementById('career-hours').textContent = Career.fmtHours(s.flightHours);
+
+  if (next) {
+    document.getElementById('career-next-label').textContent = 'NÄCHSTE STUFE';
+    document.getElementById('career-next-name').textContent = next.title;
+    const pH = Math.min(1, s.flightHours / Math.max(1, next.req.hours));
+    const pM = Math.min(1, s.money / Math.max(1, next.req.money));
+    const pR = Math.min(1, s.reputation / Math.max(1, next.req.rep));
+    document.getElementById('cpb-hours').style.width = `${pH * 100}%`;
+    document.getElementById('cpb-money').style.width = `${pM * 100}%`;
+    document.getElementById('cpb-rep').style.width = `${pR * 100}%`;
+    document.getElementById('cpb-hours-txt').textContent = `${Career.fmtHours(s.flightHours)} / ${Career.fmtHours(next.req.hours)}`;
+    document.getElementById('cpb-money-txt').textContent = `${Career.fmtMoney(s.money)} / ${Career.fmtMoney(next.req.money)}`;
+    document.getElementById('cpb-rep-txt').textContent = `${s.reputation.toFixed(0)} / ${next.req.rep}`;
+  } else {
+    document.getElementById('career-next-label').textContent = 'STATUS';
+    document.getElementById('career-next-name').textContent = 'ENDGAME ERREICHT';
+    for (const id of ['cpb-hours','cpb-money','cpb-rep']) document.getElementById(id).style.width = '100%';
+    document.getElementById('cpb-hours-txt').textContent = '—';
+    document.getElementById('cpb-money-txt').textContent = '—';
+    document.getElementById('cpb-rep-txt').textContent = '—';
+  }
+
+  renderStagesPanel();
+  renderFleetPanel();
+  renderShopPanel();
+  renderJobsPanel();
+  renderOpsPanel();
+}
+
+function renderStagesPanel() {
+  const panel = document.getElementById('c-panel-stages');
+  const s = careerState;
+  const html = Career.CAREER_STAGES.map(st => {
+    const isCurrent = st.n === s.stage;
+    const isDone = st.n < s.stage;
+    const cls = isCurrent ? 'current' : isDone ? 'done' : st.n > s.stage ? 'locked' : '';
+    const unlocks = st.unlocks.map(id => `<span class="c-chip">${Career.AIRCRAFT_SHOP[id]?.name || id}</span>`).join('');
+    const perks = (st.perks || []).map(p => `<span class="c-chip perk">${p}</span>`).join('');
+    const statusChip = isCurrent ? '<span class="c-chip done">AKTUELL</span>'
+                      : isDone   ? '<span class="c-chip done">✓</span>' : '';
+    return `
+      <div class="c-stage ${cls}">
+        <div class="c-stage-num">STUFE ${String(st.n).padStart(2, '0')}</div>
+        <div class="c-stage-title">${st.title} ${statusChip}</div>
+        <div class="c-stage-desc">${st.desc}</div>
+        <div class="c-stage-req">
+          <span><b>${Career.fmtHours(st.req.hours)}</b>Stunden</span>
+          <span><b>${Career.fmtMoney(st.req.money)}</b>Kapital</span>
+          <span><b>${st.req.rep}</b>Reputation</span>
+        </div>
+        <div class="c-stage-unlocks">${unlocks}${perks}</div>
+      </div>
+    `;
+  }).join('');
+  panel.innerHTML = `<div class="c-stage-list">${html}</div>`;
+}
+
+function renderFleetPanel() {
+  const panel = document.getElementById('c-panel-fleet');
+  const s = careerState;
+  if (s.fleet.length === 0) {
+    panel.innerHTML = '<p style="color:rgba(255,255,255,.4)">Deine Flotte ist leer. Kaufe ein Flugzeug im Hangar.</p>';
+    return;
+  }
+  const html = s.fleet.map(f => {
+    const shop = Career.AIRCRAFT_SHOP[f.id];
+    if (!shop) return '';
+    const aog = f.inShop || f.wear >= 0.95;
+    const repairCost = Math.round(shop.price * 0.05 * f.wear);
+    return `
+      <div class="c-card ${aog ? 'aog' : ''}">
+        <div class="c-card-head">
+          <div>
+            <div class="c-card-name">${shop.name} ${aog ? '<span class="c-aog-badge">AOG</span>' : ''}</div>
+            <div class="c-card-sub">${shop.tier.toUpperCase()} · ${f.uid.split('_').pop()}</div>
+          </div>
+          <div class="c-card-daily">€${shop.daily.toLocaleString('de-DE')} / Tag</div>
+        </div>
+        <div>
+          <div style="font-size:9px;letter-spacing:1.5px;color:rgba(255,255,255,.35);margin-bottom:4px">ZUSTAND ${Math.round((1 - f.wear) * 100)}%</div>
+          <div class="c-wear-bar"><div class="c-wear-fill" style="width:${f.wear * 100}%"></div></div>
+        </div>
+        <div class="c-card-actions">
+          <button class="c-btn warn" data-act="repair" data-uid="${f.uid}" ${f.wear < 0.05 || s.money < repairCost ? 'disabled' : ''}>
+            WARTUNG ${repairCost > 0 ? `€${(repairCost/1000).toFixed(0)}k` : ''}
+          </button>
+          <button class="c-btn ghost" data-act="sell" data-uid="${f.uid}">VERKAUFEN</button>
+        </div>
+      </div>
+    `;
+  }).join('');
+  panel.innerHTML = `<div class="c-fleet-list">${html}</div>`;
+  panel.querySelectorAll('[data-act="repair"]').forEach(b => {
+    b.addEventListener('click', () => {
+      const res = Career.repairAircraft(careerState, b.dataset.uid);
+      if (res.ok) { saveCareerNow(); renderCareer(); showToast(`Wartung €${(res.cost/1000).toFixed(0)}k bezahlt`); }
+      else showToast(res.reason || 'Wartung nicht möglich');
+    });
+  });
+  panel.querySelectorAll('[data-act="sell"]').forEach(b => {
+    b.addEventListener('click', () => {
+      const res = Career.sellAircraft(careerState, b.dataset.uid);
+      if (res.ok) { saveCareerNow(); renderCareer(); showToast(`Verkauft für ${Career.fmtMoney(res.refund)}`); }
+    });
+  });
+}
+
+function renderShopPanel() {
+  const panel = document.getElementById('c-panel-shop');
+  const s = careerState;
+  const unlocked = Career.allUnlockedAircraft(s);
+  const items = Object.entries(Career.AIRCRAFT_SHOP);
+  const html = items.map(([id, ac]) => {
+    const isUnlocked = unlocked.has(id);
+    const canAfford = s.money >= ac.price;
+    const locked = !isUnlocked;
+    const disabled = locked || !canAfford;
+    const stageLock = Career.CAREER_STAGES.find(st => st.unlocks.includes(id));
+    return `
+      <div class="c-card">
+        <div class="c-card-head">
+          <div>
+            <div class="c-card-name">${ac.name}</div>
+            <div class="c-card-sub">${ac.tier.toUpperCase()}${locked && stageLock ? ` · Ab Stufe ${stageLock.n}` : ''}</div>
+          </div>
+          <div class="c-card-price">${Career.fmtMoney(ac.price)}</div>
+        </div>
+        <div class="c-card-daily">€${ac.daily.toLocaleString('de-DE')} / Tag Leasing</div>
+        <div class="c-card-actions">
+          <button class="c-btn" data-act="buy" data-id="${id}" ${disabled ? 'disabled' : ''}>
+            ${locked ? '🔒 GESPERRT' : canAfford ? 'KAUFEN' : 'ZU TEUER'}
+          </button>
+        </div>
+      </div>
+    `;
+  }).join('');
+  panel.innerHTML = `<div class="c-shop-list">${html}</div>`;
+  panel.querySelectorAll('[data-act="buy"]').forEach(b => {
+    b.addEventListener('click', () => {
+      const res = Career.buyAircraft(careerState, b.dataset.id);
+      if (res.ok) { saveCareerNow(); renderCareer(); showToast(`Gekauft: ${Career.AIRCRAFT_SHOP[b.dataset.id].name}`); }
+      else showToast(res.reason);
+    });
+  });
+}
+
+function renderJobsPanel() {
+  const panel = document.getElementById('c-panel-jobs');
+  const s = careerState;
+  if (s.jobOffers.length === 0) Career.generateJobOffers(s);
+  const now = Date.now();
+
+  const active = s.passiveJobs.map(j => {
+    const remain = Math.max(0, Math.ceil((j.endsAt - now) / 1000));
+    return `
+      <div class="c-card">
+        <div class="c-card-head">
+          <div>
+            <div class="c-card-name">${j.aircraftName}</div>
+            <div class="c-card-sub">${j.days} Tage Vertrag · ${j.typeLabel}</div>
+          </div>
+          <div class="c-card-price">${Career.fmtMoney(j.totalPayout)}</div>
+        </div>
+        <div class="c-job-head">
+          <span class="c-job-type ${j.type}">${j.typeLabel.toUpperCase()}</span>
+          <span class="c-job-timer">noch ${Math.floor(remain/60)}:${String(remain%60).padStart(2,'0')} min</span>
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  const offers = s.jobOffers.map(j => {
+    const hasFleet = s.fleet.some(f => f.id === j.aircraftId && !f.inShop);
+    return `
+      <div class="c-card">
+        <div class="c-card-head">
+          <div>
+            <div class="c-card-name">${j.aircraftName}</div>
+            <div class="c-card-sub">${j.days} Tage · €${j.dailyPayout.toLocaleString('de-DE')} / Tag</div>
+          </div>
+          <div class="c-card-price">${Career.fmtMoney(j.totalPayout)}</div>
+        </div>
+        <div class="c-job-head">
+          <span class="c-job-type ${j.type}">${j.typeLabel.toUpperCase()}</span>
+          <span class="c-job-timer">${hasFleet ? '' : '— Flugzeug fehlt in der Flotte'}</span>
+        </div>
+        <div class="c-card-actions">
+          <button class="c-btn" data-act="take" data-uid="${j.uid}" ${hasFleet ? '' : 'disabled'}>ANNEHMEN</button>
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  panel.innerHTML = `
+    ${active ? `
+      <div class="c-active-jobs">
+        <div class="c-section-hdr" style="display:flex;align-items:center">
+          AKTIVE VERTRÄGE (${s.passiveJobs.length})
+        </div>
+        <div class="c-job-list">${active}</div>
+      </div>
+    ` : ''}
+    <div class="c-section-hdr" style="display:flex;align-items:center">
+      VERFÜGBARE AUFTRÄGE
+      <button class="c-btn-refresh" id="c-refresh-jobs">NEU WÜRFELN</button>
+    </div>
+    <div class="c-job-list">${offers || '<p style="color:rgba(255,255,255,.4)">Keine Aufträge. Refresh versuchen.</p>'}</div>
+  `;
+  panel.querySelectorAll('[data-act="take"]').forEach(b => {
+    b.addEventListener('click', () => {
+      const res = Career.acceptJob(careerState, b.dataset.uid);
+      if (res.ok) { saveCareerNow(); renderCareer(); showToast('Auftrag angenommen'); }
+      else showToast(res.reason);
+    });
+  });
+  panel.querySelector('#c-refresh-jobs')?.addEventListener('click', () => {
+    Career.generateJobOffers(careerState);
+    saveCareerNow();
+    renderCareer();
+  });
+}
+
+function renderOpsPanel() {
+  const panel = document.getElementById('c-panel-ops');
+  const s = careerState;
+  const stage = Career.currentStage(s);
+  const crewUnlocked = s.stage >= 24;
+  const crewCostPerDay = s.crewHired * 1200;
+  panel.innerHTML = `
+    <div class="c-ops-grid">
+      <div class="c-ops-card">
+        <div class="c-ops-label">INCOME-MULTIPLIER</div>
+        <div class="c-ops-val">×${stage.incomeMult.toFixed(2)}</div>
+        <div class="c-ops-sub">${stage.perks?.join(' · ') || ''}</div>
+      </div>
+      <div class="c-ops-card">
+        <div class="c-ops-label">FLUG-BILANZ</div>
+        <div class="c-ops-val">${s.totalFlights}</div>
+        <div class="c-ops-sub">${s.crashes} Crashes · ${s.totalDistanceKm.toFixed(0)} km geflogen</div>
+      </div>
+      <div class="c-ops-card">
+        <div class="c-ops-label">ABGESCHLOSSENE AUFTRÄGE</div>
+        <div class="c-ops-val">${s.completedJobs}</div>
+        <div class="c-ops-sub">${s.passiveJobs.length} laufen aktuell</div>
+      </div>
+      <div class="c-ops-card">
+        <div class="c-ops-label">CREW</div>
+        <div class="c-ops-val">${s.crewHired}</div>
+        <div class="c-ops-sub">${crewUnlocked ? `€${crewCostPerDay.toLocaleString('de-DE')} / Tag` : 'Ab Stufe 24'}</div>
+        <div class="c-card-actions" style="margin-top:10px">
+          <button class="c-btn" id="c-hire" ${crewUnlocked && s.money >= 50_000 ? '' : 'disabled'}>+ CREW €50k</button>
+          <button class="c-btn ghost" id="c-fire" ${s.crewHired > 0 ? '' : 'disabled'}>− CREW</button>
+        </div>
+      </div>
+    </div>
+  `;
+  panel.querySelector('#c-hire')?.addEventListener('click', () => {
+    const res = Career.hireCrew(careerState);
+    if (res.ok) { saveCareerNow(); renderCareer(); showToast('Crew eingestellt'); }
+    else showToast(res.reason);
+  });
+  panel.querySelector('#c-fire')?.addEventListener('click', () => {
+    Career.fireCrew(careerState);
+    saveCareerNow(); renderCareer();
+  });
+}
 
 function isAircraftOwned(id) {
   return !MARKETPLACE_ITEMS[id] || ownedAircraft.has(id);
@@ -576,6 +892,30 @@ function showCrash() {
   document.getElementById('cr-spd').textContent = (myState.speed*3.6).toFixed(0);
   document.getElementById('cr-alt').textContent = myState.y.toFixed(0);
   document.getElementById('cr-g').textContent = myState.gForce.toFixed(1);
+  creditCurrentFlight({ crashed: true });
+}
+
+function creditCurrentFlight(override = {}) {
+  if (!flightRecord || flightRecord.credited) return;
+  flightRecord.credited = true;
+  const durationMin = Math.max(0.5, (Date.now() - flightRecord.startTime) / 60000);
+  const dx = (myState?.x || 0) - flightRecord.startX;
+  const dz = (myState?.z || 0) - flightRecord.startZ;
+  const distanceKm = Math.sqrt(dx * dx + dz * dz) / 1000;
+  const landing = {
+    crashed: override.crashed ?? false,
+    verticalSpeed: flightRecord.lastVs,
+    roll: flightRecord.lastRoll,
+    gear: flightRecord.lastGear,
+  };
+  const result = Career.creditFlight(careerState, {
+    distanceKm, durationMin,
+    aircraftId: flightRecord.aircraftId,
+    landing,
+  });
+  saveCareerNow();
+  if (result.payout) showToast(`+ ${Career.fmtMoney(result.payout)}`);
+  if (result.promoted) showToast(`🎉 BEFÖRDERT: ${result.promoted.title}`, 'promotion');
 }
 
 // ============================================================
@@ -606,7 +946,7 @@ function initDashboard() {
       if (tile.classList.contains('locked')) return;
       const which = tile.dataset.tile;
       if (which === 'freeflight') showSetup('fly');
-      else if (which === 'career') showSetup('aircraft');
+      else if (which === 'career') openCareer();
       else if (which === 'challenge') showSetup('weather');
       else if (which === 'worldphoto') showSetup('fly');
       else if (which === 'marketplace') openMarketplace();
@@ -618,6 +958,19 @@ function initDashboard() {
   document.getElementById('market-close')?.addEventListener('click', closeMarketplace);
   document.getElementById('marketplace-screen')?.addEventListener('click', (e) => {
     if (e.target.id === 'marketplace-screen' || e.target.classList.contains('overlay-bg')) closeMarketplace();
+  });
+  // Career overlay
+  document.getElementById('career-close')?.addEventListener('click', closeCareer);
+  document.getElementById('career-screen')?.addEventListener('click', (e) => {
+    if (e.target.classList.contains('overlay-bg')) closeCareer();
+  });
+  document.querySelectorAll('.c-tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      document.querySelectorAll('.c-tab').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.c-panel').forEach(p => p.classList.remove('active'));
+      tab.classList.add('active');
+      document.getElementById(`c-panel-${tab.dataset.cTab}`).classList.add('active');
+    });
   });
 
   document.getElementById('dash-pilot-name').textContent = pilotName;
@@ -843,8 +1196,10 @@ function initMenu() {
   // Pause
   document.getElementById('btn-resume').addEventListener('click', () => { paused=false; document.getElementById('pause-menu').classList.add('hidden'); });
   document.getElementById('btn-respawn-p').addEventListener('click', () => {
+    if (flightRecord?.wasAirborne) creditCurrentFlight();
     if (ws?.readyState===1) ws.send(JSON.stringify({type:'respawn'}));
     paused=false; document.getElementById('pause-menu').classList.add('hidden');
+    if (flightRecord) flightRecord = { ...flightRecord, credited: false, startTime: Date.now(), startX: myState?.x || 0, startZ: myState?.z || 0, wasAirborne: false };
   });
   document.getElementById('btn-quit').addEventListener('click', () => location.reload());
   document.getElementById('btn-wx-pause').addEventListener('click', () => {
@@ -860,6 +1215,7 @@ function initMenu() {
   document.getElementById('btn-retry').addEventListener('click', () => {
     if (ws?.readyState===1) ws.send(JSON.stringify({type:'respawn'}));
     document.getElementById('crash-screen').classList.add('hidden');
+    if (flightRecord) flightRecord = { ...flightRecord, credited: false, startTime: Date.now(), startX: myState?.x || 0, startZ: myState?.z || 0, wasAirborne: false };
   });
   document.getElementById('btn-cr-menu').addEventListener('click', () => location.reload());
 
@@ -1091,6 +1447,17 @@ async function startFlight() {
   document.getElementById('hud-loc').textContent = selectedAirport.name;
 
   initCockpit();
+  flightRecord = {
+    startTime: Date.now(),
+    startX: 0, startZ: 0,
+    maxSpeed: 0,
+    aircraftId: selectedAircraft,
+    credited: false,
+    wasAirborne: false,
+    lastVs: 0,
+    lastRoll: 0,
+    lastGear: true,
+  };
   animate();
 }
 
@@ -1128,6 +1495,15 @@ function animate() {
   if (terrainManager && myState) {
     const now = Date.now();
     if (now - lastTU > 500) { lastTU = now; terrainManager.update(myState.x, myState.z); }
+  }
+
+  // Flight-Record für Career-Credit mitschreiben
+  if (flightRecord && myState && myState.alive) {
+    flightRecord.lastVs = myState.verticalSpeed;
+    flightRecord.lastRoll = myState.roll;
+    flightRecord.lastGear = myState.gear;
+    if (!myState.onGround) flightRecord.wasAirborne = true;
+    if (myState.speed > flightRecord.maxSpeed) flightRecord.maxSpeed = myState.speed;
   }
 
   if (sun && camera) {
@@ -1171,6 +1547,7 @@ function initLogin() {
     if (pilotName.length < 3) return;
     localStorage.setItem('flugsim_pilot', pilotName);
     ownedAircraft = loadOwnedAircraft();
+    careerState = Career.loadCareer(pilotName);
     selectedAircraft = 'a320';
     selectedAirline = 'lufthansa';
 
