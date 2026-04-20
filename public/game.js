@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { TerrainManager } from './terrain.js';
+import { buildAirportScene } from './airports3d.js';
 import { createAircraftForType, createProceduralAirplane, AircraftPreview, createGLBInstance, applyLiveryToGLB } from './airplane.js?v=7';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { AIRCRAFT_TYPES, AIRLINES, getAirlinesForAircraft, getLivery } from './airlines.js';
@@ -894,15 +895,24 @@ function updateKbInput() {
   }
 }
 
+function currentTerrainHeight() {
+  if (!terrainManager || !myState) return null;
+  const h = terrainManager.sampleHeightAt(myState.x, myState.z);
+  return (h == null || !Number.isFinite(h)) ? null : h;
+}
+
 function getInput() {
   updateKbInput();
-  return {
+  const th = currentTerrainHeight();
+  const msg = {
     type: 'input',
     pitch: kbInput.pitch,
     roll: kbInput.roll,
     yaw: kbInput.yaw,
     throttle: (keys['ShiftLeft']||keys['ShiftRight']?1:0)+(keys['ControlLeft']||keys['ControlRight']?-1:0),
   };
+  if (th != null) msg.terrainHeight = th;
+  return msg;
 }
 
 // ============================================================
@@ -949,14 +959,17 @@ setInterval(() => {
   // Gamepad Poll
   const gp = gamepadMgr.poll();
   if (gp) {
-    // Gamepad-Achsen senden
-    ws.send(JSON.stringify({
+    // Gamepad-Achsen senden (inkl. Terrain-Höhe für Boden-Kollision)
+    const th = currentTerrainHeight();
+    const gpMsg = {
       type: 'input',
       pitch: gp.pitch,
       roll: gp.roll,
       yaw: gp.yaw,
       throttle: 0, // Throttle wird separat gesetzt
-    }));
+    };
+    if (th != null) gpMsg.terrainHeight = th;
+    ws.send(JSON.stringify(gpMsg));
 
     // Absolute Throttle
     ws.send(JSON.stringify({ type: 'setThrottle', value: gp.throttle }));
@@ -1683,6 +1696,9 @@ async function startFlight() {
     zoom: settings.terrainZoom, radius: settings.terrainRadius, tileWorldSize: 2000,
   });
   await terrainManager.update(0, 0);
+
+  // 3D-Airport-Szene am Ursprung aufbauen (Runways, Terminal, Tower, Lichter)
+  buildAirportScene(scene, selectedAirport);
 
   fill.style.width = '80%'; txt.textContent = 'Connecting to server...';
   connectWS();

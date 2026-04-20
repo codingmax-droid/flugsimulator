@@ -179,6 +179,9 @@ export class TerrainManager {
     this.elevOffset = options.elevation || 0;
     this.activeTiles = new Set();
     this.centerTile = null;
+    this._raycaster = new THREE.Raycaster();
+    this._rayOrigin = new THREE.Vector3();
+    this._rayDown = new THREE.Vector3(0, -1, 0);
 
     // Airport auf Weltursprung (0,0) ausrichten — nicht auf Tile-Mitte
     const frac = latLonToTileFrac(this.centerLat, this.centerLon, this.zoom);
@@ -254,5 +257,22 @@ export class TerrainManager {
     }
 
     this.activeTiles = neededTiles;
+  }
+
+  // Terrain-Höhe an Welt-Position (x,z) via Raycast gegen geladene Tiles.
+  // Liefert null, wenn keine Geometrie getroffen wird (noch nicht geladen).
+  sampleHeightAt(x, z) {
+    const tilesNearby = [];
+    for (const key of this.activeTiles) {
+      const m = tileCache.get(key);
+      if (m) tilesNearby.push(m);
+    }
+    if (tilesNearby.length === 0) return null;
+    this._rayOrigin.set(x, 20000, z);
+    this._raycaster.set(this._rayOrigin, this._rayDown);
+    this._raycaster.far = 40000;
+    const hits = this._raycaster.intersectObjects(tilesNearby, false);
+    if (!hits.length) return null;
+    return hits[0].point.y;
   }
 }
