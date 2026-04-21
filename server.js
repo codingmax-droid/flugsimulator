@@ -57,7 +57,7 @@ const crypto = require('crypto');
 const ACCESS_FILE = path.join(__dirname, 'access-codes.json');
 // Key = Benutzername (kleingeschrieben). Passwort = Early-Access-Code.
 const DEFAULT_USERS = {
-  admin:   { role: 'admin',  label: 'Admin',    password: 'FS-ADMIN-9K3M-X7R2-4PQ8', deviceId: null, boundAt: null, lastSeen: null },
+  admin:   { role: 'admin',  label: 'Admin',    password: 'MFs-Admin', deviceId: null, boundAt: null, lastSeen: null },
   tester:  { role: 'tester', label: 'Tester',   password: 'FS-TEST-5N8V-H2J4-6DB9',  deviceId: null, boundAt: null, lastSeen: null },
   tester2: { role: 'tester', label: 'Tester 2', password: 'FS-TEST2-7W4C-P9Y3-R6K1', deviceId: null, boundAt: null, lastSeen: null },
 };
