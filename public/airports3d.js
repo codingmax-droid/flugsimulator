@@ -17,8 +17,50 @@ const LIGHT_Y    = 0.20;
 
 function headingToRad(hdg) { return hdg * Math.PI / 180; }
 
-// Runway-Textur: Asphalt + Mittellinie + Schwellenstreifen
-function runwayTexture(lenMeters, widMeters) {
+// Dedupe opposing thresholds und setze sideOffset für Parallel-Runways
+// nach realem Muster (parallele Bahnen ≈ 400 m Achsabstand).
+export function extractPhysicalRunways(rwys) {
+  const physical = [];
+  for (const r of (rwys || [])) {
+    const oppHdg = (r.hdg + 180) % 360;
+    const existing = physical.find(p =>
+      Math.abs(((p.hdg - oppHdg + 540) % 360) - 180) < 15 &&
+      Math.abs((p.len || 3000) - (r.len || 3000)) < 600
+    );
+    if (!existing) physical.push({ ...r });
+  }
+  const byAxis = new Map();
+  for (const r of physical) {
+    const axis = Math.round(((r.hdg % 180) + 180) % 180 / 10) * 10;
+    const key = String(axis);
+    if (!byAxis.has(key)) byAxis.set(key, []);
+    byAxis.get(key).push(r);
+  }
+  for (const list of byAxis.values()) {
+    list.forEach((r, i) => {
+      r.sideOffset = (i - (list.length - 1) / 2) * 400;
+    });
+  }
+  return physical;
+}
+
+// Primäre Runway (längste) mit Spawn-Position am Threshold zurückgeben.
+export function getSpawnPose(airport) {
+  const rwys = extractPhysicalRunways(airport?.rwy || []);
+  const primary = rwys.reduce((a, b) => ((b.len || 0) > (a.len || 0) ? b : a), rwys[0] || { hdg: 0, len: 3000, sideOffset: 0 });
+  const hdgRad = headingToRad(primary.hdg || 0);
+  // Forward = (sin h, 0, -cos h). Back-offset auf die Start-Schwelle.
+  const back = (primary.len || 3000) / 2 - 60;
+  // Senkrecht zur Bahn-Achse für parallele Versetzung: (cos h, 0, sin h)
+  const side = primary.sideOffset || 0;
+  const spawnX = -Math.sin(hdgRad) * back + Math.cos(hdgRad) * side;
+  const spawnZ = Math.cos(hdgRad) * back + Math.sin(hdgRad) * side;
+  const spawnYaw = Math.PI - hdgRad;
+  return { x: spawnX, z: spawnZ, yaw: spawnYaw, hdg: primary.hdg || 0 };
+}
+
+// Runway-Textur: Asphalt + Mittellinie + Schwellenstreifen + Runway-Nummern
+function runwayTexture(lenMeters, widMeters, hdg) {
   const ar = Math.max(1, Math.round(lenMeters / widMeters));
   const W = 128;
   const H = 128 * ar;
@@ -62,6 +104,21 @@ function runwayTexture(lenMeters, widMeters) {
       }
     }
   }
+  // Runway-Nummern (gross, gedreht — oben = Start-Schwelle (hdg), unten = Gegen-Schwelle)
+  const nearNum = String(Math.round(hdg / 10) || 36).padStart(2, '0');
+  const farNum  = String(Math.round(((hdg + 180) % 360) / 10) || 36).padStart(2, '0');
+  g.fillStyle = '#ffffff';
+  g.font = `bold ${Math.floor(W * 0.42)}px sans-serif`;
+  g.textAlign = 'center';
+  g.textBaseline = 'middle';
+  // Near (Start-Schwelle): oben im Canvas, Text steht kopfüber aus Pilotensicht → drehen
+  g.save();
+  g.translate(cx, H * 0.12);
+  g.rotate(Math.PI);
+  g.fillText(nearNum, 0, 0);
+  g.restore();
+  // Far (Gegen-Schwelle): unten, Text steht korrekt für Gegenrichtung
+  g.fillText(farNum, cx, H * 0.88);
   const tex = new THREE.CanvasTexture(c);
   tex.colorSpace = THREE.SRGBColorSpace;
   tex.anisotropy = 8;
@@ -107,8 +164,15 @@ function buildApron(group) {
 function buildRunway(group, rwy) {
   const len = rwy.len || 3000;
   const wid = rwy.wid || 45;
+  const hdg = rwy.hdg || 0;
+  const side = rwy.sideOffset || 0;
+  const hdgRad = headingToRad(hdg);
+  // Perpendicular-Offset für parallele Bahnen (senkrecht zur Bahnachse)
+  const offX = Math.cos(hdgRad) * side;
+  const offZ = Math.sin(hdgRad) * side;
+
   const mat = new THREE.MeshStandardMaterial({
-    map: runwayTexture(len, wid),
+    map: runwayTexture(len, wid, hdg),
     color: 0xffffff,
     roughness: 0.9,
     metalness: 0.0,
@@ -116,24 +180,24 @@ function buildRunway(group, rwy) {
   const geo = new THREE.PlaneGeometry(wid, len);
   geo.rotateX(-Math.PI / 2);
   const mesh = new THREE.Mesh(geo, mat);
-  mesh.position.y = RUNWAY_Y;
+  mesh.position.set(offX, RUNWAY_Y, offZ);
   // Heading: Richtung, in die die Runway-Länge zeigt.
   // Default: Längsachse +Z (Süd). Heading 0° = Nord = -Z → Rotation um Y um π.
-  mesh.rotation.y = Math.PI - headingToRad(rwy.hdg || 0);
+  mesh.rotation.y = Math.PI - hdgRad;
   mesh.receiveShadow = true;
   mesh.userData.isAirportGround = true;
   group.add(mesh);
 
-  // Runway-Lichter (Edge-Lights alle 30 m)
+  // Runway-Lichter (Edge-Lights alle 60 m)
   const lightsGroup = new THREE.Group();
   const lampGeo = new THREE.SphereGeometry(0.6, 6, 4);
   const lampMat = new THREE.MeshBasicMaterial({ color: 0xfff1a8 });
   const halfLen = len / 2;
   const halfWid = wid / 2 + 0.5;
   for (let s = -halfLen + 10; s <= halfLen - 10; s += 60) {
-    for (const side of [-halfWid, halfWid]) {
+    for (const ls of [-halfWid, halfWid]) {
       const l = new THREE.Mesh(lampGeo, lampMat);
-      l.position.set(side, LIGHT_Y, s);
+      l.position.set(ls, LIGHT_Y, s);
       lightsGroup.add(l);
     }
   }
@@ -149,6 +213,7 @@ function buildRunway(group, rwy) {
     r1.position.set(x, LIGHT_Y, halfLen);
     lightsGroup.add(r1);
   }
+  lightsGroup.position.set(offX, 0, offZ);
   lightsGroup.rotation.y = mesh.rotation.y;
   group.add(lightsGroup);
   return mesh;
@@ -318,7 +383,8 @@ export function buildAirportScene(scene, airport) {
 
   buildApron(root);
 
-  const runways = (airport && airport.rwy) ? airport.rwy : [{ hdg: 0, len: 3000, wid: 45 }];
+  const rawRwys = (airport && airport.rwy && airport.rwy.length) ? airport.rwy : [{ hdg: 0, len: 3000, wid: 45 }];
+  const runways = extractPhysicalRunways(rawRwys);
   for (const r of runways) buildRunway(root, r);
 
   buildTerminal(root);

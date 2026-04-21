@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { TerrainManager } from './terrain.js';
-import { buildAirportScene } from './airports3d.js';
+import { buildAirportScene, getSpawnPose } from './airports3d.js';
 import { createAircraftForType, createProceduralAirplane, AircraftPreview, createGLBInstance, applyLiveryToGLB } from './airplane.js?v=7';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { AIRCRAFT_TYPES, AIRLINES, getAirlinesForAircraft, getLivery } from './airlines.js';
@@ -1611,17 +1611,18 @@ function connectWS() {
     // Pilotname senden
     ws.send(JSON.stringify({ type: 'login', name: pilotName }));
 
-    // Runway-Heading → Yaw. Welt-Konvention: +X=Ost, +Z=Süd, -Z=Nord.
-    // Mesh-Nase zeigt bei yaw=0 nach +Z (Süden). Heading 0° = Norden = -Z
-    // verlangt yaw=π. Allgemein: yaw = π − heading.
-    const rwyHdg = selectedAirport?.rwy?.[0]?.hdg || 0;
-    const spawnYaw = Math.PI - rwyHdg * Math.PI / 180;
+    // Spawn an der Start-Schwelle der primären Runway (längste),
+    // ausgerichtet nach deren Heading — so steht das Flugzeug immer
+    // startklar auf der Piste mit der vollen Länge nach vorn.
+    const pose = getSpawnPose(selectedAirport);
     ws.send(JSON.stringify({
       type: 'selectAircraft',
       aircraft: selectedAircraft,
       airline: AIRLINES[selectedAirline]?.name || '',
       airport: selectedAirport?.icao || '',
-      spawnYaw,
+      spawnYaw: pose.yaw,
+      spawnX: pose.x,
+      spawnZ: pose.z,
     }));
     ws.send(JSON.stringify({ type: 'weather', preset: selectedWeather }));
   });

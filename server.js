@@ -434,11 +434,17 @@ function createPlayer(id, aircraftType = 'a320', spawnOpts = {}) {
   const phys = AIRCRAFT_PHYSICS[aircraftType] || DEFAULT_PHYSICS;
   return {
     id, aircraftType, airline: '', airport: '', pilotName: '',
-    x: spawnOpts.x || 0,
-    y: spawnOpts.y || 5,
-    z: spawnOpts.z || 0,
+    x: Number.isFinite(spawnOpts.x) ? spawnOpts.x : 0,
+    y: Number.isFinite(spawnOpts.y) ? spawnOpts.y : 5,
+    z: Number.isFinite(spawnOpts.z) ? spawnOpts.z : 0,
     pitch: 0, roll: 0,
     yaw: spawnOpts.yaw || 0,
+    spawn: {
+      x: Number.isFinite(spawnOpts.x) ? spawnOpts.x : 0,
+      y: Number.isFinite(spawnOpts.y) ? spawnOpts.y : 5,
+      z: Number.isFinite(spawnOpts.z) ? spawnOpts.z : 0,
+      yaw: spawnOpts.yaw || 0,
+    },
     speed: spawnOpts.onRunway ? 0 : 70,
     throttle: spawnOpts.onRunway ? 0 : 0.5,
     flaps: 0, gear: true, brakes: false, parkingBrake: false,
@@ -549,6 +555,17 @@ function updatePhysics(p) {
   p.verticalSpeed = (dy + (vertAccel - GRAVITY * sp) * DT * 0.3) / DT;
 
   p.onGround = p.y <= groundY + 3;
+  // Boden­berührung ohne Fahrwerk = sofortiger Crash (Belly Landing),
+  // unabhängig von Geschwindigkeit oder Fluglage.
+  if (p.onGround && !p.gear) {
+    p.y = groundY + 2;
+    p.alive = false;
+    p.crashReason = 'Belly Landing — Fahrwerk eingefahren';
+    stats.totalCrashes++;
+    incrStat(stats.crashReasons, p.crashReason);
+    addEvent('crash', `#${p.id} ${p.aircraftType.toUpperCase()} — ${p.crashReason}`);
+    return;
+  }
   if (p.y < groundY + 2) {
     // Impact-Geschwindigkeit: je höher das Gelände über der alten Annahme,
     // desto eher CFIT (Controlled Flight Into Terrain)
@@ -650,8 +667,10 @@ wss.on('connection', (ws) => {
       if (msg.type === 'selectAircraft') {
         if (AIRCRAFT_PHYSICS[msg.aircraft]) {
           const yaw = msg.spawnYaw !== undefined ? msg.spawnYaw : player.yaw;
+          const sx  = Number.isFinite(msg.spawnX) ? msg.spawnX : 0;
+          const sz  = Number.isFinite(msg.spawnZ) ? msg.spawnZ : 0;
           const pname = player.pilotName;
-          Object.assign(player, createPlayer(id, msg.aircraft, { yaw, y: 3, onRunway: true }));
+          Object.assign(player, createPlayer(id, msg.aircraft, { yaw, x: sx, z: sz, y: 3, onRunway: true }));
           player.pilotName = pname;
           player.airline = msg.airline || '';
           player.airport = msg.airport || '';
@@ -682,8 +701,15 @@ wss.on('connection', (ws) => {
         if (preset) { currentWeather = { ...preset }; broadcast({ type: 'weather', weather: currentWeather }); }
       }
       if (msg.type === 'respawn') {
-        const { aircraftType, airline, airport, phys, yaw } = player;
-        Object.assign(player, createPlayer(id, aircraftType, { yaw, y: 3, onRunway: true }));
+        const { aircraftType, airline, airport, phys, spawn } = player;
+        const pname = player.pilotName;
+        Object.assign(player, createPlayer(id, aircraftType, {
+          yaw: spawn?.yaw || 0,
+          x:   spawn?.x   || 0,
+          z:   spawn?.z   || 0,
+          y: 3, onRunway: true,
+        }));
+        player.pilotName = pname;
         player.airline = airline; player.airport = airport; player.phys = phys;
         stats.totalFlights++;
         addEvent('spawn', `#${id} Respawn — ${aircraftType.toUpperCase()}`);
