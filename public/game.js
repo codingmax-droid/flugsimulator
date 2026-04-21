@@ -35,25 +35,97 @@ let selectedWeather = 'fewClouds';
 const settings = { terrainZoom: 11, terrainRadius: 3, shadows: true, units: 'metric' };
 
 // ============================================================
-// MARKETPLACE — Premium Aircraft (€2,99 each)
+// MARKETPLACE — Premium Aircraft
 // ============================================================
+// Items werden vom Server gespiegelt (Preis in Cent, Label, aircraftId).
+// Lokaler Fallback sorgt für konsistente UI, wenn /api/market/items
+// noch nicht geantwortet hat.
 
-const MARKETPLACE_ITEMS = {
-  b747: { price: 2.99 },
-  a380: { price: 2.99 },
+let MARKETPLACE_ITEMS = {
+  b747: { price: 2.99, priceCents: 299, label: 'Boeing 747-400' },
+  a380: { price: 2.99, priceCents: 299, label: 'Airbus A380' },
+  b777: { price: 4.99, priceCents: 499, label: 'Boeing 777-300ER' },
+  a350: { price: 4.99, priceCents: 499, label: 'Airbus A350-900' },
 };
+let marketStripeEnabled = false;
 
 function ownedKey() {
-  return `flugsim_owned_${pilotName || 'guest'}`;
+  return `flugsim_owned_${localStorage.getItem('flugsim_access_user') || 'guest'}`;
 }
-function loadOwnedAircraft() {
+function loadOwnedAircraftLocal() {
   try { return new Set(JSON.parse(localStorage.getItem(ownedKey()) || '[]')); }
   catch { return new Set(); }
 }
-function saveOwnedAircraft() {
+function saveOwnedAircraftLocal() {
   localStorage.setItem(ownedKey(), JSON.stringify([...ownedAircraft]));
 }
-let ownedAircraft = loadOwnedAircraft();
+function loadOwnedAircraft() { return loadOwnedAircraftLocal(); }
+function saveOwnedAircraft() { saveOwnedAircraftLocal(); }
+let ownedAircraft = loadOwnedAircraftLocal();
+
+function marketAuthBody() {
+  return {
+    username: localStorage.getItem('flugsim_access_user') || '',
+    deviceId: localStorage.getItem('flugsim_device_id') || '',
+  };
+}
+
+async function refreshMarketState() {
+  const { username, deviceId } = marketAuthBody();
+  const qs = new URLSearchParams({ username, deviceId }).toString();
+  try {
+    const r = await fetch('/api/market/items?' + qs);
+    const j = await r.json();
+    if (!j.ok) return;
+    const next = {};
+    for (const it of j.items) {
+      next[it.id] = {
+        priceCents: it.priceCents,
+        price: it.priceCents / 100,
+        label: it.label,
+        aircraftId: it.aircraftId,
+      };
+    }
+    MARKETPLACE_ITEMS = next;
+    marketStripeEnabled = !!j.stripeEnabled;
+    ownedAircraft = new Set(j.owned || []);
+    saveOwnedAircraftLocal();
+    if (typeof updateMarketButtons === 'function') updateMarketButtons();
+    if (typeof buildAircraftPanel === 'function' && document.getElementById('panel-aircraft')?.classList.contains('active')) {
+      buildAircraftPanel();
+    }
+  } catch { /* offline — localStorage-Fallback bleibt */ }
+}
+
+async function maybeHandleCheckoutReturn() {
+  const p = new URLSearchParams(location.search);
+  const status = p.get('checkout');
+  if (!status) return;
+  const sid = p.get('session_id');
+  // URL sofort bereinigen (auch bei cancel)
+  history.replaceState({}, '', location.pathname);
+  if (status !== 'success' || !sid) {
+    if (status === 'cancel') showToast('Zahlung abgebrochen');
+    return;
+  }
+  const { username, deviceId } = marketAuthBody();
+  if (!username || !deviceId) return;
+  try {
+    const qs = new URLSearchParams({ username, deviceId, session_id: sid }).toString();
+    const r = await fetch('/api/market/confirm?' + qs);
+    const j = await r.json();
+    if (j.ok && j.paid) {
+      ownedAircraft = new Set(j.owned || []);
+      saveOwnedAircraftLocal();
+      if (typeof updateMarketButtons === 'function') updateMarketButtons();
+      showToast('Kauf erfolgreich — Flugzeug freigeschaltet', 'ok');
+    } else {
+      showToast('Zahlung nicht bestätigt', 'err');
+    }
+  } catch {
+    showToast('Server nicht erreichbar', 'err');
+  }
+}
 
 // ============================================================
 // CAREER
@@ -865,11 +937,178 @@ function isAircraftOwned(id) {
 }
 
 function buyAircraft(id) {
-  if (!MARKETPLACE_ITEMS[id]) return;
-  ownedAircraft.add(id);
-  saveOwnedAircraft();
-  updateMarketButtons();
-  buildAircraftPanel();
+  openCheckoutModal(id);
+}
+
+// ============================================================
+// CHECKOUT MODAL (Stripe + Demo)
+// ============================================================
+let checkoutItem = null;
+
+function openCheckoutModal(itemId) {
+  const item = MARKETPLACE_ITEMS[itemId];
+  if (!item) return;
+  if (ownedAircraft.has(itemId)) { showToast('Bereits gekauft', 'info'); return; }
+  checkoutItem = itemId;
+
+  document.getElementById('checkout-title').textContent = item.label || itemId.toUpperCase();
+  document.getElementById('checkout-price').textContent = formatPrice(item.price);
+
+  document.getElementById('co-demo-iban').value = '';
+  document.getElementById('co-demo-ack').checked = false;
+  document.getElementById('co-demo-btn').disabled = true;
+  document.getElementById('co-demo-status').textContent = '';
+  document.getElementById('co-demo-status').className = 'co-status';
+  document.getElementById('co-stripe-status').textContent = '';
+  document.getElementById('co-stripe-status').className = 'co-status';
+
+  const stripeTab = document.querySelector('[data-co-tab="stripe"]');
+  const stripeBtn = document.getElementById('co-stripe-btn');
+  if (marketStripeEnabled) {
+    stripeTab.classList.remove('disabled');
+    stripeBtn.disabled = false;
+    document.getElementById('co-stripe-hint').textContent = 'Du wirst zu stripe.com weitergeleitet.';
+  } else {
+    stripeTab.classList.add('disabled');
+    stripeBtn.disabled = true;
+    document.getElementById('co-stripe-hint').textContent = 'Stripe auf diesem Server nicht konfiguriert — nutze Demo-Modus.';
+  }
+
+  switchCheckoutTab(marketStripeEnabled ? 'stripe' : 'demo');
+  document.getElementById('checkout-screen').classList.remove('hidden');
+}
+
+function closeCheckoutModal() {
+  document.getElementById('checkout-screen').classList.add('hidden');
+  checkoutItem = null;
+}
+
+function switchCheckoutTab(which) {
+  document.querySelectorAll('.co-tab').forEach(t => {
+    t.classList.toggle('active', t.dataset.coTab === which);
+  });
+  document.querySelectorAll('.co-panel').forEach(p => {
+    p.classList.toggle('active', p.id === `co-panel-${which}`);
+  });
+}
+
+async function doStripeCheckout() {
+  if (!checkoutItem) return;
+  const btn = document.getElementById('co-stripe-btn');
+  const status = document.getElementById('co-stripe-status');
+  btn.disabled = true;
+  status.className = 'co-status info';
+  status.textContent = 'Erstelle Zahlungs-Session …';
+  try {
+    const r = await fetch('/api/market/checkout', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        ...marketAuthBody(),
+        itemId: checkoutItem,
+        returnBase: location.origin,
+      }),
+    });
+    const j = await r.json();
+    if (j.ok && j.alreadyOwned) {
+      status.className = 'co-status ok';
+      status.textContent = 'Bereits gekauft.';
+      await refreshMarketState();
+      setTimeout(closeCheckoutModal, 900);
+      return;
+    }
+    if (j.ok && j.url) {
+      status.className = 'co-status ok';
+      status.textContent = 'Weiterleitung …';
+      location.href = j.url;
+      return;
+    }
+    status.className = 'co-status err';
+    status.textContent = j.error === 'stripe-disabled'
+      ? 'Stripe ist auf dem Server nicht konfiguriert.'
+      : j.error === 'unauthorized'
+      ? 'Nicht eingeloggt.'
+      : 'Fehler beim Erstellen der Zahlung.';
+    btn.disabled = false;
+  } catch {
+    status.className = 'co-status err';
+    status.textContent = 'Server nicht erreichbar.';
+    btn.disabled = false;
+  }
+}
+
+async function doDemoBuy() {
+  if (!checkoutItem) return;
+  const iban = document.getElementById('co-demo-iban').value.replace(/\s+/g, '').toUpperCase();
+  const ack  = document.getElementById('co-demo-ack').checked;
+  const btn  = document.getElementById('co-demo-btn');
+  const status = document.getElementById('co-demo-status');
+  if (!ack) return;
+  btn.disabled = true;
+  status.className = 'co-status info';
+  status.textContent = 'Verarbeite (Demo) …';
+  try {
+    await new Promise(r => setTimeout(r, 700));
+    const r = await fetch('/api/market/demo-buy', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        ...marketAuthBody(),
+        itemId: checkoutItem,
+        iban,
+        demoAcknowledged: true,
+      }),
+    });
+    const j = await r.json();
+    if (j.ok) {
+      ownedAircraft = new Set(j.owned || []);
+      saveOwnedAircraftLocal();
+      updateMarketButtons();
+      status.className = 'co-status ok';
+      status.textContent = 'Freigeschaltet (Demo).';
+      showToast('Flugzeug freigeschaltet (Demo)', 'ok');
+      setTimeout(closeCheckoutModal, 900);
+      return;
+    }
+    status.className = 'co-status err';
+    status.textContent = j.error === 'iban-format'
+      ? 'IBAN-Format ungültig (DE + 2 Ziffern + 10–30 Zeichen).'
+      : j.error === 'unauthorized'
+      ? 'Nicht eingeloggt.'
+      : 'Fehler beim Freischalten.';
+    btn.disabled = !ack;
+  } catch {
+    status.className = 'co-status err';
+    status.textContent = 'Server nicht erreichbar.';
+    btn.disabled = false;
+  }
+}
+
+function initCheckoutWiring() {
+  document.getElementById('checkout-close')?.addEventListener('click', closeCheckoutModal);
+  document.getElementById('checkout-screen')?.addEventListener('click', (e) => {
+    if (e.target.id === 'checkout-screen' || e.target.classList.contains('overlay-bg')) closeCheckoutModal();
+  });
+  document.querySelectorAll('.co-tab').forEach(t => {
+    t.addEventListener('click', () => {
+      if (t.classList.contains('disabled')) return;
+      switchCheckoutTab(t.dataset.coTab);
+    });
+  });
+  document.getElementById('co-stripe-btn')?.addEventListener('click', doStripeCheckout);
+  document.getElementById('co-demo-btn')?.addEventListener('click', doDemoBuy);
+  const ibanInput = document.getElementById('co-demo-iban');
+  const ackCheck = document.getElementById('co-demo-ack');
+  const updateDemoBtn = () => {
+    const iban = ibanInput.value.replace(/\s+/g, '').toUpperCase();
+    const ok = ackCheck.checked && /^[A-Z]{2}\d{2}[A-Z0-9]{10,30}$/.test(iban);
+    document.getElementById('co-demo-btn').disabled = !ok;
+  };
+  ibanInput?.addEventListener('input', () => {
+    ibanInput.value = ibanInput.value.toUpperCase();
+    updateDemoBtn();
+  });
+  ackCheck?.addEventListener('change', updateDemoBtn);
 }
 
 function formatPrice(p) {
@@ -2072,6 +2311,7 @@ async function verifyAccessCode(username, password) {
 }
 
 function initLogin() {
+  initCheckoutWiring();
   const loginScreen = document.getElementById('login-screen');
   const loginInput = document.getElementById('login-name');
   const accessInput = document.getElementById('login-access');
@@ -2158,6 +2398,8 @@ function initLogin() {
     document.getElementById('menu-pilot-name').textContent = pilotName;
 
     initMenu();
+    refreshMarketState();
+    maybeHandleCheckoutReturn();
   }
 }
 

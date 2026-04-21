@@ -532,6 +532,44 @@ canvas{display:block}
 .market-buy.owned{background:rgba(74,255,127,.12);border:1px solid rgba(74,255,127,.4);color:#4aff7f;cursor:default;box-shadow:none;transform:none}
 .market-footer{padding:16px 28px;border-top:1px solid rgba(255,255,255,.06);font-size:11px;color:rgba(255,255,255,.3);text-align:center}
 
+/* ==================== CHECKOUT (Stripe + Demo) ==================== */
+#checkout-screen{position:fixed;inset:0;z-index:210;display:flex;justify-content:center;align-items:center;padding:40px}
+.checkout-box{position:relative;z-index:1;display:flex;flex-direction:column;width:min(520px,100%);max-height:88vh;background:linear-gradient(160deg,#0a1424 0%,#0e1a2e 100%);border:1px solid rgba(255,255,255,.1);border-radius:16px;box-shadow:0 30px 80px rgba(0,0,0,.6);overflow:hidden}
+.checkout-header{display:flex;justify-content:space-between;align-items:flex-start;padding:22px 26px 16px;border-bottom:1px solid rgba(255,255,255,.06)}
+.checkout-eyebrow{font-size:9px;letter-spacing:3px;font-weight:600;color:#4a9eff;margin-bottom:6px}
+.checkout-title{font-size:20px;font-weight:700;letter-spacing:.5px}
+.checkout-price{font-family:'JetBrains Mono',monospace;font-size:15px;color:#ffc72c;margin-top:4px}
+.checkout-tabs{display:flex;gap:6px;padding:14px 26px 0}
+.co-tab{flex:1;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);color:rgba(255,255,255,.55);font-family:inherit;font-size:11px;font-weight:600;letter-spacing:1.5px;padding:10px 8px;border-radius:8px 8px 0 0;cursor:pointer;transition:.15s}
+.co-tab.active{background:rgba(74,158,255,.12);border-color:rgba(74,158,255,.4);color:#fff}
+.co-tab:hover:not(.active){color:#fff}
+.co-panel{display:none;padding:20px 26px 24px;overflow-y:auto}
+.co-panel.active{display:block}
+.co-lead{font-size:13px;color:rgba(255,255,255,.8);margin-bottom:12px}
+.co-list{margin:0 0 16px;padding-left:18px;font-size:12px;color:rgba(255,255,255,.65);line-height:1.7}
+.co-list li{margin-bottom:2px}
+.co-list b{color:#fff}
+.co-demo-badge{display:inline-block;background:#ffc72c;color:#1a1008;font-weight:700;font-size:10px;letter-spacing:2px;padding:2px 8px;border-radius:4px;margin-right:8px;vertical-align:middle}
+.co-demo-warn{font-size:11px;color:rgba(255,255,255,.55);line-height:1.55;padding:10px 12px;background:rgba(255,199,44,.06);border:1px solid rgba(255,199,44,.18);border-radius:8px;margin-bottom:14px}
+.co-demo-warn code{font-family:'JetBrains Mono',monospace;color:#ffc72c;background:rgba(0,0,0,.25);padding:1px 4px;border-radius:3px}
+.co-label{display:block;font-size:10px;letter-spacing:2px;color:rgba(255,255,255,.45);margin-bottom:6px}
+.co-input{width:100%;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);color:#fff;font-family:'JetBrains Mono',monospace;font-size:13px;padding:11px 14px;border-radius:8px;letter-spacing:1px;margin-bottom:12px;box-sizing:border-box;outline:none;transition:.15s}
+.co-input:focus{border-color:rgba(74,158,255,.5);background:rgba(255,255,255,.06)}
+.co-check{display:flex;align-items:flex-start;gap:9px;font-size:12px;color:rgba(255,255,255,.7);line-height:1.5;margin-bottom:14px;cursor:pointer}
+.co-check input{margin-top:3px;accent-color:#4a9eff}
+.co-check b{color:#fff}
+.checkout-btn{width:100%;background:linear-gradient(135deg,#1558b0,#2a7fff);border:none;color:#fff;font-family:inherit;font-size:12px;font-weight:700;letter-spacing:2px;padding:13px 18px;border-radius:8px;cursor:pointer;transition:.2s}
+.checkout-btn:hover:not(:disabled){box-shadow:0 4px 16px rgba(42,127,255,.35);transform:translateY(-1px)}
+.checkout-btn:disabled{opacity:.4;cursor:not-allowed}
+.checkout-btn.demo{background:linear-gradient(135deg,#b07615,#ffa500)}
+.checkout-btn.demo:hover:not(:disabled){box-shadow:0 4px 16px rgba(255,165,0,.3)}
+.co-hint{font-size:10px;color:rgba(255,255,255,.35);text-align:center;margin-top:10px;letter-spacing:.5px}
+.co-status{font-size:12px;margin:8px 0;min-height:16px;text-align:center}
+.co-status.err{color:#ff5a5a}
+.co-status.ok{color:#4aff7f}
+.co-status.info{color:rgba(255,255,255,.6)}
+.co-tab.disabled{opacity:.4;cursor:not-allowed}
+
 /* ============================================================
    PAUSE & CRASH OVERLAYS
    ============================================================ */

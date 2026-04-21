@@ -8,6 +8,42 @@ const app = express();
 const server = http.createServer(app);
 const wss = new WebSocketServer({ server });
 
+// ============================================================
+// STRIPE (lazy — funktioniert auch ohne Keys, dann nur Demo-Modus)
+// ============================================================
+const STRIPE_SECRET_KEY    = process.env.STRIPE_SECRET_KEY    || '';
+const STRIPE_WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_SECRET || '';
+const PUBLIC_URL = process.env.PUBLIC_URL || '';
+let stripe = null;
+if (STRIPE_SECRET_KEY) {
+  try { stripe = require('stripe')(STRIPE_SECRET_KEY); }
+  catch (e) { console.warn('[market] stripe init failed:', e.message); }
+}
+const stripeReady = () => !!stripe;
+
+// Webhook MUSS vor express.json() registriert werden (raw body für Signatur-Check)
+app.post('/api/market/webhook',
+  express.raw({ type: 'application/json', limit: '1mb' }),
+  (req, res) => {
+    if (!stripeReady() || !STRIPE_WEBHOOK_SECRET) return res.status(503).end();
+    const sig = req.headers['stripe-signature'];
+    let event;
+    try {
+      event = stripe.webhooks.constructEvent(req.body, sig, STRIPE_WEBHOOK_SECRET);
+    } catch (err) {
+      console.warn('[market/webhook] signature failed:', err.message);
+      return res.status(400).send(`Webhook Error: ${err.message}`);
+    }
+    if (event.type === 'checkout.session.completed') {
+      const s = event.data.object;
+      const username = s.metadata?.username;
+      const itemId   = s.metadata?.itemId;
+      if (username && itemId) grantItem(username, itemId, 'stripe', s.id);
+    }
+    res.json({ received: true });
+  }
+);
+
 app.use(express.json({ limit: '32kb' }));
 app.use(express.static(path.join(__dirname, 'public')));
 
@@ -89,6 +125,141 @@ app.post('/api/access', (req, res) => {
   entry.lastSeen = Date.now();
   saveAccessUsers();
   res.json({ ok: true, role: entry.role, label: entry.label });
+});
+
+// ============================================================
+// MARKETPLACE
+// ============================================================
+// Einmalige Käufe — entsperren Premium-Flugzeuge für den Account.
+// Zwei Bezahlwege:
+//   1) Stripe Checkout (Karte + SEPA-Lastschrift) — echte Zahlung
+//   2) Demo-Modus — offensichtlich ein Placebo, bewegt kein Geld
+// Preise in Cent (Stripe-Konvention).
+const MARKET_ITEMS = {
+  b747: { aircraftId: 'b747', priceCents: 299, label: 'Boeing 747-400' },
+  a380: { aircraftId: 'a380', priceCents: 299, label: 'Airbus A380' },
+  b777: { aircraftId: 'b777', priceCents: 499, label: 'Boeing 777-300ER' },
+  a350: { aircraftId: 'a350', priceCents: 499, label: 'Airbus A350-900' },
+};
+
+function authUser(req) {
+  const username = String(req.body?.username || req.query?.username || '').trim().toLowerCase();
+  const deviceId = String(req.body?.deviceId || req.query?.deviceId || '').trim();
+  if (!username || !deviceId) return null;
+  const entry = accessUsers[username];
+  if (!entry) return null;
+  if (entry.deviceId !== deviceId) return null;
+  if (!Array.isArray(entry.purchases)) entry.purchases = [];
+  return { username, entry };
+}
+
+function grantItem(username, itemId, source, ref) {
+  const entry = accessUsers[username];
+  if (!entry || !MARKET_ITEMS[itemId]) return false;
+  if (!Array.isArray(entry.purchases)) entry.purchases = [];
+  if (entry.purchases.some(p => p.itemId === itemId)) return true;
+  entry.purchases.push({ itemId, source, ref: ref || null, at: Date.now() });
+  saveAccessUsers();
+  addEvent('purchase', `${username.toUpperCase()} → ${itemId} (${source})`);
+  return true;
+}
+
+function ownedIds(entry) {
+  return (entry.purchases || []).map(p => p.itemId);
+}
+
+app.get('/api/market/items', (req, res) => {
+  const auth = authUser(req);
+  const items = Object.entries(MARKET_ITEMS).map(([id, it]) => ({
+    id,
+    aircraftId: it.aircraftId,
+    label: it.label,
+    priceCents: it.priceCents,
+  }));
+  res.json({
+    ok: true,
+    items,
+    owned: auth ? ownedIds(auth.entry) : [],
+    stripeEnabled: stripeReady(),
+  });
+});
+
+// Demo-Bezahlung — streng optisch. Akzeptiert ein Fake-IBAN-Muster und
+// bestätigt nach 800 ms, damit es sich wie ein Payment anfühlt. Es wird
+// NIE ein echter Zahlungsvorgang ausgelöst; das Server-Log markiert den
+// Kauf als source='demo'.
+app.post('/api/market/demo-buy', (req, res) => {
+  const auth = authUser(req);
+  if (!auth) return res.status(401).json({ ok: false, error: 'unauthorized' });
+  const itemId = String(req.body?.itemId || '');
+  if (!MARKET_ITEMS[itemId]) return res.status(400).json({ ok: false, error: 'unknown-item' });
+  if (!req.body?.demoAcknowledged) {
+    return res.status(400).json({ ok: false, error: 'demo-not-acknowledged' });
+  }
+  // Fake-IBAN-Plausibilitätscheck — keine echte Validierung, kein echter Abruf.
+  const iban = String(req.body?.iban || '').replace(/\s+/g, '').toUpperCase();
+  if (!/^[A-Z]{2}\d{2}[A-Z0-9]{10,30}$/.test(iban)) {
+    return res.status(400).json({ ok: false, error: 'iban-format' });
+  }
+  grantItem(auth.username, itemId, 'demo', null);
+  res.json({ ok: true, owned: ownedIds(auth.entry) });
+});
+
+app.post('/api/market/checkout', async (req, res) => {
+  if (!stripeReady()) return res.status(503).json({ ok: false, error: 'stripe-disabled' });
+  const auth = authUser(req);
+  if (!auth) return res.status(401).json({ ok: false, error: 'unauthorized' });
+  const itemId = String(req.body?.itemId || '');
+  const item = MARKET_ITEMS[itemId];
+  if (!item) return res.status(400).json({ ok: false, error: 'unknown-item' });
+  if (ownedIds(auth.entry).includes(itemId)) {
+    return res.json({ ok: true, alreadyOwned: true });
+  }
+  const base = (req.body?.returnBase && String(req.body.returnBase)) || PUBLIC_URL || `${req.protocol}://${req.get('host')}`;
+  try {
+    const session = await stripe.checkout.sessions.create({
+      mode: 'payment',
+      payment_method_types: ['card', 'sepa_debit'],
+      line_items: [{
+        price_data: {
+          currency: 'eur',
+          product_data: { name: `Flugsim — ${item.label}` },
+          unit_amount: item.priceCents,
+        },
+        quantity: 1,
+      }],
+      success_url: `${base}/?checkout=success&session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url:  `${base}/?checkout=cancel`,
+      metadata: { username: auth.username, itemId },
+      client_reference_id: `${auth.username}:${itemId}`,
+    });
+    res.json({ ok: true, url: session.url });
+  } catch (e) {
+    console.warn('[market/checkout]', e.message);
+    res.status(500).json({ ok: false, error: 'stripe-error' });
+  }
+});
+
+// Fallback zur Webhook-Freischaltung: nach Stripe-Redirect zurück
+// kann der Client die Session hier gegenprüfen (falls Webhook noch nicht
+// durchgelaufen ist). Idempotent — grantItem erkennt doppelte Käufe.
+app.get('/api/market/confirm', async (req, res) => {
+  if (!stripeReady()) return res.status(503).json({ ok: false });
+  const auth = authUser(req);
+  if (!auth) return res.status(401).json({ ok: false });
+  const sessionId = String(req.query?.session_id || '');
+  if (!sessionId) return res.status(400).json({ ok: false });
+  try {
+    const s = await stripe.checkout.sessions.retrieve(sessionId);
+    if (s.payment_status === 'paid') {
+      const itemId = s.metadata?.itemId;
+      const username = s.metadata?.username;
+      if (username === auth.username && itemId) grantItem(username, itemId, 'stripe', s.id);
+    }
+    res.json({ ok: true, paid: s.payment_status === 'paid', owned: ownedIds(auth.entry) });
+  } catch (e) {
+    res.status(500).json({ ok: false });
+  }
 });
 
 // ============================================================

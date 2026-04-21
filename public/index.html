@@ -500,6 +500,59 @@
     </div>
   </div>
 
+  <!-- ==================== MARKET CHECKOUT ==================== -->
+  <div id="checkout-screen" class="hidden">
+    <div class="overlay-bg"></div>
+    <div class="checkout-box">
+      <div class="checkout-header">
+        <div>
+          <div class="checkout-eyebrow">KAUFVORGANG</div>
+          <div class="checkout-title" id="checkout-title">—</div>
+          <div class="checkout-price" id="checkout-price">—</div>
+        </div>
+        <button class="market-close" id="checkout-close" title="Abbrechen">&#10005;</button>
+      </div>
+
+      <div class="checkout-tabs">
+        <button class="co-tab active" data-co-tab="stripe">Mit Bankkonto bezahlen</button>
+        <button class="co-tab" data-co-tab="demo">Demo-Modus</button>
+      </div>
+
+      <div class="co-panel active" id="co-panel-stripe">
+        <div class="co-lead">Echte Zahlung über Stripe Checkout.</div>
+        <ul class="co-list">
+          <li><b>Karte</b> oder <b>SEPA-Lastschrift</b> (IBAN) direkt bei Stripe.</li>
+          <li>Deine Bankdaten gehen nie an diesen Server — nur an Stripe.</li>
+          <li>Freischaltung erfolgt automatisch nach Zahlungseingang.</li>
+        </ul>
+        <div class="co-status" id="co-stripe-status"></div>
+        <button class="checkout-btn" id="co-stripe-btn">WEITER ZU STRIPE &rarr;</button>
+        <div class="co-hint" id="co-stripe-hint">Du wirst zu stripe.com weitergeleitet.</div>
+      </div>
+
+      <div class="co-panel" id="co-panel-demo">
+        <div class="co-lead">
+          <span class="co-demo-badge">DEMO</span>
+          Nur zum Ausprobieren — es wird <b>kein Geld abgebucht</b>.
+        </div>
+        <p class="co-demo-warn">
+          Dies ist ein Placebo-Flow für Testzwecke. Die eingegebene IBAN wird
+          <u>nicht</u> an eine Bank geschickt, <u>nicht</u> gespeichert und <u>nicht</u>
+          für Abbuchungen verwendet. Benutze hier gerne eine Fantasie-IBAN
+          (z.B. <code>DE00000000000000000000</code>).
+        </p>
+        <label class="co-label">IBAN (Fantasie)</label>
+        <input type="text" class="co-input" id="co-demo-iban" placeholder="DE00 0000 0000 0000 0000 00" maxlength="34" autocomplete="off" spellcheck="false">
+        <label class="co-check">
+          <input type="checkbox" id="co-demo-ack">
+          <span>Ich habe verstanden, dass dies <b>keine echte Zahlung</b> ist.</span>
+        </label>
+        <div class="co-status" id="co-demo-status"></div>
+        <button class="checkout-btn demo" id="co-demo-btn" disabled>JETZT FREISCHALTEN (DEMO)</button>
+      </div>
+    </div>
+  </div>
+
   <!-- ==================== PAUSE ==================== -->
   <div id="pause-menu" class="hidden">
     <div class="overlay-bg"></div>
