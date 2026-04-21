@@ -1,3 +1,5 @@
+try { require('dotenv').config(); } catch { /* dotenv optional */ }
+
 const express = require('express');
 const http = require('http');
 const { WebSocketServer } = require('ws');
