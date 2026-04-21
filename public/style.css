@@ -506,31 +506,79 @@ canvas{display:block}
 .c-toast.promotion{background:linear-gradient(135deg,#ffc72c,#ff8c00);color:#1a1a1a}
 
 /* ============================================================
-   MARKETPLACE
+   MARKETPLACE — full-screen MSFS-24-style
    ============================================================ */
-#marketplace-screen{position:fixed;inset:0;z-index:200;display:flex;justify-content:center;align-items:center;padding:40px}
-.market-box{position:relative;z-index:1;display:flex;flex-direction:column;width:min(880px,100%);max-height:88vh;background:linear-gradient(160deg,#0a1424 0%,#0e1a2e 100%);border:1px solid rgba(255,255,255,.08);border-radius:16px;box-shadow:0 30px 80px rgba(0,0,0,.6),0 0 0 1px rgba(74,158,255,.05);overflow:hidden}
-.market-header{display:flex;justify-content:space-between;align-items:flex-start;padding:24px 28px 18px;border-bottom:1px solid rgba(255,255,255,.06)}
-.market-eyebrow{font-size:9px;letter-spacing:3px;font-weight:600;color:#4a9eff;margin-bottom:6px}
-.market-title{font-size:22px;font-weight:700;letter-spacing:.5px}
-.market-close{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);color:rgba(255,255,255,.5);width:32px;height:32px;border-radius:8px;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:.15s}
-.market-close:hover{background:rgba(255,80,80,.15);border-color:rgba(255,80,80,.4);color:#fff}
-.market-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;padding:24px 28px;overflow-y:auto}
-.market-card{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);border-radius:12px;overflow:hidden;display:flex;flex-direction:column;transition:.2s}
-.market-card:hover{border-color:rgba(74,158,255,.3);transform:translateY(-2px)}
-.market-card-preview{height:200px;background:#0d1524;border-bottom:1px solid rgba(255,255,255,.04);overflow:hidden;position:relative}
-.market-card-preview canvas{width:100%!important;height:100%!important;display:block}
-.market-card-body{padding:18px 20px;display:flex;flex-direction:column;gap:10px;flex:1}
-.market-card-name{font-size:16px;font-weight:700}
-.market-card-mfr{font-size:10px;letter-spacing:2px;font-weight:600;color:rgba(255,255,255,.35)}
-.market-specs{display:flex;flex-wrap:wrap;gap:8px;margin-top:4px}
-.market-spec{font-family:'JetBrains Mono',monospace;font-size:10px;color:rgba(255,255,255,.5);background:rgba(255,255,255,.04);border-radius:4px;padding:3px 7px}
-.market-card-foot{display:flex;align-items:center;justify-content:space-between;margin-top:auto;padding-top:12px}
-.market-price{font-family:'JetBrains Mono',monospace;font-size:20px;font-weight:700;color:#ffc72c}
-.market-buy{background:linear-gradient(135deg,#1558b0,#2a7fff);border:none;color:#fff;font-family:inherit;font-size:11px;font-weight:700;letter-spacing:2px;padding:10px 18px;border-radius:8px;cursor:pointer;transition:.2s}
-.market-buy:hover{box-shadow:0 4px 16px rgba(42,127,255,.35);transform:translateY(-1px)}
-.market-buy.owned{background:rgba(74,255,127,.12);border:1px solid rgba(74,255,127,.4);color:#4aff7f;cursor:default;box-shadow:none;transform:none}
-.market-footer{padding:16px 28px;border-top:1px solid rgba(255,255,255,.06);font-size:11px;color:rgba(255,255,255,.3);text-align:center}
+#marketplace-screen{position:fixed;inset:0;z-index:200;display:flex;flex-direction:column;background:#05080f;color:#fff;font-family:'Inter',sans-serif}
+.mk-bg{position:absolute;inset:0;background:
+  radial-gradient(ellipse at top, rgba(74,158,255,.18) 0%, transparent 55%),
+  radial-gradient(ellipse at bottom, rgba(138,31,176,.12) 0%, transparent 60%),
+  linear-gradient(180deg, #070b14 0%, #04060c 100%);
+  z-index:0;pointer-events:none}
+.mk-topbar{position:relative;z-index:2;display:flex;align-items:center;gap:18px;padding:16px 36px;border-bottom:1px solid rgba(255,255,255,.06);background:rgba(6,10,18,.6);backdrop-filter:blur(14px)}
+.mk-title-wrap{display:flex;flex-direction:column;line-height:1.1}
+.mk-eyebrow{font-size:9px;letter-spacing:4px;color:#4a9eff;font-weight:700}
+.mk-title{font-size:20px;font-weight:700;letter-spacing:.5px}
+.mk-search{margin-left:auto;display:flex;align-items:center;gap:8px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);padding:8px 12px;border-radius:8px;width:280px;max-width:30vw;color:rgba(255,255,255,.45);transition:.15s}
+.mk-search:focus-within{border-color:rgba(74,158,255,.4);color:#fff;background:rgba(255,255,255,.06)}
+.mk-search input{flex:1;background:none;border:none;color:#fff;font-family:inherit;font-size:13px;outline:none}
+.mk-search input::placeholder{color:rgba(255,255,255,.3)}
+
+.mk-scroll{position:relative;z-index:2;flex:1;overflow-y:auto;padding:28px 36px 40px}
+
+/* ── Hero bundles ── */
+.mk-hero-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:18px;margin-bottom:30px}
+.mk-hero{position:relative;aspect-ratio:16/9;min-height:220px;border-radius:14px;overflow:hidden;cursor:pointer;transition:.25s;border:1px solid rgba(255,255,255,.08);background:#0d1524}
+.mk-hero:hover{transform:translateY(-3px);border-color:rgba(74,158,255,.4);box-shadow:0 14px 40px rgba(0,0,0,.5)}
+.mk-hero-preview{position:absolute;inset:0;z-index:0}
+.mk-hero-preview canvas{width:100%!important;height:100%!important;display:block}
+.mk-hero-tint{position:absolute;inset:0;z-index:1;background:linear-gradient(135deg,var(--tint,#1558b0) 0%,transparent 55%,transparent 100%);mix-blend-mode:screen;opacity:.55;pointer-events:none}
+.mk-hero-overlay{position:absolute;inset:0;z-index:2;background:linear-gradient(180deg,rgba(0,0,0,0) 45%,rgba(0,0,0,.88) 100%);pointer-events:none}
+.mk-hero-top{position:absolute;top:14px;left:16px;z-index:3;display:flex;align-items:center;gap:8px}
+.mk-hero-badge{display:inline-block;background:var(--tint,#1558b0);color:#fff;font-size:9px;letter-spacing:3px;font-weight:700;padding:4px 9px;border-radius:4px;text-transform:uppercase}
+.mk-hero-owned{background:rgba(74,255,127,.18);border:1px solid rgba(74,255,127,.5);color:#4aff7f;font-size:9px;letter-spacing:2px;font-weight:700;padding:3px 8px;border-radius:4px}
+.mk-hero-body{position:absolute;left:18px;right:18px;bottom:16px;z-index:3}
+.mk-hero-tag{font-size:11px;letter-spacing:2px;color:rgba(255,255,255,.65);margin-bottom:4px;font-weight:500}
+.mk-hero-name{font-size:22px;font-weight:800;letter-spacing:.3px;margin-bottom:4px;line-height:1.1}
+.mk-hero-items{font-size:11px;color:rgba(255,255,255,.55);margin-bottom:10px;font-family:'JetBrains Mono',monospace;letter-spacing:1px}
+.mk-hero-foot{display:flex;align-items:flex-end;justify-content:space-between;gap:12px}
+.mk-hero-price-wrap{display:flex;flex-direction:column}
+.mk-hero-price{font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:700;color:#ffc72c;line-height:1}
+.mk-hero-price-sub{font-size:10px;color:rgba(255,255,255,.4);margin-top:3px}
+.mk-hero-cta{background:rgba(255,255,255,.92);border:none;color:#0a1424;font-family:inherit;font-size:11px;font-weight:800;letter-spacing:2px;padding:10px 16px;border-radius:7px;cursor:pointer;transition:.15s}
+.mk-hero-cta:hover{background:#fff;transform:translateY(-1px)}
+.mk-hero-cta.owned{background:rgba(74,255,127,.12);border:1px solid rgba(74,255,127,.4);color:#4aff7f;cursor:default}
+
+/* ── Tabs ── */
+.mk-tabs{display:flex;gap:4px;margin-bottom:20px;border-bottom:1px solid rgba(255,255,255,.08);padding-bottom:0}
+.mk-tab{background:none;border:none;border-bottom:2px solid transparent;color:rgba(255,255,255,.5);font-family:inherit;font-size:12px;font-weight:600;letter-spacing:1.5px;padding:10px 16px;cursor:pointer;transition:.15s;text-transform:uppercase}
+.mk-tab:hover:not(.disabled):not(.active){color:rgba(255,255,255,.85)}
+.mk-tab.active{color:#fff;border-bottom-color:#4a9eff}
+.mk-tab.disabled{opacity:.35;cursor:not-allowed}
+
+.mk-section-hdr{display:flex;align-items:baseline;gap:10px;margin-bottom:14px}
+.mk-section-title{font-size:15px;font-weight:700;letter-spacing:.5px}
+.mk-section-count{font-family:'JetBrains Mono',monospace;font-size:11px;color:rgba(255,255,255,.4)}
+
+/* ── Product grid ── */
+.mk-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:16px}
+.mk-card{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);border-radius:12px;overflow:hidden;display:flex;flex-direction:column;transition:.2s;cursor:pointer}
+.mk-card:hover{border-color:rgba(74,158,255,.35);transform:translateY(-2px);box-shadow:0 10px 30px rgba(0,0,0,.35)}
+.mk-card-preview{aspect-ratio:4/3;background:linear-gradient(135deg,#0d1524,#11192b);overflow:hidden;position:relative}
+.mk-card-preview canvas{width:100%!important;height:100%!important;display:block}
+.mk-card-badge{position:absolute;top:10px;left:10px;background:rgba(0,0,0,.55);backdrop-filter:blur(6px);font-size:9px;letter-spacing:2px;font-weight:700;padding:3px 8px;border-radius:4px;color:#4a9eff;border:1px solid rgba(74,158,255,.25)}
+.mk-card-body{padding:14px 16px 16px;display:flex;flex-direction:column;gap:6px;flex:1}
+.mk-card-mfr{font-size:9px;letter-spacing:2px;color:rgba(255,255,255,.35);font-weight:600}
+.mk-card-name{font-size:15px;font-weight:700;letter-spacing:.2px;line-height:1.2}
+.mk-card-tag{font-size:11px;color:rgba(255,255,255,.45);margin-top:-2px}
+.mk-card-foot{display:flex;align-items:center;justify-content:space-between;margin-top:auto;padding-top:10px}
+.mk-price{font-family:'JetBrains Mono',monospace;font-size:17px;font-weight:700;color:#ffc72c}
+.mk-price.owned{color:#4aff7f;font-size:13px;letter-spacing:2px}
+.mk-buy{background:linear-gradient(135deg,#1558b0,#2a7fff);border:none;color:#fff;font-family:inherit;font-size:10px;font-weight:700;letter-spacing:2px;padding:9px 14px;border-radius:7px;cursor:pointer;transition:.15s}
+.mk-buy:hover{box-shadow:0 4px 16px rgba(42,127,255,.35);transform:translateY(-1px)}
+.mk-buy.owned{background:rgba(74,255,127,.12);border:1px solid rgba(74,255,127,.4);color:#4aff7f;cursor:default;box-shadow:none;transform:none}
+
+.mk-empty{padding:40px;text-align:center;color:rgba(255,255,255,.35);font-size:13px}
+.mk-footer-legal{margin-top:40px;padding-top:20px;border-top:1px solid rgba(255,255,255,.05);font-size:11px;color:rgba(255,255,255,.3);text-align:center;line-height:1.6}
 
 /* ==================== CHECKOUT (Stripe + Demo) ==================== */
 #checkout-screen{position:fixed;inset:0;z-index:210;display:flex;justify-content:center;align-items:center;padding:40px}

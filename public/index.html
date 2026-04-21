@@ -484,19 +484,49 @@
     </div>
   </div>
 
-  <!-- ==================== MARKETPLACE ==================== -->
+  <!-- ==================== MARKETPLACE (full-screen, MSFS-style) ==================== -->
   <div id="marketplace-screen" class="hidden">
-    <div class="overlay-bg"></div>
-    <div class="market-box">
-      <div class="market-header">
-        <div>
-          <div class="market-eyebrow">FLUGSIM MARKETPLACE</div>
-          <div class="market-title">Premium Aircraft</div>
-        </div>
-        <button class="market-close" id="market-close" title="Schließen">&#10005;</button>
+    <div class="mk-bg"></div>
+    <div class="mk-topbar">
+      <button class="topbar-back" id="market-close" title="Zurück">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg>
+        <span>BACK</span>
+      </button>
+      <div class="mk-title-wrap">
+        <div class="mk-eyebrow">FLUGSIM</div>
+        <div class="mk-title">Marketplace</div>
       </div>
-      <div class="market-grid" id="market-grid"></div>
-      <div class="market-footer">Einmalkauf — entsperrt das Flugzeug für alle Airlines.</div>
+      <div class="mk-search">
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+        <input type="text" id="mk-search" placeholder="Suche Inhalte…" autocomplete="off" spellcheck="false">
+      </div>
+    </div>
+
+    <div class="mk-scroll">
+      <!-- Hero bundles -->
+      <div class="mk-hero-row" id="mk-hero-row"></div>
+
+      <!-- Category tabs -->
+      <div class="mk-tabs">
+        <button class="mk-tab active" data-mk-cat="all">Alle</button>
+        <button class="mk-tab" data-mk-cat="aircraft">Flugzeuge</button>
+        <button class="mk-tab" data-mk-cat="bundles">Bundles</button>
+        <button class="mk-tab disabled" data-mk-cat="airports" title="Bald verfügbar">Airports</button>
+        <button class="mk-tab disabled" data-mk-cat="world" title="Bald verfügbar">World</button>
+        <button class="mk-tab disabled" data-mk-cat="missions" title="Bald verfügbar">Aktivitäten</button>
+      </div>
+
+      <!-- Product grid -->
+      <div class="mk-section-hdr">
+        <span class="mk-section-title" id="mk-section-title">Premium-Flugzeuge</span>
+        <span class="mk-section-count" id="mk-section-count"></span>
+      </div>
+      <div class="mk-grid" id="market-grid"></div>
+      <div class="mk-empty hidden" id="mk-empty">Keine Inhalte in dieser Kategorie.</div>
+
+      <div class="mk-footer-legal">
+        Einmalkauf — schaltet Inhalte permanent für diesen Account frei. Bezahlung über Stripe (Karte / SEPA) oder Demo-Modus (ohne Geldfluss).
+      </div>
     </div>
   </div>
 

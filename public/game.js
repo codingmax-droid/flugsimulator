@@ -42,11 +42,12 @@ const settings = { terrainZoom: 11, terrainRadius: 3, shadows: true, units: 'met
 // noch nicht geantwortet hat.
 
 let MARKETPLACE_ITEMS = {
-  b747: { price: 2.99, priceCents: 299, label: 'Boeing 747-400' },
-  a380: { price: 2.99, priceCents: 299, label: 'Airbus A380' },
-  b777: { price: 4.99, priceCents: 499, label: 'Boeing 777-300ER' },
-  a350: { price: 4.99, priceCents: 499, label: 'Airbus A350-900' },
+  b747: { price: 2.99, priceCents: 299, label: 'Boeing 747-400',   tagline: 'Queen of the Skies',  category: 'aircraft' },
+  a380: { price: 2.99, priceCents: 299, label: 'Airbus A380',      tagline: 'Super Jumbo',         category: 'aircraft' },
+  b777: { price: 4.99, priceCents: 499, label: 'Boeing 777-300ER', tagline: 'Triple Seven',        category: 'aircraft' },
+  a350: { price: 4.99, priceCents: 499, label: 'Airbus A350-900',  tagline: 'Next-Gen Widebody',   category: 'aircraft' },
 };
+let MARKETPLACE_BUNDLES = {};
 let marketStripeEnabled = false;
 
 function ownedKey() {
@@ -77,24 +78,50 @@ async function refreshMarketState() {
     const r = await fetch('/api/market/items?' + qs);
     const j = await r.json();
     if (!j.ok) return;
-    const next = {};
+    const nextItems = {};
     for (const it of j.items) {
-      next[it.id] = {
+      nextItems[it.id] = {
         priceCents: it.priceCents,
         price: it.priceCents / 100,
         label: it.label,
         aircraftId: it.aircraftId,
+        tagline: it.tagline || '',
+        category: it.category || 'aircraft',
       };
     }
-    MARKETPLACE_ITEMS = next;
+    const nextBundles = {};
+    for (const b of (j.bundles || [])) {
+      nextBundles[b.id] = {
+        priceCents: b.priceCents,
+        price: b.priceCents / 100,
+        label: b.label,
+        items: b.items,
+        tagline: b.tagline || '',
+        color: b.color || '#1558b0',
+      };
+    }
+    MARKETPLACE_ITEMS = nextItems;
+    MARKETPLACE_BUNDLES = nextBundles;
     marketStripeEnabled = !!j.stripeEnabled;
     ownedAircraft = new Set(j.owned || []);
     saveOwnedAircraftLocal();
-    if (typeof updateMarketButtons === 'function') updateMarketButtons();
+    if (typeof rebuildMarketplace === 'function') rebuildMarketplace();
     if (typeof buildAircraftPanel === 'function' && document.getElementById('panel-aircraft')?.classList.contains('active')) {
       buildAircraftPanel();
     }
   } catch { /* offline — localStorage-Fallback bleibt */ }
+}
+
+// Bundle gilt als owned, wenn alle enthaltenen Items gekauft sind.
+function isBundleOwned(bundleId) {
+  const b = MARKETPLACE_BUNDLES[bundleId];
+  if (!b) return false;
+  return b.items.every(i => ownedAircraft.has(i));
+}
+function isPurchaseOwned(id) {
+  if (MARKETPLACE_BUNDLES[id]) return isBundleOwned(id);
+  if (MARKETPLACE_ITEMS[id])   return ownedAircraft.has(id);
+  return false;
 }
 
 async function maybeHandleCheckoutReturn() {
@@ -117,8 +144,8 @@ async function maybeHandleCheckoutReturn() {
     if (j.ok && j.paid) {
       ownedAircraft = new Set(j.owned || []);
       saveOwnedAircraftLocal();
-      if (typeof updateMarketButtons === 'function') updateMarketButtons();
-      showToast('Kauf erfolgreich — Flugzeug freigeschaltet', 'ok');
+      if (typeof rebuildMarketplace === 'function') rebuildMarketplace();
+      showToast('Kauf erfolgreich — freigeschaltet', 'ok');
     } else {
       showToast('Zahlung nicht bestätigt', 'err');
     }
@@ -946,9 +973,9 @@ function buyAircraft(id) {
 let checkoutItem = null;
 
 function openCheckoutModal(itemId) {
-  const item = MARKETPLACE_ITEMS[itemId];
+  const item = MARKETPLACE_ITEMS[itemId] || MARKETPLACE_BUNDLES[itemId];
   if (!item) return;
-  if (ownedAircraft.has(itemId)) { showToast('Bereits gekauft', 'info'); return; }
+  if (isPurchaseOwned(itemId)) { showToast('Bereits gekauft', 'info'); return; }
   checkoutItem = itemId;
 
   document.getElementById('checkout-title').textContent = item.label || itemId.toUpperCase();
@@ -1063,10 +1090,10 @@ async function doDemoBuy() {
     if (j.ok) {
       ownedAircraft = new Set(j.owned || []);
       saveOwnedAircraftLocal();
-      updateMarketButtons();
+      rebuildMarketplace();
       status.className = 'co-status ok';
       status.textContent = 'Freigeschaltet (Demo).';
-      showToast('Flugzeug freigeschaltet (Demo)', 'ok');
+      showToast('Freigeschaltet (Demo)', 'ok');
       setTimeout(closeCheckoutModal, 900);
       return;
     }
@@ -1115,63 +1142,209 @@ function formatPrice(p) {
   return p.toFixed(2).replace('.', ',') + '\u00a0€';
 }
 
-const marketPreviews = new Map(); // id -> { preview, card }
+// ── MSFS-24-Stil Marketplace ──
+const marketPreviews = new Map(); // id -> { preview, node, isHero }
 let marketAnimId = null;
+let marketCategory = 'all';
+let marketSearchTerm = '';
 
-function buildMarketplace() {
-  const grid = document.getElementById('market-grid');
-  if (!grid || grid.childElementCount > 0) return;
-  for (const [id, item] of Object.entries(MARKETPLACE_ITEMS)) {
-    const ac = AIRCRAFT_TYPES[id];
-    if (!ac) continue;
-    const card = document.createElement('div');
-    card.className = 'market-card';
-    card.innerHTML = `
-      <div class="market-card-preview"></div>
-      <div class="market-card-body">
-        <div>
-          <div class="market-card-mfr">${ac.manufacturer.toUpperCase()}</div>
-          <div class="market-card-name">${ac.name}</div>
-        </div>
-        <div class="market-specs">
-          <span class="market-spec">${ac.engines} ENG</span>
-          <span class="market-spec">${ac.passengers} PAX</span>
-          <span class="market-spec">${ac.range.toLocaleString('de-DE')} km</span>
-          <span class="market-spec">MTOW ${(ac.mtow/1000).toFixed(0)}t</span>
-        </div>
-        <div class="market-card-foot">
-          <div class="market-price">${formatPrice(item.price)}</div>
-          <button class="market-buy" data-buy="${id}">KAUFEN</button>
-        </div>
+function marketCard(id, item) {
+  const ac = AIRCRAFT_TYPES[id];
+  const owned = ownedAircraft.has(id);
+  const card = document.createElement('div');
+  card.className = 'mk-card';
+  card.innerHTML = `
+    <div class="mk-card-preview">
+      <div class="mk-card-badge">AIRCRAFT</div>
+    </div>
+    <div class="mk-card-body">
+      <div class="mk-card-mfr">${ac ? ac.manufacturer.toUpperCase() : id.toUpperCase()}</div>
+      <div class="mk-card-name">${ac ? ac.name : item.label}</div>
+      <div class="mk-card-tag">${item.tagline || ''}</div>
+      <div class="mk-card-foot">
+        <div class="mk-price">${formatPrice(item.price)}</div>
+        <button class="mk-buy" data-buy="${id}">KAUFEN</button>
       </div>
-    `;
-    grid.appendChild(card);
-
-    const previewContainer = card.querySelector('.market-card-preview');
-    const preview = new AircraftPreview(previewContainer);
-    preview.setAircraft(id, getLivery('lufthansa'));
-    marketPreviews.set(id, { preview, card });
-
-    card.querySelector('[data-buy]').addEventListener('click', () => buyAircraft(id));
-  }
-  updateMarketButtons();
+    </div>
+  `;
+  const prevEl = card.querySelector('.mk-card-preview');
+  const preview = ac ? new AircraftPreview(prevEl) : null;
+  if (preview) preview.setAircraft(id, getLivery('lufthansa'));
+  marketPreviews.set(id, { preview, node: card, isHero: false });
+  card.querySelector('[data-buy]').addEventListener('click', (e) => {
+    e.stopPropagation();
+    buyAircraft(id);
+  });
+  card.addEventListener('click', () => buyAircraft(id));
+  syncCardOwnership(id, card, owned, false);
+  return card;
 }
 
-function updateMarketButtons() {
-  for (const [id, { card }] of marketPreviews) {
-    const owned = ownedAircraft.has(id);
-    const btn = card.querySelector('[data-buy]');
-    btn.classList.toggle('owned', owned);
-    btn.disabled = owned;
-    btn.textContent = owned ? 'GEKAUFT' : 'KAUFEN';
+function marketHeroCard(id, bundle) {
+  const node = document.createElement('div');
+  node.className = 'mk-hero';
+  node.style.setProperty('--tint', bundle.color || '#1558b0');
+  const firstAc = bundle.items.find(i => AIRCRAFT_TYPES[i]) || bundle.items[0];
+  const owned = isBundleOwned(id);
+  const itemLabels = bundle.items.map(i => (AIRCRAFT_TYPES[i]?.name || i).toUpperCase()).join(' • ');
+  node.innerHTML = `
+    <div class="mk-hero-preview"></div>
+    <div class="mk-hero-tint"></div>
+    <div class="mk-hero-overlay"></div>
+    <div class="mk-hero-top">
+      <span class="mk-hero-badge">BUNDLE</span>
+    </div>
+    <div class="mk-hero-body">
+      <div class="mk-hero-tag">${bundle.tagline || ''}</div>
+      <div class="mk-hero-name">${bundle.label}</div>
+      <div class="mk-hero-items">${itemLabels}</div>
+      <div class="mk-hero-foot">
+        <div class="mk-hero-price-wrap">
+          <div class="mk-hero-price">${formatPrice(bundle.price)}</div>
+          <div class="mk-hero-price-sub">${bundle.items.length} Flugzeuge inklusive</div>
+        </div>
+        <button class="mk-hero-cta" data-buy="${id}">JETZT KAUFEN</button>
+      </div>
+    </div>
+  `;
+  const prevEl = node.querySelector('.mk-hero-preview');
+  const preview = firstAc && AIRCRAFT_TYPES[firstAc] ? new AircraftPreview(prevEl) : null;
+  if (preview) preview.setAircraft(firstAc, getLivery('lufthansa'));
+  marketPreviews.set(id, { preview, node, isHero: true });
+  node.querySelector('[data-buy]').addEventListener('click', (e) => {
+    e.stopPropagation();
+    buyAircraft(id);
+  });
+  node.addEventListener('click', () => buyAircraft(id));
+  syncCardOwnership(id, node, owned, true);
+  return node;
+}
+
+function syncCardOwnership(id, node, owned, isHero) {
+  if (isHero) {
+    const cta = node.querySelector('[data-buy]');
+    if (cta) {
+      cta.classList.toggle('owned', owned);
+      cta.disabled = owned;
+      cta.textContent = owned ? 'IM BESITZ' : 'JETZT KAUFEN';
+    }
+    const badge = node.querySelector('.mk-hero-top');
+    if (badge && owned && !badge.querySelector('.mk-hero-owned')) {
+      badge.insertAdjacentHTML('beforeend', '<span class="mk-hero-owned">OWNED</span>');
+    } else if (badge && !owned) {
+      badge.querySelector('.mk-hero-owned')?.remove();
+    }
+  } else {
+    const btn = node.querySelector('[data-buy]');
+    const price = node.querySelector('.mk-price');
+    if (btn) {
+      btn.classList.toggle('owned', owned);
+      btn.disabled = owned;
+      btn.textContent = owned ? 'GEKAUFT' : 'KAUFEN';
+    }
+    if (price) price.classList.toggle('owned', owned);
   }
+}
+
+function rebuildMarketplace() {
+  const heroRow = document.getElementById('mk-hero-row');
+  const grid = document.getElementById('market-grid');
+  if (!heroRow || !grid) return;
+
+  // Kein komplettes Neuaufbauen, wenn schon gerendert — nur Ownership auffrischen.
+  const needsBuild = !heroRow.dataset.built;
+  if (needsBuild) {
+    heroRow.innerHTML = '';
+    grid.innerHTML = '';
+    marketPreviews.clear();
+
+    // Heroes = alle Bundles
+    for (const [id, b] of Object.entries(MARKETPLACE_BUNDLES)) {
+      heroRow.appendChild(marketHeroCard(id, b));
+    }
+
+    // Grid = Aircraft
+    for (const [id, item] of Object.entries(MARKETPLACE_ITEMS)) {
+      grid.appendChild(marketCard(id, item));
+    }
+    heroRow.dataset.built = '1';
+  } else {
+    // Ownership-Status aktualisieren
+    for (const [id, { node, isHero }] of marketPreviews) {
+      const owned = isHero ? isBundleOwned(id) : ownedAircraft.has(id);
+      syncCardOwnership(id, node, owned, isHero);
+    }
+  }
+
+  applyMarketFilter();
+  updateMarketSectionCount();
+}
+
+function applyMarketFilter() {
+  const heroRow = document.getElementById('mk-hero-row');
+  const grid = document.getElementById('market-grid');
+  const empty = document.getElementById('mk-empty');
+  if (!heroRow || !grid) return;
+  const q = marketSearchTerm.trim().toLowerCase();
+
+  // Hero-Bundles
+  const showBundles = marketCategory === 'all' || marketCategory === 'bundles';
+  let heroVisible = 0;
+  for (const hero of heroRow.children) {
+    const id = hero.querySelector('[data-buy]')?.dataset.buy;
+    const b = MARKETPLACE_BUNDLES[id];
+    const matches = !q || (b && (b.label.toLowerCase().includes(q) || (b.tagline || '').toLowerCase().includes(q)));
+    const visible = showBundles && matches;
+    hero.style.display = visible ? '' : 'none';
+    if (visible) heroVisible++;
+  }
+  heroRow.style.display = heroVisible > 0 ? '' : 'none';
+
+  // Aircraft-Grid
+  const showAircraft = marketCategory === 'all' || marketCategory === 'aircraft';
+  let gridVisible = 0;
+  for (const card of grid.children) {
+    const id = card.querySelector('[data-buy]')?.dataset.buy;
+    const item = MARKETPLACE_ITEMS[id];
+    const ac = AIRCRAFT_TYPES[id];
+    const matches = !q || (item && (
+      item.label.toLowerCase().includes(q) ||
+      (item.tagline || '').toLowerCase().includes(q) ||
+      (ac && ac.name.toLowerCase().includes(q)) ||
+      (ac && ac.manufacturer.toLowerCase().includes(q))
+    ));
+    const visible = showAircraft && matches;
+    card.style.display = visible ? '' : 'none';
+    if (visible) gridVisible++;
+  }
+  grid.style.display = gridVisible > 0 ? '' : 'none';
+
+  if (empty) empty.classList.toggle('hidden', heroVisible + gridVisible > 0);
+}
+
+function updateMarketSectionCount() {
+  const titleEl = document.getElementById('mk-section-title');
+  const countEl = document.getElementById('mk-section-count');
+  if (!titleEl || !countEl) return;
+  const catLabel = {
+    all: 'Alle Inhalte',
+    aircraft: 'Premium-Flugzeuge',
+    bundles: 'Bundles',
+  }[marketCategory] || 'Alle Inhalte';
+  titleEl.textContent = catLabel;
+  let total = 0;
+  if (marketCategory === 'all' || marketCategory === 'aircraft') total += Object.keys(MARKETPLACE_ITEMS).length;
+  if (marketCategory === 'all' || marketCategory === 'bundles')  total += Object.keys(MARKETPLACE_BUNDLES).length;
+  countEl.textContent = `${total} Angebote`;
 }
 
 function startMarketAnim() {
   if (marketAnimId) return;
   const loop = () => {
     marketAnimId = requestAnimationFrame(loop);
-    for (const { preview } of marketPreviews.values()) preview.render();
+    for (const { preview, node } of marketPreviews.values()) {
+      if (preview && node.style.display !== 'none') preview.render();
+    }
   };
   loop();
 }
@@ -1179,9 +1352,12 @@ function stopMarketAnim() {
   if (marketAnimId) { cancelAnimationFrame(marketAnimId); marketAnimId = null; }
 }
 
+// Legacy-Alias (alte Callsites)
+function buildMarketplace() { rebuildMarketplace(); }
+function updateMarketButtons() { rebuildMarketplace(); }
+
 function openMarketplace() {
-  buildMarketplace();
-  updateMarketButtons();
+  rebuildMarketplace();
   document.getElementById('marketplace-screen').classList.remove('hidden');
   startMarketAnim();
 }
@@ -1189,6 +1365,25 @@ function openMarketplace() {
 function closeMarketplace() {
   document.getElementById('marketplace-screen').classList.add('hidden');
   stopMarketAnim();
+}
+
+function initMarketplaceUI() {
+  // Tab-Navigation
+  document.querySelectorAll('.mk-tab').forEach(t => {
+    t.addEventListener('click', () => {
+      if (t.classList.contains('disabled')) return;
+      document.querySelectorAll('.mk-tab').forEach(x => x.classList.remove('active'));
+      t.classList.add('active');
+      marketCategory = t.dataset.mkCat;
+      applyMarketFilter();
+      updateMarketSectionCount();
+    });
+  });
+  // Suche
+  document.getElementById('mk-search')?.addEventListener('input', (e) => {
+    marketSearchTerm = e.target.value || '';
+    applyMarketFilter();
+  });
 }
 
 // ============================================================
@@ -2312,6 +2507,7 @@ async function verifyAccessCode(username, password) {
 
 function initLogin() {
   initCheckoutWiring();
+  initMarketplaceUI();
   const loginScreen = document.getElementById('login-screen');
   const loginInput = document.getElementById('login-name');
   const accessInput = document.getElementById('login-access');

@@ -38,7 +38,7 @@ app.post('/api/market/webhook',
       const s = event.data.object;
       const username = s.metadata?.username;
       const itemId   = s.metadata?.itemId;
-      if (username && itemId) grantItem(username, itemId, 'stripe', s.id);
+      if (username && itemId) grantPurchase(username, itemId, 'stripe', s.id);
     }
     res.json({ received: true });
   }
@@ -136,10 +136,17 @@ app.post('/api/access', (req, res) => {
 //   2) Demo-Modus — offensichtlich ein Placebo, bewegt kein Geld
 // Preise in Cent (Stripe-Konvention).
 const MARKET_ITEMS = {
-  b747: { aircraftId: 'b747', priceCents: 299, label: 'Boeing 747-400' },
-  a380: { aircraftId: 'a380', priceCents: 299, label: 'Airbus A380' },
-  b777: { aircraftId: 'b777', priceCents: 499, label: 'Boeing 777-300ER' },
-  a350: { aircraftId: 'a350', priceCents: 499, label: 'Airbus A350-900' },
+  b747: { aircraftId: 'b747', priceCents: 299, label: 'Boeing 747-400',   category: 'aircraft', tagline: 'Queen of the Skies' },
+  a380: { aircraftId: 'a380', priceCents: 299, label: 'Airbus A380',      category: 'aircraft', tagline: 'Super Jumbo' },
+  b777: { aircraftId: 'b777', priceCents: 499, label: 'Boeing 777-300ER', category: 'aircraft', tagline: 'Triple Seven' },
+  a350: { aircraftId: 'a350', priceCents: 499, label: 'Airbus A350-900',  category: 'aircraft', tagline: 'Next-Gen Widebody' },
+};
+
+// Bundles — ein Kauf schaltet mehrere Items frei.
+const MARKET_BUNDLES = {
+  heavy:    { items: ['b747', 'a380'],                 priceCents: 499,  label: 'Heavy Metal Pack',    tagline: 'B747 + A380 — die legendären Jumbos', color: '#b06a1a' },
+  widebody: { items: ['b777', 'a350'],                 priceCents: 899,  label: 'Modern Widebody',     tagline: 'B777 + A350 — moderne Langstrecke',   color: '#1558b0' },
+  deluxe:   { items: ['b747', 'a380', 'b777', 'a350'], priceCents: 1299, label: 'Aviator Deluxe',      tagline: 'Alles dabei — alle Premium-Flugzeuge', color: '#8a1fb0' },
 };
 
 function authUser(req) {
@@ -164,8 +171,24 @@ function grantItem(username, itemId, source, ref) {
   return true;
 }
 
+// Schaltet entweder ein Item oder ein Bundle frei (bei Bundle alle enthaltenen Items).
+function grantPurchase(username, id, source, ref) {
+  if (MARKET_BUNDLES[id]) {
+    const b = MARKET_BUNDLES[id];
+    for (const itemId of b.items) grantItem(username, itemId, source, ref);
+    return true;
+  }
+  return grantItem(username, id, source, ref);
+}
+
 function ownedIds(entry) {
   return (entry.purchases || []).map(p => p.itemId);
+}
+
+function resolvePurchasable(id) {
+  if (MARKET_ITEMS[id])   return { kind: 'item',   id, priceCents: MARKET_ITEMS[id].priceCents,   label: MARKET_ITEMS[id].label };
+  if (MARKET_BUNDLES[id]) return { kind: 'bundle', id, priceCents: MARKET_BUNDLES[id].priceCents, label: MARKET_BUNDLES[id].label };
+  return null;
 }
 
 app.get('/api/market/items', (req, res) => {
@@ -175,10 +198,21 @@ app.get('/api/market/items', (req, res) => {
     aircraftId: it.aircraftId,
     label: it.label,
     priceCents: it.priceCents,
+    category: it.category,
+    tagline: it.tagline,
+  }));
+  const bundles = Object.entries(MARKET_BUNDLES).map(([id, b]) => ({
+    id,
+    label: b.label,
+    priceCents: b.priceCents,
+    items: b.items,
+    tagline: b.tagline,
+    color: b.color,
   }));
   res.json({
     ok: true,
     items,
+    bundles,
     owned: auth ? ownedIds(auth.entry) : [],
     stripeEnabled: stripeReady(),
   });
@@ -192,16 +226,15 @@ app.post('/api/market/demo-buy', (req, res) => {
   const auth = authUser(req);
   if (!auth) return res.status(401).json({ ok: false, error: 'unauthorized' });
   const itemId = String(req.body?.itemId || '');
-  if (!MARKET_ITEMS[itemId]) return res.status(400).json({ ok: false, error: 'unknown-item' });
+  if (!resolvePurchasable(itemId)) return res.status(400).json({ ok: false, error: 'unknown-item' });
   if (!req.body?.demoAcknowledged) {
     return res.status(400).json({ ok: false, error: 'demo-not-acknowledged' });
   }
-  // Fake-IBAN-Plausibilitätscheck — keine echte Validierung, kein echter Abruf.
   const iban = String(req.body?.iban || '').replace(/\s+/g, '').toUpperCase();
   if (!/^[A-Z]{2}\d{2}[A-Z0-9]{10,30}$/.test(iban)) {
     return res.status(400).json({ ok: false, error: 'iban-format' });
   }
-  grantItem(auth.username, itemId, 'demo', null);
+  grantPurchase(auth.username, itemId, 'demo', null);
   res.json({ ok: true, owned: ownedIds(auth.entry) });
 });
 
@@ -209,10 +242,15 @@ app.post('/api/market/checkout', async (req, res) => {
   if (!stripeReady()) return res.status(503).json({ ok: false, error: 'stripe-disabled' });
   const auth = authUser(req);
   if (!auth) return res.status(401).json({ ok: false, error: 'unauthorized' });
-  const itemId = String(req.body?.itemId || '');
-  const item = MARKET_ITEMS[itemId];
-  if (!item) return res.status(400).json({ ok: false, error: 'unknown-item' });
-  if (ownedIds(auth.entry).includes(itemId)) {
+  const purchaseId = String(req.body?.itemId || '');
+  const resolved = resolvePurchasable(purchaseId);
+  if (!resolved) return res.status(400).json({ ok: false, error: 'unknown-item' });
+  // Einzel-Items: wenn schon besessen, nichts tun. Bundles: wenn alle enthaltenen Items schon besessen, als owned werten.
+  const owned = ownedIds(auth.entry);
+  if (resolved.kind === 'item' && owned.includes(resolved.id)) {
+    return res.json({ ok: true, alreadyOwned: true });
+  }
+  if (resolved.kind === 'bundle' && MARKET_BUNDLES[resolved.id].items.every(i => owned.includes(i))) {
     return res.json({ ok: true, alreadyOwned: true });
   }
   const base = (req.body?.returnBase && String(req.body.returnBase)) || PUBLIC_URL || `${req.protocol}://${req.get('host')}`;
@@ -223,15 +261,15 @@ app.post('/api/market/checkout', async (req, res) => {
       line_items: [{
         price_data: {
           currency: 'eur',
-          product_data: { name: `Flugsim — ${item.label}` },
-          unit_amount: item.priceCents,
+          product_data: { name: `Flugsim — ${resolved.label}` },
+          unit_amount: resolved.priceCents,
         },
         quantity: 1,
       }],
       success_url: `${base}/?checkout=success&session_id={CHECKOUT_SESSION_ID}`,
       cancel_url:  `${base}/?checkout=cancel`,
-      metadata: { username: auth.username, itemId },
-      client_reference_id: `${auth.username}:${itemId}`,
+      metadata: { username: auth.username, itemId: resolved.id },
+      client_reference_id: `${auth.username}:${resolved.id}`,
     });
     res.json({ ok: true, url: session.url });
   } catch (e) {
@@ -254,7 +292,7 @@ app.get('/api/market/confirm', async (req, res) => {
     if (s.payment_status === 'paid') {
       const itemId = s.metadata?.itemId;
       const username = s.metadata?.username;
-      if (username === auth.username && itemId) grantItem(username, itemId, 'stripe', s.id);
+      if (username === auth.username && itemId) grantPurchase(username, itemId, 'stripe', s.id);
     }
     res.json({ ok: true, paid: s.payment_status === 'paid', owned: ownedIds(auth.entry) });
   } catch (e) {
