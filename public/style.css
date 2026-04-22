@@ -566,6 +566,8 @@ canvas{display:block}
 .mk-card-preview{aspect-ratio:4/3;background:linear-gradient(135deg,#0d1524,#11192b);overflow:hidden;position:relative}
 .mk-card-preview canvas{width:100%!important;height:100%!important;display:block}
 .mk-card-badge{position:absolute;top:10px;left:10px;background:rgba(0,0,0,.55);backdrop-filter:blur(6px);font-size:9px;letter-spacing:2px;font-weight:700;padding:3px 8px;border-radius:4px;color:#4a9eff;border:1px solid rgba(74,158,255,.25)}
+.mk-card.mk-fighter .mk-card-badge{color:#ff7a3a;border-color:rgba(255,122,58,.35);background:rgba(40,14,0,.55)}
+.mk-card.mk-fighter:hover{border-color:rgba(255,122,58,.45)}
 .mk-card-body{padding:14px 16px 16px;display:flex;flex-direction:column;gap:6px;flex:1}
 .mk-card-mfr{font-size:9px;letter-spacing:2px;color:rgba(255,255,255,.35);font-weight:600}
 .mk-card-name{font-size:15px;font-weight:700;letter-spacing:.2px;line-height:1.2}

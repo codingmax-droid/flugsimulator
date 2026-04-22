@@ -138,10 +138,16 @@ app.post('/api/access', (req, res) => {
 //   2) Demo-Modus — offensichtlich ein Placebo, bewegt kein Geld
 // Preise in Cent (Stripe-Konvention).
 const MARKET_ITEMS = {
-  b747: { aircraftId: 'b747', priceCents: 299, label: 'Boeing 747-400',   category: 'aircraft', tagline: 'Queen of the Skies' },
-  a380: { aircraftId: 'a380', priceCents: 299, label: 'Airbus A380',      category: 'aircraft', tagline: 'Super Jumbo' },
-  b777: { aircraftId: 'b777', priceCents: 499, label: 'Boeing 777-300ER', category: 'aircraft', tagline: 'Triple Seven' },
-  a350: { aircraftId: 'a350', priceCents: 499, label: 'Airbus A350-900',  category: 'aircraft', tagline: 'Next-Gen Widebody' },
+  b747:    { aircraftId: 'b747',    priceCents: 299,  label: 'Boeing 747-400',     category: 'aircraft', tagline: 'Queen of the Skies' },
+  a380:    { aircraftId: 'a380',    priceCents: 299,  label: 'Airbus A380',        category: 'aircraft', tagline: 'Super Jumbo' },
+  b777:    { aircraftId: 'b777',    priceCents: 499,  label: 'Boeing 777-300ER',   category: 'aircraft', tagline: 'Triple Seven' },
+  a350:    { aircraftId: 'a350',    priceCents: 499,  label: 'Airbus A350-900',    category: 'aircraft', tagline: 'Next-Gen Widebody' },
+  // Kampfjets
+  f16:     { aircraftId: 'f16',     priceCents: 699,  label: 'F-16 Fighting Falcon', category: 'fighter', tagline: 'Viper — der Allrounder' },
+  typhoon: { aircraftId: 'typhoon', priceCents: 999,  label: 'Eurofighter Typhoon',  category: 'fighter', tagline: 'Europäische Luftüberlegenheit' },
+  rafale:  { aircraftId: 'rafale',  priceCents: 999,  label: 'Dassault Rafale',      category: 'fighter', tagline: 'Omnirole — Mehrzweckkämpfer' },
+  f35:     { aircraftId: 'f35',     priceCents: 1299, label: 'F-35 Lightning II',    category: 'fighter', tagline: 'Stealth-Multirole' },
+  f22:     { aircraftId: 'f22',     priceCents: 1499, label: 'F-22 Raptor',          category: 'fighter', tagline: 'Air Dominance Fighter' },
 };
 
 // Bundles — ein Kauf schaltet mehrere Items frei.
@@ -149,6 +155,10 @@ const MARKET_BUNDLES = {
   heavy:    { items: ['b747', 'a380'],                 priceCents: 499,  label: 'Heavy Metal Pack',    tagline: 'B747 + A380 — die legendären Jumbos', color: '#b06a1a' },
   widebody: { items: ['b777', 'a350'],                 priceCents: 899,  label: 'Modern Widebody',     tagline: 'B777 + A350 — moderne Langstrecke',   color: '#1558b0' },
   deluxe:   { items: ['b747', 'a380', 'b777', 'a350'], priceCents: 1299, label: 'Aviator Deluxe',      tagline: 'Alles dabei — alle Premium-Flugzeuge', color: '#8a1fb0' },
+  // Fighter-Packs
+  airsup:   { items: ['f22', 'f35'],                        priceCents: 2499, label: 'Air Superiority',   tagline: 'F-22 + F-35 — moderne US-Stealth',      color: '#2a3a4a' },
+  europa:   { items: ['typhoon', 'rafale'],                 priceCents: 1799, label: 'Europa Fighters',   tagline: 'Eurofighter + Rafale',                  color: '#3a4a5a' },
+  squadron: { items: ['f16', 'f22', 'f35', 'typhoon', 'rafale'], priceCents: 3999, label: 'Fighter Squadron', tagline: 'Alle 5 Kampfjets im Paket',          color: '#4a5a3a' },
 };
 
 function authUser(req) {
@@ -393,6 +403,13 @@ const AIRCRAFT_PHYSICS = {
   b727:  { mass: 86000,  wingArea: 157.9, liftCoeff: 1.4,  dragCoeff: 0.029, thrustMax: 213000,  stallSpeed: 56,  pitchRate: 1.3, rollRate: 1.7, yawRate: 0.8 },
   b767:  { mass: 155000, wingArea: 283.3, liftCoeff: 1.5,  dragCoeff: 0.027, thrustMax: 560000,  stallSpeed: 56,  pitchRate: 1.3, rollRate: 1.6, yawRate: 0.7 },
 
+  // --- KAMPFJETS ---
+  // Hohes Schub-Gewicht-Verhältnis + hohe Rollraten + niedrige Flächenbelastung verträgt.
+  f16:     { mass: 8570,  wingArea: 27.87, liftCoeff: 1.55, dragCoeff: 0.022, thrustMax: 131000, stallSpeed: 67, pitchRate: 4.5, rollRate: 6.0, yawRate: 2.0 },
+  f22:     { mass: 19700, wingArea: 78.04, liftCoeff: 1.6,  dragCoeff: 0.021, thrustMax: 312000, stallSpeed: 72, pitchRate: 5.0, rollRate: 6.5, yawRate: 2.2 },
+  f35:     { mass: 13199, wingArea: 42.7,  liftCoeff: 1.55, dragCoeff: 0.022, thrustMax: 191000, stallSpeed: 69, pitchRate: 4.2, rollRate: 5.5, yawRate: 1.9 },
+  typhoon: { mass: 11000, wingArea: 51.2,  liftCoeff: 1.6,  dragCoeff: 0.022, thrustMax: 180000, stallSpeed: 65, pitchRate: 4.8, rollRate: 6.2, yawRate: 2.1 },
+  rafale:  { mass: 10300, wingArea: 45.7,  liftCoeff: 1.6,  dragCoeff: 0.022, thrustMax: 151200, stallSpeed: 64, pitchRate: 4.6, rollRate: 6.0, yawRate: 2.0 },
 };
 const DEFAULT_PHYSICS = AIRCRAFT_PHYSICS.a320;
 

@@ -42,10 +42,15 @@ const settings = { terrainZoom: 11, terrainRadius: 3, shadows: true, units: 'met
 // noch nicht geantwortet hat.
 
 let MARKETPLACE_ITEMS = {
-  b747: { price: 2.99, priceCents: 299, label: 'Boeing 747-400',   tagline: 'Queen of the Skies',  category: 'aircraft' },
-  a380: { price: 2.99, priceCents: 299, label: 'Airbus A380',      tagline: 'Super Jumbo',         category: 'aircraft' },
-  b777: { price: 4.99, priceCents: 499, label: 'Boeing 777-300ER', tagline: 'Triple Seven',        category: 'aircraft' },
-  a350: { price: 4.99, priceCents: 499, label: 'Airbus A350-900',  tagline: 'Next-Gen Widebody',   category: 'aircraft' },
+  b747:    { price: 2.99,  priceCents: 299,  label: 'Boeing 747-400',       tagline: 'Queen of the Skies',          category: 'aircraft' },
+  a380:    { price: 2.99,  priceCents: 299,  label: 'Airbus A380',          tagline: 'Super Jumbo',                 category: 'aircraft' },
+  b777:    { price: 4.99,  priceCents: 499,  label: 'Boeing 777-300ER',     tagline: 'Triple Seven',                category: 'aircraft' },
+  a350:    { price: 4.99,  priceCents: 499,  label: 'Airbus A350-900',      tagline: 'Next-Gen Widebody',           category: 'aircraft' },
+  f16:     { price: 6.99,  priceCents: 699,  label: 'F-16 Fighting Falcon', tagline: 'Viper — der Allrounder',      category: 'fighter' },
+  typhoon: { price: 9.99,  priceCents: 999,  label: 'Eurofighter Typhoon',  tagline: 'Europäische Luftüberlegenheit', category: 'fighter' },
+  rafale:  { price: 9.99,  priceCents: 999,  label: 'Dassault Rafale',      tagline: 'Omnirole — Mehrzweckkämpfer', category: 'fighter' },
+  f35:     { price: 12.99, priceCents: 1299, label: 'F-35 Lightning II',    tagline: 'Stealth-Multirole',           category: 'fighter' },
+  f22:     { price: 14.99, priceCents: 1499, label: 'F-22 Raptor',          tagline: 'Air Dominance Fighter',       category: 'fighter' },
 };
 let MARKETPLACE_BUNDLES = {};
 let marketStripeEnabled = false;
@@ -1142,6 +1147,12 @@ function formatPrice(p) {
   return p.toFixed(2).replace('.', ',') + '\u00a0€';
 }
 
+// Passende Militär-Livery pro Kampfjet für Preview-Rendering.
+function defaultFighterLivery(aircraftId) {
+  const map = { f16: 'usaf', f22: 'usaf', f35: 'usaf', typhoon: 'raf', rafale: 'armeedelair' };
+  return map[aircraftId] || 'usaf';
+}
+
 // ── MSFS-24-Stil Marketplace ──
 const marketPreviews = new Map(); // id -> { preview, node, isHero }
 let marketAnimId = null;
@@ -1151,11 +1162,14 @@ let marketSearchTerm = '';
 function marketCard(id, item) {
   const ac = AIRCRAFT_TYPES[id];
   const owned = ownedAircraft.has(id);
+  const isFighter = item.category === 'fighter';
+  const liveryId = isFighter ? defaultFighterLivery(id) : 'lufthansa';
+  const badge = isFighter ? 'FIGHTER' : 'AIRCRAFT';
   const card = document.createElement('div');
-  card.className = 'mk-card';
+  card.className = 'mk-card' + (isFighter ? ' mk-fighter' : '');
   card.innerHTML = `
     <div class="mk-card-preview">
-      <div class="mk-card-badge">AIRCRAFT</div>
+      <div class="mk-card-badge">${badge}</div>
     </div>
     <div class="mk-card-body">
       <div class="mk-card-mfr">${ac ? ac.manufacturer.toUpperCase() : id.toUpperCase()}</div>
@@ -1169,7 +1183,7 @@ function marketCard(id, item) {
   `;
   const prevEl = card.querySelector('.mk-card-preview');
   const preview = ac ? new AircraftPreview(prevEl) : null;
-  if (preview) preview.setAircraft(id, getLivery('lufthansa'));
+  if (preview) preview.setAircraft(id, getLivery(liveryId));
   marketPreviews.set(id, { preview, node: card, isHero: false });
   card.querySelector('[data-buy]').addEventListener('click', (e) => {
     e.stopPropagation();
@@ -1209,7 +1223,11 @@ function marketHeroCard(id, bundle) {
   `;
   const prevEl = node.querySelector('.mk-hero-preview');
   const preview = firstAc && AIRCRAFT_TYPES[firstAc] ? new AircraftPreview(prevEl) : null;
-  if (preview) preview.setAircraft(firstAc, getLivery('lufthansa'));
+  if (preview) {
+    const heroFighter = bundle.items.some(i => MARKETPLACE_ITEMS[i]?.category === 'fighter');
+    const lid = heroFighter ? defaultFighterLivery(firstAc) : 'lufthansa';
+    preview.setAircraft(firstAc, getLivery(lid));
+  }
   marketPreviews.set(id, { preview, node, isHero: true });
   node.querySelector('[data-buy]').addEventListener('click', (e) => {
     e.stopPropagation();
@@ -1288,32 +1306,43 @@ function applyMarketFilter() {
   const q = marketSearchTerm.trim().toLowerCase();
 
   // Hero-Bundles
-  const showBundles = marketCategory === 'all' || marketCategory === 'bundles';
+  const showAllBundles = marketCategory === 'all' || marketCategory === 'bundles';
   let heroVisible = 0;
   for (const hero of heroRow.children) {
     const id = hero.querySelector('[data-buy]')?.dataset.buy;
     const b = MARKETPLACE_BUNDLES[id];
+    // Bundle-Kategorie aus enthaltenen Items ableiten
+    const bundleHasFighter = b && b.items.some(i => MARKETPLACE_ITEMS[i]?.category === 'fighter');
+    const bundleHasCivil   = b && b.items.some(i => MARKETPLACE_ITEMS[i]?.category === 'aircraft');
+    let catMatches = showAllBundles;
+    if (marketCategory === 'fighter') catMatches = bundleHasFighter;
+    if (marketCategory === 'aircraft') catMatches = bundleHasCivil && !bundleHasFighter;
     const matches = !q || (b && (b.label.toLowerCase().includes(q) || (b.tagline || '').toLowerCase().includes(q)));
-    const visible = showBundles && matches;
+    const visible = catMatches && matches;
     hero.style.display = visible ? '' : 'none';
     if (visible) heroVisible++;
   }
   heroRow.style.display = heroVisible > 0 ? '' : 'none';
 
-  // Aircraft-Grid
-  const showAircraft = marketCategory === 'all' || marketCategory === 'aircraft';
+  // Aircraft-Grid (inkl. Fighter)
   let gridVisible = 0;
   for (const card of grid.children) {
     const id = card.querySelector('[data-buy]')?.dataset.buy;
     const item = MARKETPLACE_ITEMS[id];
     const ac = AIRCRAFT_TYPES[id];
+    const itemCat = item?.category || 'aircraft';
+    let catMatches = false;
+    if (marketCategory === 'all') catMatches = true;
+    else if (marketCategory === 'aircraft') catMatches = itemCat === 'aircraft';
+    else if (marketCategory === 'fighter') catMatches = itemCat === 'fighter';
+    else if (marketCategory === 'bundles') catMatches = false;
     const matches = !q || (item && (
       item.label.toLowerCase().includes(q) ||
       (item.tagline || '').toLowerCase().includes(q) ||
       (ac && ac.name.toLowerCase().includes(q)) ||
       (ac && ac.manufacturer.toLowerCase().includes(q))
     ));
-    const visible = showAircraft && matches;
+    const visible = catMatches && matches;
     card.style.display = visible ? '' : 'none';
     if (visible) gridVisible++;
   }
@@ -1329,12 +1358,17 @@ function updateMarketSectionCount() {
   const catLabel = {
     all: 'Alle Inhalte',
     aircraft: 'Premium-Flugzeuge',
+    fighter: 'Kampfjets',
     bundles: 'Bundles',
   }[marketCategory] || 'Alle Inhalte';
   titleEl.textContent = catLabel;
+  const civilCount   = Object.values(MARKETPLACE_ITEMS).filter(it => (it.category || 'aircraft') === 'aircraft').length;
+  const fighterCount = Object.values(MARKETPLACE_ITEMS).filter(it => it.category === 'fighter').length;
   let total = 0;
-  if (marketCategory === 'all' || marketCategory === 'aircraft') total += Object.keys(MARKETPLACE_ITEMS).length;
-  if (marketCategory === 'all' || marketCategory === 'bundles')  total += Object.keys(MARKETPLACE_BUNDLES).length;
+  if (marketCategory === 'all')              total = Object.keys(MARKETPLACE_ITEMS).length + Object.keys(MARKETPLACE_BUNDLES).length;
+  else if (marketCategory === 'aircraft')    total = civilCount;
+  else if (marketCategory === 'fighter')     total = fighterCount;
+  else if (marketCategory === 'bundles')     total = Object.keys(MARKETPLACE_BUNDLES).length;
   countEl.textContent = `${total} Angebote`;
 }
 

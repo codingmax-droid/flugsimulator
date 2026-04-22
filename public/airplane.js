@@ -30,6 +30,14 @@ const CONFIGS = {
   b717: { archetype: 'reartwin', body: { len: 11, r: 0.55, noseTaper: 0.32 }, wing: { span: 10, root: 2.8, tip: 0.8, sweep: 2, pos: 0.1, y: -0.15 }, engine: { r: 0.4, len: 2, y: 0.15, z: 1.0, count: 2 }, tail: { hSpan: 4.2, hChord: 1.4, vH: 2.6, vChord: 2.5, tTail: true }, gear: { noseX: 4, mainX: -0.4, mainZ: 1.6 } },
   b727: { archetype: 'trijet', body: { len: 14, r: 0.62, noseTaper: 0.32 }, wing: { span: 11, root: 3, tip: 0.9, sweep: 2.8, pos: 0, y: -0.15 }, engine: { r: 0.35, len: 2, y: 0.15, z: 1.0, wingZ: 0, count: 3 }, tail: { hSpan: 4.5, hChord: 1.5, vH: 2.8, vChord: 2.6, tTail: true }, gear: { noseX: 5, mainX: -0.5, mainZ: 1.8 } },
   b767: { archetype: 'airliner', body: { len: 17, r: 0.78, noseTaper: 0.38 }, wing: { span: 15, root: 4.5, tip: 1.1, sweep: 3.5, pos: 0.7, y: -0.2 }, engine: { r: 0.55, len: 2.7, y: -0.9, z: 4, count: 2 }, tail: { hSpan: 5.5, hChord: 1.8, vH: 3, vChord: 3 }, gear: { noseX: 6.5, mainX: -0.8, mainZ: 2.5 }, winglet: null },
+
+  // ===================== KAMPFJETS =====================
+  // Moderne Kampfjets mit Delta-/Trapezflügeln, Canopy, 1–2 rumpfintegrierten Triebwerken
+  f16:      { archetype: 'fighter', body: { len: 7.5, r: 0.42, noseTaper: 0.35 }, wing: { span: 5.5, root: 3, tip: 0.5, sweep: 1.6, y: -0.05 }, engine: { r: 0.38, len: 2.2, count: 1 }, tail: { hSpan: 2.8, hChord: 1.0, vH: 1.4, vChord: 1.6, twin: false }, gear: { noseX: 2.3, mainX: -0.5, mainZ: 0.6 }, canopyLen: 1.9, canopyX: 1.4 },
+  f22:      { archetype: 'fighter', body: { len: 9,   r: 0.55, noseTaper: 0.32 }, wing: { span: 6.8, root: 3.6, tip: 0.7, sweep: 2.2, y: -0.1 }, engine: { r: 0.4,  len: 2.6, count: 2, spacing: 0.45 }, tail: { hSpan: 3.2, hChord: 1.2, vH: 1.3, vChord: 1.6, twin: true, cant: 0.28 }, gear: { noseX: 2.6, mainX: -0.6, mainZ: 0.7 }, canopyLen: 2.2, canopyX: 1.6 },
+  f35:      { archetype: 'fighter', body: { len: 8.2, r: 0.52, noseTaper: 0.3  }, wing: { span: 5.8, root: 3.4, tip: 0.6, sweep: 2.0, y: -0.08 }, engine: { r: 0.45, len: 2.4, count: 1 }, tail: { hSpan: 2.8, hChord: 1.1, vH: 1.25, vChord: 1.5, twin: true, cant: 0.22 }, gear: { noseX: 2.4, mainX: -0.5, mainZ: 0.65 }, canopyLen: 1.9, canopyX: 1.4 },
+  typhoon:  { archetype: 'fighter', body: { len: 7.8, r: 0.42, noseTaper: 0.3, canard: true }, wing: { span: 5.5, root: 3.6, tip: 0.3, sweep: 2.4, y: -0.05, delta: true }, engine: { r: 0.38, len: 2.3, count: 2, spacing: 0.35 }, tail: { hSpan: 0, hChord: 0, vH: 1.3, vChord: 1.5, twin: false }, gear: { noseX: 2.3, mainX: -0.5, mainZ: 0.55 }, canopyLen: 1.9, canopyX: 1.3 },
+  rafale:   { archetype: 'fighter', body: { len: 7.6, r: 0.4,  noseTaper: 0.3, canard: true }, wing: { span: 5.4, root: 3.4, tip: 0.3, sweep: 2.2, y: -0.05, delta: true }, engine: { r: 0.38, len: 2.2, count: 2, spacing: 0.3  }, tail: { hSpan: 0, hChord: 0, vH: 1.25, vChord: 1.45, twin: false }, gear: { noseX: 2.2, mainX: -0.5, mainZ: 0.55 }, canopyLen: 1.8, canopyX: 1.2 },
 };
 
 // ============================================================
@@ -138,6 +146,7 @@ export function buildAircraft(type = 'a320', liveryOrColor1 = '#ffffff', color2 
     case 'bizjet':         inner = buildBizjet(C, M); break;
     case 'hondajet':       inner = buildHondajet(C, M); break;
     case 'solar':          inner = buildSolar(C, M); break;
+    case 'fighter':        inner = buildFighter(C, M); break;
     default:               inner = buildAirliner(C, M);
   }
   inner.rotation.y = -Math.PI / 2;
@@ -977,6 +986,145 @@ function buildSolar(C, M) {
   }
   addTail(inner, C, M);
   addAirlinerGear(inner, C, M);
+  return inner;
+}
+
+// ============================================================
+// ARCHETYPE: FIGHTER (Kampfjets — F-16, F-22, Typhoon, Rafale, F-35)
+// ============================================================
+
+function buildFighter(C, M) {
+  const inner = new THREE.Group();
+  const B = C.body;
+  const W = C.wing;
+  const E = C.engine;
+  const T = C.tail;
+  const halfLen = B.len / 2;
+
+  // Schlanker Rumpf (zwei-Radius-Zylinder)
+  const bodyGeo = new THREE.CylinderGeometry(B.r * 0.9, B.r * 0.75, B.len, 14);
+  bodyGeo.rotateZ(Math.PI / 2);
+  inner.add(new THREE.Mesh(bodyGeo, M.white));
+
+  // Spitze Nase
+  const noseLen = B.len * (B.noseTaper || 0.3);
+  const noseGeo = new THREE.ConeGeometry(B.r * 0.9, noseLen, 14);
+  noseGeo.rotateZ(-Math.PI / 2);
+  const nose = new THREE.Mesh(noseGeo, M.white);
+  nose.position.x = halfLen + noseLen * 0.48;
+  inner.add(nose);
+
+  // Pitot-Spitze
+  const pitot = new THREE.Mesh(new THREE.ConeGeometry(0.04, 0.35, 8), M.dark);
+  pitot.rotation.z = -Math.PI / 2;
+  pitot.position.x = halfLen + noseLen + 0.15;
+  inner.add(pitot);
+
+  // Bubble-Canopy (längliche Halbkuppel)
+  const canopyLen = C.canopyLen || B.len * 0.28;
+  const canopyX = C.canopyX != null ? C.canopyX : halfLen * 0.4;
+  const canopyGeo = new THREE.SphereGeometry(B.r * 0.65, 16, 10, 0, Math.PI * 2, 0, Math.PI / 2);
+  canopyGeo.scale(canopyLen / (B.r * 0.65) / 2.2, 1, 1);
+  const canopy = new THREE.Mesh(canopyGeo, M.glass);
+  canopy.position.set(canopyX, B.r * 0.55, 0);
+  inner.add(canopy);
+
+  // Canopy-Rahmen
+  const frame = new THREE.Mesh(
+    new THREE.BoxGeometry(canopyLen * 0.95, 0.06, B.r * 0.9),
+    M.dark,
+  );
+  frame.position.set(canopyX, B.r * 0.5, 0);
+  inner.add(frame);
+
+  // ── FLÜGEL ──
+  const wingMat = M.white;
+  for (const side of [1, -1]) {
+    let wingGeo;
+    if (W.delta) {
+      wingGeo = createDeltaWing(W.root, W.span / 2, W.sweep);
+    } else {
+      wingGeo = createWingGeo(W.span / 2, W.root, W.tip, W.sweep, { thin: true });
+    }
+    const w = new THREE.Mesh(wingGeo, wingMat);
+    w.position.set(-W.root * 0.15, W.y, 0);
+    if (side === -1) w.scale.z = -1;
+    inner.add(w);
+  }
+
+  // Canards (Typhoon, Rafale)
+  if (B.canard) {
+    for (const side of [1, -1]) {
+      const cGeo = createWingGeo(0.9, 0.7, 0.25, 0.35, { thin: true });
+      const c = new THREE.Mesh(cGeo, wingMat);
+      c.position.set(halfLen * 0.35, B.r * 0.4, side * B.r * 0.75);
+      if (side === -1) c.scale.z = -1;
+      inner.add(c);
+    }
+  }
+
+  // ── VERTIKAL-STABILISATOR(en) ──
+  if (T.twin) {
+    for (const side of [1, -1]) {
+      const fin = new THREE.Mesh(createFinGeo(T.vH, T.vChord), M.tailMat);
+      fin.position.set(-B.len * 0.35, B.r * 0.55, side * B.r * 0.55);
+      if (T.cant) fin.rotation.x = side * T.cant;
+      inner.add(fin);
+    }
+  } else {
+    const fin = new THREE.Mesh(createFinGeo(T.vH, T.vChord), M.tailMat);
+    fin.position.set(-B.len * 0.32, B.r * 0.55, 0);
+    inner.add(fin);
+  }
+
+  // Horizontal-Stabilisator (falls vorhanden)
+  if (T.hSpan > 0) {
+    for (const side of [1, -1]) {
+      const hsGeo = createWingGeo(T.hSpan / 2, T.hChord, T.hChord * 0.5, 0.6, { thin: true });
+      const hs = new THREE.Mesh(hsGeo, wingMat);
+      hs.position.set(-B.len * 0.42, 0, 0);
+      if (side === -1) hs.scale.z = -1;
+      inner.add(hs);
+    }
+  }
+
+  // ── TRIEBWERKE (rumpfintegriert, hinten) ──
+  const exhaustX = -halfLen - E.len * 0.35;
+  const spacing = E.spacing || 0;
+  if (E.count === 2) {
+    for (const side of [1, -1]) {
+      const nacGeo = new THREE.CylinderGeometry(E.r, E.r * 0.9, E.len, 14);
+      nacGeo.rotateZ(Math.PI / 2);
+      const nac = new THREE.Mesh(nacGeo, M.engineMat);
+      nac.position.set(exhaustX + E.len * 0.5, 0, side * spacing);
+      inner.add(nac);
+      // Abgaskegel (dunkel)
+      const coneGeo = new THREE.ConeGeometry(E.r * 0.7, E.len * 0.4, 12);
+      coneGeo.rotateZ(Math.PI / 2);
+      const cone = new THREE.Mesh(coneGeo, M.dark);
+      cone.position.set(exhaustX - E.len * 0.1, 0, side * spacing);
+      inner.add(cone);
+    }
+  } else {
+    const nacGeo = new THREE.CylinderGeometry(E.r, E.r * 0.9, E.len, 14);
+    nacGeo.rotateZ(Math.PI / 2);
+    const nac = new THREE.Mesh(nacGeo, M.engineMat);
+    nac.position.set(exhaustX + E.len * 0.5, 0, 0);
+    inner.add(nac);
+    const coneGeo = new THREE.ConeGeometry(E.r * 0.85, E.len * 0.45, 12);
+    coneGeo.rotateZ(Math.PI / 2);
+    const cone = new THREE.Mesh(coneGeo, M.dark);
+    cone.position.set(exhaustX - E.len * 0.1, 0, 0);
+    inner.add(cone);
+  }
+
+  // ── FAHRWERK (klein) ──
+  const G = C.gear;
+  addGearAssembly(inner, G.noseX, -B.r - 0.05, 0, 0.1, 0.55, M.chrome, M.rubber);
+  for (const s of [1, -1]) {
+    addGearAssembly(inner, G.mainX, -B.r - 0.05, s * G.mainZ, 0.12, 0.65, M.chrome, M.rubber);
+  }
+
   return inner;
 }
 
