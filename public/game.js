@@ -6,6 +6,7 @@ import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { AIRCRAFT_TYPES, AIRLINES, getAirlinesForAircraft, getLivery } from './airlines.js';
 import { AIRPORTS, searchAirports } from './airports.js';
 import { Cockpit } from './cockpit.js';
+import { Cockpit3D } from './cockpit3d.js';
 import { GamepadManager } from './gamepad.js';
 import * as Career from './career.js?v=11';
 import * as Missions from './missions.js?v=1';
@@ -21,6 +22,11 @@ let latestState = [], myState = null;
 let gameStarted = false, paused = false;
 let cockpitOpen = false;
 let cockpit = null;
+let cockpit3d = null;
+let cameraMode = 'chase'; // 'chase' | 'cockpit'
+const cockpitRaycaster = new THREE.Raycaster();
+const cockpitPointer = new THREE.Vector2();
+let cockpitLook = { yaw: 0, pitch: 0, dragging: false, lastX: 0, lastY: 0 };
 let preview = null;
 let previewAnimId = null;
 const playerMeshes = new Map();
@@ -1429,7 +1435,7 @@ function initScene() {
   scene.background = new THREE.Color(0x87ceeb);
   scene.fog = new THREE.FogExp2(0x9dc4e0, 0.00007);
 
-  camera = new THREE.PerspectiveCamera(65, innerWidth / innerHeight, 1, 80000);
+  camera = new THREE.PerspectiveCamera(65, innerWidth / innerHeight, 0.05, 80000);
   renderer = new THREE.WebGLRenderer({ antialias: true });
   renderer.setSize(innerWidth, innerHeight);
   renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
@@ -1448,6 +1454,54 @@ function initScene() {
     camera.aspect = innerWidth / innerHeight;
     camera.updateProjectionMatrix();
     renderer.setSize(innerWidth, innerHeight);
+  });
+
+  // Cockpit-3D Maus-Interaktion
+  const dom = renderer.domElement;
+  const setPointerFromEvent = (ev) => {
+    const r = dom.getBoundingClientRect();
+    cockpitPointer.x = ((ev.clientX - r.left) / r.width) * 2 - 1;
+    cockpitPointer.y = -((ev.clientY - r.top) / r.height) * 2 + 1;
+  };
+  dom.addEventListener('pointermove', (ev) => {
+    if (cameraMode !== 'cockpit' || !cockpit3d) return;
+    setPointerFromEvent(ev);
+    if (cockpitLook.dragging) {
+      const dx = ev.clientX - cockpitLook.lastX;
+      const dy = ev.clientY - cockpitLook.lastY;
+      cockpitLook.lastX = ev.clientX;
+      cockpitLook.lastY = ev.clientY;
+      cockpitLook.yaw   = Math.max(-1.4, Math.min(1.4, cockpitLook.yaw   - dx * 0.003));
+      cockpitLook.pitch = Math.max(-0.7, Math.min(0.7, cockpitLook.pitch - dy * 0.003));
+    } else {
+      cockpitRaycaster.setFromCamera(cockpitPointer, camera);
+      cockpit3d.handleHover(cockpitRaycaster);
+    }
+  });
+  dom.addEventListener('pointerdown', (ev) => {
+    if (cameraMode !== 'cockpit' || !cockpit3d) return;
+    if (ev.button === 2) {
+      cockpitLook.dragging = true;
+      cockpitLook.lastX = ev.clientX;
+      cockpitLook.lastY = ev.clientY;
+      return;
+    }
+    if (ev.button !== 0) return;
+    setPointerFromEvent(ev);
+    cockpitRaycaster.setFromCamera(cockpitPointer, camera);
+    cockpit3d.handleClick(cockpitRaycaster);
+  });
+  dom.addEventListener('pointerup', (ev) => {
+    if (ev.button === 2) cockpitLook.dragging = false;
+  });
+  dom.addEventListener('wheel', (ev) => {
+    if (cameraMode !== 'cockpit' || !cockpit3d) return;
+    setPointerFromEvent(ev);
+    cockpitRaycaster.setFromCamera(cockpitPointer, camera);
+    if (cockpit3d.handleWheel(cockpitRaycaster, -ev.deltaY)) ev.preventDefault();
+  }, { passive: false });
+  dom.addEventListener('contextmenu', (ev) => {
+    if (cameraMode === 'cockpit') ev.preventDefault();
   });
 
   // Lighting
@@ -1572,6 +1626,20 @@ function onKeyPress(code) {
     if (s && !s.alive) return;
     paused = !paused;
     document.getElementById('pause-menu').classList.toggle('hidden', !paused);
+    return;
+  }
+
+  if (code === 'KeyC') {
+    cameraMode = (cameraMode === 'cockpit') ? 'chase' : 'cockpit';
+    if (cockpit3d) cockpit3d.setVisible(cameraMode === 'cockpit');
+    const hud = document.getElementById('flight-hud');
+    if (hud) hud.classList.toggle('in-cockpit', cameraMode === 'cockpit');
+    const hint = document.getElementById('cockpit3d-hint');
+    if (hint) hint.classList.toggle('show', cameraMode === 'cockpit');
+    // Reset freies Umschauen
+    cockpitLook.yaw = 0; cockpitLook.pitch = 0;
+    // Beim Wechsel in Chase-Kamera Smoothing zurücksetzen
+    if (cameraMode === 'chase') { smoothPos.set(0,0,0); smoothLook.set(0,0,0); }
     return;
   }
 
@@ -1735,6 +1803,24 @@ const smoothPos = new THREE.Vector3();
 const smoothLook = new THREE.Vector3();
 
 function updateCamera(mesh) {
+  if (cameraMode === 'cockpit' && cockpit3d) {
+    // 3D-Cockpit folgt dem Flugzeug; Kamera sitzt auf dem Pilotensitz
+    cockpit3d.group.updateMatrixWorld(true);
+    // Basis-Pose vom Cockpit
+    const seatW = cockpit3d.seatLocal.clone().applyMatrix4(cockpit3d.group.matrixWorld);
+    camera.position.copy(seatW);
+    // Freies Umschauen mit Maus (Right-Drag in cockpitLook)
+    const look = new THREE.Vector3(
+      Math.sin(cockpitLook.yaw) * Math.cos(cockpitLook.pitch),
+      Math.sin(cockpitLook.pitch),
+      Math.cos(cockpitLook.yaw) * Math.cos(cockpitLook.pitch),
+    );
+    look.applyQuaternion(cockpit3d.group.quaternion);
+    camera.up.set(0, 1, 0).applyQuaternion(cockpit3d.group.quaternion);
+    camera.lookAt(seatW.clone().add(look));
+    return;
+  }
+
   // Kamera-Abstand skaliert mit echter Flugzeuglänge (MSFS-artige Chase-Kamera)
   const len = mesh.userData.realLength || 12;
   const back = Math.max(14, len * 0.95);
@@ -2352,6 +2438,31 @@ function updateDepAircraft() {
 // ============================================================
 
 function initCockpit() {
+  // 3D-Cockpit (in der Szene, folgt dem Flugzeug)
+  cockpit3d = new Cockpit3D(scene, (type, data) => {
+    if (!ws || ws.readyState !== 1) return;
+    switch (type) {
+      case 'throttleStep': {
+        const cur = myState?.throttle || 0;
+        const next = Math.max(0, Math.min(1, cur + data.delta));
+        ws.send(JSON.stringify({ type: 'setThrottle', value: next }));
+        break;
+      }
+      case 'flapCycle': {
+        const next = ((myState?.flaps || 0) + 1) % 5;
+        ws.send(JSON.stringify({ type: 'flaps', value: next }));
+        break;
+      }
+      case 'gear':         ws.send(JSON.stringify({ type: 'gear' })); break;
+      case 'spoilers':     ws.send(JSON.stringify({ type: 'spoilers' })); break;
+      case 'parkingBrake': ws.send(JSON.stringify({ type: 'parkingBrake' })); break;
+      case 'autobrake':    ws.send(JSON.stringify({ type: 'autobrake', value: data })); break;
+      case 'lights':       ws.send(JSON.stringify({ type: 'lights' })); break;
+      case 'autopilot':    ws.send(JSON.stringify({ type: 'autopilot', key: data })); break;
+      case 'autopilotDial':ws.send(JSON.stringify({ type: 'autopilot', key: data.key, value: data.value })); break;
+    }
+  });
+
   cockpit = new Cockpit(document.getElementById('cockpit-body'), (type, data) => {
     if (!ws || ws.readyState !== 1) return;
 
@@ -2477,7 +2588,16 @@ function animate() {
     const euler = new THREE.Euler(p.pitch, p.yaw, -p.roll, 'YXZ');
     mesh.quaternion.slerp(new THREE.Quaternion().setFromEuler(euler), 0.2);
     mesh.traverse(c => { if (c.userData.isPropeller) c.rotation.x += p.throttle*0.8+0.15; });
-    mesh.visible = p.alive;
+    // Im Cockpit-Modus eigenes Flugzeug ausblenden (sonst sieht man das Model-Innere)
+    const hideOwn = (cameraMode === 'cockpit' && p.id === myId);
+    mesh.visible = p.alive && !hideOwn;
+  }
+
+  // Cockpit-3D: Pose und Live-State updaten
+  if (cockpit3d && myId && playerMeshes.has(myId)) {
+    cockpit3d.followAircraft(playerMeshes.get(myId));
+    if (myState) cockpit3d.setFlightState(myState);
+    cockpit3d.setInput(kbInput.pitch, kbInput.roll, kbInput.yaw);
   }
 
   for (const [id] of playerMeshes) {

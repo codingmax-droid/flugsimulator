@@ -669,3 +669,11 @@ canvas{display:block}
 .mc-reasons{list-style:none;padding:0;margin:0 0 14px;font-size:12px;color:rgba(255,255,255,.7);text-align:left}
 .mc-reasons li{padding:4px 0;border-bottom:1px solid rgba(255,255,255,.04)}
 .mc-promo{margin-top:10px;padding:10px;background:rgba(45,208,126,.12);border:1px solid rgba(45,208,126,.35);border-radius:8px;font-weight:700;color:#2dd07e;letter-spacing:2px}
+
+/* ==================== COCKPIT-3D VIEW ==================== */
+#flight-hud.in-cockpit .pfd,
+#flight-hud.in-cockpit .hud-sys,
+#flight-hud.in-cockpit .hud-compass { opacity: 0; pointer-events: none; }
+#flight-hud.in-cockpit .hud-bottom { opacity: 0.6; }
+.cockpit3d-hint { position: fixed; bottom: 14px; left: 50%; transform: translateX(-50%); z-index: 50; background: rgba(0,0,0,0.55); color: #ffd000; padding: 6px 14px; border: 1px solid rgba(255,208,0,0.25); border-radius: 20px; font-family: 'Inter',sans-serif; font-size: 11px; letter-spacing: 2px; pointer-events: none; display: none; }
+#flight-hud.in-cockpit ~ .cockpit3d-hint, .cockpit3d-hint.show { display: block; }
