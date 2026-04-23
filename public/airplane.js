@@ -2133,24 +2133,48 @@ export async function createGLBInstance(type) {
 // ============================================================
 // 3D PREVIEW (Menü)
 // ============================================================
+// Ein einziger WebGL-Renderer wird für alle Preview-Karten geteilt und
+// per `drawImage` in die 2D-Canvas jeder Karte kopiert. Grund: Browser
+// begrenzen gleichzeitige WebGL-Kontexte auf ~16 — mit Marketplace
+// (9 Items + 6 Bundles + HQ + Flugzeugwahl) überschritten, wodurch die
+// spätesten Karten (Kampfjets) leer blieben.
+
+let _sharedPreviewRenderer = null;
+let _sharedPreviewEnvMap = null;
+
+function getSharedPreviewRenderer() {
+  if (_sharedPreviewRenderer) return _sharedPreviewRenderer;
+  const canvas = document.createElement('canvas');
+  canvas.width = 512;
+  canvas.height = 384;
+  const r = new THREE.WebGLRenderer({ antialias: true, canvas, preserveDrawingBuffer: true });
+  r.setPixelRatio(Math.min(devicePixelRatio, 2));
+  r.toneMapping = THREE.ACESFilmicToneMapping;
+  r.toneMappingExposure = 1.1;
+  r.outputColorSpace = THREE.SRGBColorSpace;
+  _sharedPreviewRenderer = r;
+  const pmrem = new THREE.PMREMGenerator(r);
+  _sharedPreviewEnvMap = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+  return r;
+}
 
 export class AircraftPreview {
   constructor(container) {
     this.container = container;
+    getSharedPreviewRenderer();
+    this.canvas = document.createElement('canvas');
+    this.canvas.style.width = '100%';
+    this.canvas.style.height = '100%';
+    this.canvas.style.display = 'block';
+    this.ctx = this.canvas.getContext('2d');
+    container.appendChild(this.canvas);
     this.scene = new THREE.Scene();
     this.scene.background = new THREE.Color(0x0d1524);
+    this.scene.environment = _sharedPreviewEnvMap;
+    this.scene.environmentIntensity = 0.7;
     this.camera = new THREE.PerspectiveCamera(30, 2, 0.1, 2000);
     this.camera.position.set(20, 10, 20);
     this.camera.lookAt(0, 0, 0);
-    this.renderer = new THREE.WebGLRenderer({ antialias: true });
-    this.renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
-    this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    this.renderer.toneMappingExposure = 1.1;
-    this.renderer.outputColorSpace = THREE.SRGBColorSpace;
-    container.appendChild(this.renderer.domElement);
-    const pmrem = new THREE.PMREMGenerator(this.renderer);
-    this.scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
-    this.scene.environmentIntensity = 0.7;
     this.scene.add(new THREE.AmbientLight(0xffffff, 0.35));
     const d = new THREE.DirectionalLight(0xfff5e0, 1.5);
     d.position.set(15, 20, 10);
@@ -2170,9 +2194,11 @@ export class AircraftPreview {
   resize() {
     const w = this.container.clientWidth || 400;
     const h = this.container.clientHeight || 280;
+    const dpr = Math.min(devicePixelRatio, 2);
+    this.canvas.width = Math.max(1, Math.round(w * dpr));
+    this.canvas.height = Math.max(1, Math.round(h * dpr));
     this.camera.aspect = w / h;
     this.camera.updateProjectionMatrix();
-    this.renderer.setSize(w, h);
   }
   setAircraft(type, liveryOrColor1, color2) {
     if (this.model) this.scene.remove(this.model);
@@ -2221,6 +2247,13 @@ export class AircraftPreview {
       Math.cos(this.angle * 0.4) * dist
     );
     this.camera.lookAt(0, baseY + len * 0.08, 0);
-    this.renderer.render(this.scene, this.camera);
+    const renderer = getSharedPreviewRenderer();
+    const w = this.canvas.width;
+    const h = this.canvas.height;
+    if (w < 2 || h < 2) return;
+    renderer.setSize(w, h, false);
+    renderer.render(this.scene, this.camera);
+    this.ctx.clearRect(0, 0, w, h);
+    this.ctx.drawImage(renderer.domElement, 0, 0, w, h);
   }
 }
