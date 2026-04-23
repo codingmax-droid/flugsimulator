@@ -38,8 +38,8 @@ export class Cockpit3D {
     this.hovered = null;
     this._hoverOrigEmissive = null;
 
-    this.seatLocal = new THREE.Vector3(0, 1.28, -0.05);
-    this.lookLocal = new THREE.Vector3(0, 1.22, 1.0);
+    this.seatLocal = new THREE.Vector3(-0.4, 1.28, -0.12);
+    this.lookLocal = new THREE.Vector3(-0.1, 1.18, 1.0);
 
     this.input = { pitch: 0, roll: 0, yaw: 0 };
 
@@ -51,23 +51,32 @@ export class Cockpit3D {
       stallWarning: false,
     };
 
-    // Lokaler Schalter-/Dialzustand
+    // Lokaler Schalter-/Dialzustand (Airbus-Style)
     this.s = {
-      // Electrical / Power
+      // ELEC
       batt1: true, batt2: true, apuMaster: false, apuStart: false,
-      extPwr: false, gen1: true, gen2: true, busTie: true,
-      // Engines
-      eng1Master: false, eng2Master: false, ignStart: 'norm', // norm/start/ignA/ignB
-      // Fuel
+      extPwr: false, gen1: true, gen2: true, apuGen: false,
+      busTie: true, idg1: true, idg2: true, galy: true,
+      // ENGINES / FIRE
+      eng1Master: false, eng2Master: false, apuFire: false,
+      // FUEL
       fuelPump1L: true, fuelPump1R: true, fuelPump2L: true, fuelPump2R: true,
-      // Hydraulics
-      hydG: true, hydB: true, hydY: true,
-      // Ice / Rain
+      ctrPump1: false, ctrPump2: false, xFeed: false, fuelMode: false,
+      // HYD
+      hydG: true, hydB: true, hydY: true, ptu: true,
+      // AIR COND
+      pack1: true, pack2: true, hotAir: true,
+      apuBleed: false, eng1Bld: true, eng2Bld: true, xBleed: false, ramAir: false, press: true,
+      // ANTI-ICE
       pitotHeat: false, antiIce: false,
-      // Pax / Cabin
-      seatbelt: true, noSmoke: true,
-      // Lights
-      landingL: false, taxiL: false, navL: true, strobe: true, beacon: false, logoL: true,
+      wingAntiIce: false, eng1AntiIce: false, eng2AntiIce: false,
+      probeHeat: true, windowHeat: false,
+      // SIGNS
+      seatbelt: true, noSmoke: true, emerExit: true, calls: false, evac: false,
+      // LIGHTS
+      landingL: false, landingR: false, taxiL: false, noseL: false,
+      navL: true, strobe: true, beacon: false, logoL: true,
+      wingL: false, rwyTurn: false,
       // AP
       apSpeed: 250, apHdg: 0, apAlt: 10000, apVs: 0,
       apHdgHold: false, apAltHold: false, apVnav: false, apAppr: false, apLoc: false,
@@ -135,7 +144,7 @@ export class Cockpit3D {
     this.input.pitch = pitch;
     this.input.roll = roll;
     this.input.yaw = yaw;
-    this._animateYoke();
+    this._animateSidestick();
     this._animatePedals();
   }
 
@@ -151,7 +160,7 @@ export class Cockpit3D {
     this._buildCenterPedestal();
     this._buildMCDUandRadio();
     this._buildOverhead();
-    this._buildYoke();
+    this._buildSidesticks();
     this._buildRudderPedals();
     this._buildSeats();
     this._buildChronoAndWarnings();
@@ -277,32 +286,73 @@ export class Cockpit3D {
 
   _buildMainPanel() {
     const panel = new THREE.Mesh(
-      new THREE.BoxGeometry(2.2, 0.58, 0.1),
+      new THREE.BoxGeometry(2.4, 0.58, 0.1),
       new THREE.MeshStandardMaterial({ color: COL.panel, roughness: 0.75, metalness: 0.1 })
     );
     panel.position.set(0, 1.18, 0.9);
     panel.rotation.x = -0.22;
     this.group.add(panel);
 
-    // Gemeinsamer Rotations-Container für alle Displays (gleiche Neigung)
     const panelFrame = new THREE.Group();
     panelFrame.position.set(0, 1.18, 0.9);
     panelFrame.rotation.x = -0.22;
     this.group.add(panelFrame);
 
-    // Display-Positionen in Panel-Local-Coords (y=0 Mitte, x=horizontal)
-    const dz = 0.055; // leicht vor dem Panel
-    this.parts.pfd = this._addDisplay(panelFrame, -0.63, 0.03, dz, 0.32, 0.32, 'pfd', 512);
-    this.parts.nd  = this._addDisplay(panelFrame, -0.22, 0.03, dz, 0.32, 0.32, 'nd',  512);
-    this.parts.ewd = this._addDisplay(panelFrame,  0.20, 0.03, dz, 0.28, 0.32, 'ewd', 512);
-    this.parts.sd  = this._addDisplay(panelFrame,  0.58, 0.03, dz, 0.28, 0.22, 'sd',  512);
-    this.parts.sby = this._addDisplay(panelFrame,  0.58, -0.17, dz, 0.22, 0.1, 'sby', 256);
+    // Dual-Pilot Layout (Airbus): Capt PFD | Capt ND | EWD | SD | F/O ND | F/O PFD
+    const dz = 0.055;
+    const W = 0.26, H = 0.26;
+    this.parts.pfd  = this._addDisplay(panelFrame, -0.86, 0.02, dz, W, H, 'pfd',  512);
+    this.parts.nd   = this._addDisplay(panelFrame, -0.56, 0.02, dz, W, H, 'nd',   512);
+    this.parts.ewd  = this._addDisplay(panelFrame, -0.26, 0.02, dz, W, H, 'ewd',  512);
+    this.parts.sd   = this._addDisplay(panelFrame,  0.04, 0.02, dz, W, H, 'sd',   512);
+    // F/O-Displays (spiegeln Captain's Texturen für maximale Performance)
+    this._addMirrorDisplay(panelFrame, 0.34, 0.02, dz, W, H, this.textures.nd);
+    this._addMirrorDisplay(panelFrame, 0.64, 0.02, dz, W, H, this.textures.pfd);
+
+    // Standby-Instrumente (ISIS) zentral unter EWD
+    this.parts.sby = this._addDisplay(panelFrame, -0.11, -0.19, dz, 0.12, 0.12, 'sby', 256);
+
+    // Zusätzlicher Schriftzug "CAPT" und "F/O" unter den Displays
+    const addSide = (x, text) => {
+      const cv = document.createElement('canvas');
+      cv.width = 128; cv.height = 32;
+      const c = cv.getContext('2d');
+      c.fillStyle = 'rgba(0,0,0,0)'; c.clearRect(0, 0, 128, 32);
+      c.fillStyle = '#888'; c.font = 'bold 14px Arial'; c.textAlign = 'center';
+      c.fillText(text, 64, 22);
+      const t = new THREE.CanvasTexture(cv); t.colorSpace = THREE.SRGBColorSpace;
+      const lbl = new THREE.Mesh(
+        new THREE.PlaneGeometry(0.1, 0.02),
+        new THREE.MeshBasicMaterial({ map: t, toneMapped: false, transparent: true })
+      );
+      lbl.position.set(x, -0.185, dz - 0.001);
+      panelFrame.add(lbl);
+    };
+    addSide(-0.71, 'CAPT');
+    addSide( 0.49, 'F/O');
 
     this._renderPFD();
     this._renderND();
     this._renderEWD();
     this._renderSD();
     this._renderStandby();
+  }
+
+  _addMirrorDisplay(parent, x, y, z, w, h, tex) {
+    const bezel = new THREE.Mesh(
+      new THREE.BoxGeometry(w + 0.02, h + 0.02, 0.012),
+      new THREE.MeshStandardMaterial({ color: COL.screenBezel, roughness: 0.5, metalness: 0.4 })
+    );
+    bezel.position.set(x, y, z - 0.005);
+    parent.add(bezel);
+
+    const screen = new THREE.Mesh(
+      new THREE.PlaneGeometry(w, h),
+      new THREE.MeshBasicMaterial({ map: tex, toneMapped: false })
+    );
+    screen.position.set(x, y, z);
+    parent.add(screen);
+    return screen;
   }
 
   _addDisplay(parent, x, y, z, w, h, key, res) {
@@ -502,6 +552,34 @@ export class Cockpit3D {
     topDecor.rotation.x = -Math.PI / 2;
     topDecor.position.set(0, 0.956, 0.4);
     this.group.add(topDecor);
+
+    // THROTTLE-DETENT-PLATE — zentrale Platte mit Markierungen zwischen den 2 Throttles
+    const detentCv = document.createElement('canvas');
+    detentCv.width = 128; detentCv.height = 512;
+    const dc = detentCv.getContext('2d');
+    dc.fillStyle = '#050505'; dc.fillRect(0, 0, 128, 512);
+    dc.fillStyle = '#b8b8a0'; dc.font = 'bold 13px Arial'; dc.textAlign = 'center';
+    // Airbus-Detents: TO/GA, FLX/MCT, CLB, IDLE, REV (von vorne nach hinten)
+    const detents = [
+      { y: 40,  lbl: 'TO/GA', color: '#ffffff' },
+      { y: 115, lbl: 'FLX/MCT', color: '#ffffff' },
+      { y: 200, lbl: 'CLB', color: '#ffcc33' },
+      { y: 320, lbl: 'IDLE', color: '#ffffff' },
+      { y: 455, lbl: 'REV', color: '#ff4433' },
+    ];
+    for (const d of detents) {
+      dc.fillStyle = d.color; dc.fillText(d.lbl, 64, d.y);
+      dc.strokeStyle = '#4a4a4a'; dc.lineWidth = 1;
+      dc.beginPath(); dc.moveTo(12, d.y + 6); dc.lineTo(116, d.y + 6); dc.stroke();
+    }
+    const detentTex = new THREE.CanvasTexture(detentCv); detentTex.colorSpace = THREE.SRGBColorSpace;
+    const detentPlate = new THREE.Mesh(
+      new THREE.PlaneGeometry(0.08, 0.32),
+      new THREE.MeshBasicMaterial({ map: detentTex, toneMapped: false })
+    );
+    detentPlate.rotation.x = -Math.PI / 2;
+    detentPlate.position.set(0, 0.967, 0.3);
+    this.group.add(detentPlate);
 
     // THROTTLES (2 Stück) — realistischere Hebel mit Sägezahn-Griff
     this.parts.throttles = [];
@@ -858,112 +936,243 @@ export class Cockpit3D {
   }
 
   // ------------------------------------------------------------
-  // OVERHEAD PANEL — 3 Reihen, beschriftetes Canvas-Backdrop
+  // OVERHEAD — Airbus-Style mit beleuchteten Pushbutton-Switches
   // ------------------------------------------------------------
 
   _buildOverhead() {
-    // Panel mit geprinteter Label-Textur
-    const ohCanvas = document.createElement('canvas');
-    ohCanvas.width = 1024; ohCanvas.height = 512;
-    const octx = ohCanvas.getContext('2d');
-    // Airbus-Grau-Beige Hintergrund
-    octx.fillStyle = '#4a4a3d'; octx.fillRect(0, 0, 1024, 512);
-    // Leichte Panel-Segment-Trennungen
-    octx.strokeStyle = '#2a2a20'; octx.lineWidth = 3;
-    octx.strokeRect(8, 8, 1008, 496);
-    // Sektionsüberschriften
-    const sections = [
-      { x: 40,   w: 260, title: 'ELEC' },
-      { x: 310,  w: 220, title: 'FUEL' },
-      { x: 540,  w: 200, title: 'HYD' },
-      { x: 750,  w: 260, title: 'EXT LT / A-ICE' },
-    ];
-    octx.fillStyle = '#1a1a12'; octx.font = 'bold 18px Arial'; octx.textAlign = 'center';
-    for (const s of sections) {
-      octx.fillStyle = '#2a2a22'; octx.fillRect(s.x, 20, s.w, 24);
-      octx.fillStyle = '#d0d0bc'; octx.fillText(s.title, s.x + s.w/2, 37);
-      octx.strokeStyle = '#2a2a1e'; octx.strokeRect(s.x, 20, s.w, 460);
-    }
+    // Frame-Group: alle Overhead-Kinder teilen diese Rotation → korrekte Ausrichtung
+    // Lokale Achsen im Frame (nach Rotation π/2 - 0.35 um X):
+    //   +x  → +x world (links/rechts)
+    //   +y  → mostly +z world (nach hinten Richtung Pilot)
+    //   +z  → mostly -y world (nach unten Richtung Pilot) = Unterseite des Panels
+    const ohFrame = new THREE.Group();
+    ohFrame.position.set(0, 2.04, 0.5);
+    ohFrame.rotation.x = Math.PI / 2 - 0.35;
+    this.group.add(ohFrame);
+    this.parts.ohFrame = ohFrame;
 
-    const ohTex = new THREE.CanvasTexture(ohCanvas);
-    ohTex.colorSpace = THREE.SRGBColorSpace;
-
-    // Panel-Platte mit Textur
-    const panelPlate = new THREE.Mesh(
-      new THREE.PlaneGeometry(1.4, 0.7),
-      new THREE.MeshStandardMaterial({ map: ohTex, roughness: 0.75 })
+    // Panel-Körper (1.55 breit, 0.75 "tief" entlang world Z, 0.08 dünn)
+    const panel = new THREE.Mesh(
+      new THREE.BoxGeometry(1.55, 0.75, 0.08),
+      new THREE.MeshStandardMaterial({ color: COL.overhead, roughness: 0.8 })
     );
-    panelPlate.position.set(0, 2.02, 0.5);
-    panelPlate.rotation.x = Math.PI / 2 - 0.35;
-    this.group.add(panelPlate);
+    ohFrame.add(panel);
 
-    // Overhead-Frame (tieferer Körper)
-    const panelBody = new THREE.Mesh(
-      new THREE.BoxGeometry(1.4, 0.7, 0.06),
-      new THREE.MeshStandardMaterial({ color: COL.overhead, roughness: 0.75 })
-    );
-    panelBody.position.set(0, 2.04, 0.502);
-    panelBody.rotation.x = Math.PI / 2 - 0.35;
-    this.group.add(panelBody);
-
-    // Switches: key, section, col, row, label, guarded?
-    const toggles = [
-      // ELEC
-      { key: 'batt1',    sec: 0, col: 0, row: 0, label: 'BATT 1' },
-      { key: 'batt2',    sec: 0, col: 1, row: 0, label: 'BATT 2' },
-      { key: 'extPwr',   sec: 0, col: 2, row: 0, label: 'EXT PWR' },
-      { key: 'gen1',     sec: 0, col: 0, row: 1, label: 'GEN 1' },
-      { key: 'gen2',     sec: 0, col: 1, row: 1, label: 'GEN 2' },
-      { key: 'busTie',   sec: 0, col: 2, row: 1, label: 'BUS TIE' },
-      { key: 'apuMaster',sec: 0, col: 0, row: 2, label: 'APU MSTR' },
-      { key: 'apuStart', sec: 0, col: 1, row: 2, label: 'APU STRT' },
-
-      // FUEL
-      { key: 'fuelPump1L', sec: 1, col: 0, row: 0, label: 'PUMP 1L' },
-      { key: 'fuelPump1R', sec: 1, col: 1, row: 0, label: 'PUMP 1R' },
-      { key: 'fuelPump2L', sec: 1, col: 0, row: 1, label: 'PUMP 2L' },
-      { key: 'fuelPump2R', sec: 1, col: 1, row: 1, label: 'PUMP 2R' },
-
-      // HYD
-      { key: 'hydG',     sec: 2, col: 0, row: 0, label: 'HYD G' },
-      { key: 'hydB',     sec: 2, col: 1, row: 0, label: 'HYD B' },
-      { key: 'hydY',     sec: 2, col: 0, row: 1, label: 'HYD Y' },
-
-      // EXT LT / ANTI-ICE
-      { key: 'landingL', sec: 3, col: 0, row: 0, label: 'LAND' },
-      { key: 'taxiL',    sec: 3, col: 1, row: 0, label: 'TAXI' },
-      { key: 'navL',     sec: 3, col: 2, row: 0, label: 'NAV' },
-      { key: 'strobe',   sec: 3, col: 0, row: 1, label: 'STROBE' },
-      { key: 'beacon',   sec: 3, col: 1, row: 1, label: 'BCN' },
-      { key: 'logoL',    sec: 3, col: 2, row: 1, label: 'LOGO' },
-      { key: 'pitotHeat',sec: 3, col: 0, row: 2, label: 'PITOT' },
-      { key: 'antiIce',  sec: 3, col: 1, row: 2, label: 'A/ICE' },
-      { key: 'seatbelt', sec: 3, col: 2, row: 2, label: 'SEAT' },
+    // Bedruckte Label-Textur auf Unterseite (lokal +Z)
+    const lblCv = document.createElement('canvas');
+    lblCv.width = 1550; lblCv.height = 750;
+    const lc = lblCv.getContext('2d');
+    lc.fillStyle = '#4a4a3d'; lc.fillRect(0, 0, 1550, 750);
+    const secs = [
+      { x: 20,   w: 280, title: 'ELEC' },
+      { x: 310,  w: 260, title: 'FUEL' },
+      { x: 580,  w: 280, title: 'AIR COND' },
+      { x: 870,  w: 280, title: 'ANTI ICE / HYD' },
+      { x: 1160, w: 370, title: 'EXT / INT LT · SIGNS' },
     ];
-
-    // Panel in 4 Sektionen aufgeteilt: x-Bereiche
-    const sectionsX = [
-      { xStart: -0.55, colW: 0.12 },
-      { xStart: -0.20, colW: 0.12 },
-      { xStart:  0.05, colW: 0.12 },
-      { xStart:  0.30, colW: 0.1  },
-    ];
-
-    this.parts.toggles = {};
-    for (const t of toggles) {
-      const sec = sectionsX[t.sec];
-      const px = sec.xStart + t.col * sec.colW;
-      const pz = 0.4 + t.row * 0.13;
-      // Panel-Rotation (0.35 rad) -> y steigt leicht mit z
-      const py = 2.05 + (t.row - 1) * 0.045;
-      const sw = this._makeToggleSwitch(px, py, pz, this.s[t.key], t.key, t.label);
-      this.parts.toggles[t.key] = sw;
+    lc.textAlign = 'center';
+    for (const s of secs) {
+      lc.fillStyle = '#1a1a14'; lc.fillRect(s.x, 14, s.w, 32);
+      lc.fillStyle = '#e0e0cc'; lc.font = 'bold 22px Arial';
+      lc.fillText(s.title, s.x + s.w/2, 38);
+      lc.strokeStyle = '#22221a'; lc.lineWidth = 3;
+      lc.strokeRect(s.x, 14, s.w, 720);
     }
+    lc.font = 'bold 14px Arial'; lc.fillStyle = '#bbbbac';
+    lc.fillText('HYD', 995, 62);
+    lc.fillText('FIRE', 60, 62);
+    const lblTex = new THREE.CanvasTexture(lblCv); lblTex.colorSpace = THREE.SRGBColorSpace;
+    const labelPlate = new THREE.Mesh(
+      new THREE.PlaneGeometry(1.55, 0.75),
+      new THREE.MeshBasicMaterial({ map: lblTex, toneMapped: false })
+    );
+    labelPlate.position.z = 0.041;
+    // Plane-Default-Normale ist +Z (lokal) → weltweit -Y (nach unten). Perfekt.
+    // Kein zusätzliches Flippen nötig: Canvas-Text landet richtig herum, weil PFD etc. es auch tun.
+    ohFrame.add(labelPlate);
 
-    // Guarded Engine-Start-Switches im ELEC-Bereich (statt alter eng1/eng2)
+    // Layout: 5 Sektionen mit xLocal-Mitte, jeweils 3-4 Spalten, 6 Reihen (yLocal)
+    // yLocal: -0.34 (Panel-vorne, Windshield-nah) bis +0.34 (Panel-hinten, Pilot-nah)
+    const ROWS = [-0.30, -0.22, -0.14, -0.06, 0.02, 0.10, 0.18, 0.26];
+
+    this.parts.pbs = {};
+    const place = (xCenter, col, slots, row, key, upper, lower) => {
+      const pbW = 0.062;
+      const x = xCenter + (col - (slots - 1) / 2) * pbW;
+      this.parts.pbs[key] = this._makeAirbusPB_inFrame(ohFrame, x, ROWS[row], 0.048, key, upper, lower);
+    };
+
+    // ELEC (xE = -0.63)
+    const xE = -0.63;
+    place(xE, 0, 3, 1, 'batt1',     'BAT 1',   'OFF');
+    place(xE, 1, 3, 1, 'batt2',     'BAT 2',   'OFF');
+    place(xE, 2, 3, 1, 'extPwr',    'EXT PWR', 'AVAIL');
+    place(xE, 0, 3, 2, 'gen1',      'GEN 1',   'OFF');
+    place(xE, 1, 3, 2, 'gen2',      'GEN 2',   'OFF');
+    place(xE, 2, 3, 2, 'apuGen',    'APU GEN', 'OFF');
+    place(xE, 0, 3, 3, 'busTie',    'BUS TIE', 'OFF');
+    place(xE, 1, 3, 3, 'idg1',      'IDG 1',   'OFF');
+    place(xE, 2, 3, 3, 'idg2',      'IDG 2',   'OFF');
+    place(xE, 0, 3, 4, 'apuMaster', 'APU MSTR','ON');
+    place(xE, 1, 3, 4, 'apuStart',  'START',   'AVAIL');
+    place(xE, 2, 3, 4, 'galy',      'GALY',    'OFF');
+
+    // FUEL (xF = -0.27)
+    const xF = -0.27;
+    place(xF, 0, 3, 1, 'fuelPump1L', 'L TK 1', 'OFF');
+    place(xF, 1, 3, 1, 'ctrPump1',   'CTR 1',  'OFF');
+    place(xF, 2, 3, 1, 'fuelPump2R', 'R TK 1', 'OFF');
+    place(xF, 0, 3, 2, 'fuelPump2L', 'L TK 2', 'OFF');
+    place(xF, 1, 3, 2, 'ctrPump2',   'CTR 2',  'OFF');
+    place(xF, 2, 3, 2, 'fuelPump1R', 'R TK 2', 'OFF');
+    place(xF, 0, 3, 3, 'xFeed',      'X FEED', 'OPEN');
+    place(xF, 1, 3, 3, 'fuelMode',   'MODE',   'MAN');
+
+    // AIR COND (xA = 0.10)
+    const xA = 0.10;
+    place(xA, 0, 3, 1, 'pack1',    'PACK 1',  'OFF');
+    place(xA, 1, 3, 1, 'pack2',    'PACK 2',  'OFF');
+    place(xA, 2, 3, 1, 'hotAir',   'HOT AIR', 'OFF');
+    place(xA, 0, 3, 2, 'apuBleed', 'APU BLD', 'OFF');
+    place(xA, 1, 3, 2, 'eng1Bld',  'ENG1 BLD','OFF');
+    place(xA, 2, 3, 2, 'eng2Bld',  'ENG2 BLD','OFF');
+    place(xA, 0, 3, 3, 'xBleed',   'X BLEED', 'SHUT');
+    place(xA, 1, 3, 3, 'ramAir',   'RAM AIR', 'OFF');
+    place(xA, 2, 3, 3, 'press',    'CABIN',   'AUTO');
+
+    // ANTI-ICE / HYD (xI = 0.48)
+    const xI = 0.48;
+    place(xI, 0, 3, 1, 'wingAntiIce','WING', 'OFF');
+    place(xI, 1, 3, 1, 'eng1AntiIce','ENG 1','OFF');
+    place(xI, 2, 3, 1, 'eng2AntiIce','ENG 2','OFF');
+    place(xI, 0, 3, 2, 'probeHeat',  'PROBE','AUTO');
+    place(xI, 1, 3, 2, 'pitotHeat',  'PITOT','OFF');
+    place(xI, 2, 3, 2, 'windowHeat', 'WINDOW','OFF');
+    place(xI, 0, 3, 4, 'hydG',       'HYD G','OFF');
+    place(xI, 1, 3, 4, 'hydB',       'HYD B','OFF');
+    place(xI, 2, 3, 4, 'hydY',       'HYD Y','OFF');
+    place(xI, 1, 3, 5, 'ptu',        'PTU',  'AUTO');
+
+    // LIGHTS/SIGNS (xL = 0.92)
+    const xL = 0.92;
+    place(xL, 0, 4, 1, 'landingL',  'LAND L', 'OFF');
+    place(xL, 1, 4, 1, 'landingR',  'LAND R', 'OFF');
+    place(xL, 2, 4, 1, 'taxiL',     'TAXI',   'OFF');
+    place(xL, 3, 4, 1, 'noseL',     'NOSE',   'OFF');
+    place(xL, 0, 4, 2, 'strobe',    'STROBE', 'AUTO');
+    place(xL, 1, 4, 2, 'beacon',    'BCN',    'OFF');
+    place(xL, 2, 4, 2, 'navL',      'NAV',    'OFF');
+    place(xL, 3, 4, 2, 'logoL',     'LOGO',   'OFF');
+    place(xL, 0, 4, 3, 'wingL',     'WING',   'OFF');
+    place(xL, 1, 4, 3, 'rwyTurn',   'RWY TRN','OFF');
+    place(xL, 2, 4, 3, 'seatbelt',  'SEAT',   'AUTO');
+    place(xL, 3, 4, 3, 'noSmoke',   'SMOKING','AUTO');
+    place(xL, 0, 4, 4, 'emerExit',  'EMER EX','ARM');
+    place(xL, 1, 4, 4, 'calls',     'CALLS',  'OFF');
+    place(xL, 2, 4, 4, 'evac',      'EVAC',   'ARM');
+
+    // FIRE-Schalter (Guarded, links unten im ELEC-Bereich)
     this.parts.guarded = this.parts.guarded || {};
-    this.parts.guarded.eng1Master = this._makeGuardedSwitch(-0.45, 2.13, 0.8, 'eng1Master', 'ENG 1 FIRE');
-    this.parts.guarded.eng2Master = this._makeGuardedSwitch(-0.33, 2.13, 0.8, 'eng2Master', 'ENG 2 FIRE');
+    const fireRow = ROWS[6];
+    this.parts.guarded.eng1Master = this._makeGuardedSwitchInFrame(ohFrame, -0.72, fireRow, 0.05, 'eng1Master', 'ENG 1 FIRE');
+    this.parts.guarded.eng2Master = this._makeGuardedSwitchInFrame(ohFrame, -0.65, fireRow, 0.05, 'eng2Master', 'ENG 2 FIRE');
+    this.parts.guarded.apuFire    = this._makeGuardedSwitchInFrame(ohFrame, -0.58, fireRow, 0.05, 'apuFire',    'APU FIRE');
+  }
+
+  // Airbus-Pushbutton innerhalb eines Frame-Groups (Frame handhabt Rotation)
+  _makeAirbusPB_inFrame(parent, x, y, z, key, upperText, lowerText) {
+    const g = new THREE.Group();
+    g.position.set(x, y, z);
+    parent.add(g);
+
+    // Body protrudiert in +Z-Richtung (lokal) = nach unten zum Piloten (in world)
+    const body = new THREE.Mesh(
+      new THREE.BoxGeometry(0.055, 0.045, 0.014),
+      new THREE.MeshStandardMaterial({ color: 0x0c0c10, roughness: 0.55, metalness: 0.15 })
+    );
+    body.position.z = 0.007;
+    g.add(body);
+
+    // Face: PlaneGeometry, Default-Normale +Z (lokal) → nach unten in world
+    const W = 128, H = 112;
+    const cv = document.createElement('canvas');
+    cv.width = W; cv.height = H;
+    const tex = new THREE.CanvasTexture(cv); tex.colorSpace = THREE.SRGBColorSpace;
+    const face = new THREE.Mesh(
+      new THREE.PlaneGeometry(0.05, 0.042),
+      new THREE.MeshBasicMaterial({ map: tex, toneMapped: false })
+    );
+    face.position.z = 0.015;
+    g.add(face);
+
+    // Hitbox
+    const hit = new THREE.Mesh(
+      new THREE.BoxGeometry(0.06, 0.05, 0.025),
+      new THREE.MeshBasicMaterial({ visible: false })
+    );
+    hit.position.z = 0.012;
+    g.add(hit);
+    hit.userData.clickable = true;
+    hit.userData.action = { type: 'toggle', key };
+    this.clickables.push(hit);
+
+    const draw = (on) => {
+      const c = cv.getContext('2d');
+      c.fillStyle = '#0e0e12'; c.fillRect(0, 0, W, H);
+      c.strokeStyle = '#1e1e22'; c.lineWidth = 2;
+      c.beginPath(); c.moveTo(4, H/2); c.lineTo(W-4, H/2); c.stroke();
+      c.textAlign = 'center';
+      c.fillStyle = on ? '#ffffff' : '#6a6a6e';
+      c.font = 'bold 22px Arial';
+      c.fillText(upperText, W/2, H/2 - 10);
+      if (lowerText) {
+        c.fillStyle = on ? '#3a3a3e' : '#d8d8c0';
+        c.font = 'bold 18px Arial';
+        c.fillText(lowerText, W/2, H/2 + 30);
+      }
+      tex.needsUpdate = true;
+    };
+    draw(!!this.s[key]);
+
+    return { group: g, face, draw, key };
+  }
+
+  // Guarded Switch innerhalb eines Frame-Groups
+  _makeGuardedSwitchInFrame(parent, x, y, z, key, label) {
+    const g = new THREE.Group();
+    g.position.set(x, y, z);
+    parent.add(g);
+
+    const body = new THREE.Mesh(
+      new THREE.BoxGeometry(0.06, 0.05, 0.025),
+      new THREE.MeshStandardMaterial({ color: 0x0a0a0a, roughness: 0.6 })
+    );
+    body.position.z = 0.012;
+    g.add(body);
+
+    const guardPivot = new THREE.Group();
+    guardPivot.position.z = 0.024;
+    g.add(guardPivot);
+    const guard = new THREE.Mesh(
+      new THREE.BoxGeometry(0.058, 0.048, 0.004),
+      new THREE.MeshStandardMaterial({ color: 0xcc1111, metalness: 0.2, roughness: 0.5 })
+    );
+    guard.position.y = 0.024;
+    guardPivot.add(guard);
+    guardPivot.rotation.x = this.s[key] ? 1.3 : 0;
+
+    // Hit
+    const hit = new THREE.Mesh(
+      new THREE.BoxGeometry(0.07, 0.06, 0.03),
+      new THREE.MeshBasicMaterial({ visible: false })
+    );
+    hit.position.z = 0.018;
+    g.add(hit);
+    hit.userData.clickable = true;
+    hit.userData.action = { type: 'toggle', key };
+    this.clickables.push(hit);
+
+    return { group: g, guardPivot };
   }
 
   _makeToggleSwitch(x, y, z, initialOn, key, label) {
@@ -1082,113 +1291,133 @@ export class Cockpit3D {
   }
 
   // ------------------------------------------------------------
-  // YOKE — Boeing-Style Steuerhorn mit Animation
+  // SIDESTICKS — Airbus-Style (2 Stück: Captain links, F/O rechts)
   // ------------------------------------------------------------
 
-  _buildYoke() {
-    const yokeBase = new THREE.Group();
-    yokeBase.position.set(0, 0.95, 0.45);
-    this.group.add(yokeBase);
+  _buildSidesticks() {
+    this.parts.sidesticks = {};
+    for (const side of ['capt', 'fo']) {
+      const x = side === 'capt' ? -0.92 : 0.92;
+      const g = new THREE.Group();
+      g.position.set(x, 0.82, -0.1);
+      this.group.add(g);
 
-    // Säule
-    const col = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.028, 0.033, 0.42, 14),
-      new THREE.MeshStandardMaterial({ color: 0x0c0c0c, roughness: 0.65 })
-    );
-    col.position.y = -0.1;
-    yokeBase.add(col);
+      // Basisplatte mit Typenschild
+      const base = new THREE.Mesh(
+        new THREE.BoxGeometry(0.11, 0.025, 0.12),
+        new THREE.MeshStandardMaterial({ color: 0x181818, roughness: 0.6 })
+      );
+      base.position.y = 0;
+      g.add(base);
+      // Seitenkonsole-Erhöhung unter der Basis
+      const console_ = new THREE.Mesh(
+        new THREE.BoxGeometry(0.17, 0.2, 0.45),
+        new THREE.MeshStandardMaterial({ color: COL.sidewall, roughness: 0.85 })
+      );
+      console_.position.set(0, -0.12, 0.05);
+      g.add(console_);
 
-    // Säulen-Riffelung
-    const colTrim = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.036, 0.036, 0.03, 14),
-      new THREE.MeshStandardMaterial({ color: 0x2a2a2a, metalness: 0.6 })
-    );
-    colTrim.position.y = -0.28;
-    yokeBase.add(colTrim);
+      // Pivot für Pitch-/Roll-Bewegung
+      const pivot = new THREE.Group();
+      pivot.position.y = 0.015;
+      g.add(pivot);
 
-    // Pitch-Pivot
-    const pitchPivot = new THREE.Group();
-    pitchPivot.position.y = 0.11;
-    yokeBase.add(pitchPivot);
-    this.parts.yokePitch = pitchPivot;
+      // Schaft (leicht nach vorne geneigt)
+      const shaft = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.02, 0.028, 0.13, 14),
+        new THREE.MeshStandardMaterial({ color: 0x0a0a0a, metalness: 0.4, roughness: 0.55 })
+      );
+      shaft.position.y = 0.07;
+      pivot.add(shaft);
 
-    // Roll-Pivot
-    const rollPivot = new THREE.Group();
-    pitchPivot.add(rollPivot);
-    this.parts.yokeRoll = rollPivot;
+      // Faltenbalg (gummiert) um den Schaft
+      const boot = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.036, 0.04, 0.04, 16),
+        new THREE.MeshStandardMaterial({ color: 0x141414, roughness: 0.95 })
+      );
+      boot.position.y = 0.025;
+      pivot.add(boot);
 
-    const yokeMat = new THREE.MeshStandardMaterial({ color: 0x0a0a0a, roughness: 0.55 });
-
-    // Holm (T-Form Airbus, W-Form Boeing — Mischung realistisch)
-    const stem = new THREE.Mesh(new THREE.BoxGeometry(0.055, 0.055, 0.14), yokeMat);
-    stem.position.z = 0.07;
-    rollPivot.add(stem);
-
-    // Querholm
-    const cross = new THREE.Mesh(new THREE.BoxGeometry(0.46, 0.042, 0.055), yokeMat);
-    cross.position.z = 0.14;
-    rollPivot.add(cross);
-
-    // Griffe
-    for (const side of [-1, 1]) {
+      // Griff (ergonomischer Kegelstumpf, typisch Airbus)
       const grip = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.024, 0.024, 0.18, 16),
-        yokeMat
+        new THREE.CylinderGeometry(0.028, 0.04, 0.13, 14),
+        new THREE.MeshStandardMaterial({ color: 0x0a0a0a, roughness: 0.6 })
       );
-      grip.position.set(side * 0.21, -0.06, 0.14);
-      rollPivot.add(grip);
-      const cap = new THREE.Mesh(
-        new THREE.SphereGeometry(0.03, 14, 10),
-        new THREE.MeshStandardMaterial({ color: 0x1a1a1c, roughness: 0.6 })
+      grip.position.y = 0.19;
+      pivot.add(grip);
+      // Griff-Rückseite flacher
+      const gripBack = new THREE.Mesh(
+        new THREE.BoxGeometry(0.04, 0.13, 0.055),
+        new THREE.MeshStandardMaterial({ color: 0x0a0a0a, roughness: 0.6 })
       );
-      cap.position.set(side * 0.21, 0.04, 0.14);
-      rollPivot.add(cap);
-      // PTT-Button (rot), AP-Disconnect (rot)
-      const colors = [0xcc0000, 0xff8800, 0xcccccc];
-      for (let k = 0; k < 3; k++) {
-        const b = new THREE.Mesh(
-          new THREE.CylinderGeometry(0.007, 0.007, 0.005, 10),
-          new THREE.MeshStandardMaterial({ color: colors[k], emissive: colors[k], emissiveIntensity: 0.15 })
-        );
-        b.rotation.x = Math.PI / 2;
-        b.position.set(side * 0.21 + 0.026 * side, 0.01 - k * 0.025, 0.14);
-        rollPivot.add(b);
+      gripBack.position.set(0, 0.19, -0.028);
+      pivot.add(gripBack);
+
+      // Trigger (vorne am Griff)
+      const trig = new THREE.Mesh(
+        new THREE.BoxGeometry(0.022, 0.045, 0.02),
+        new THREE.MeshStandardMaterial({ color: 0x080808 })
+      );
+      trig.position.set(0, 0.165, 0.037);
+      pivot.add(trig);
+
+      // A/P-Disconnect-Button (rot, auf der Spitze)
+      const apDisc = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.013, 0.013, 0.008, 14),
+        new THREE.MeshStandardMaterial({ color: 0xcc0a0a, emissive: 0x330000 })
+      );
+      apDisc.position.y = 0.262;
+      pivot.add(apDisc);
+
+      // Priority-Pushbutton (seitlich, schwarz)
+      const prioBtn = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.009, 0.009, 0.005, 12),
+        new THREE.MeshStandardMaterial({ color: 0x111111 })
+      );
+      prioBtn.rotation.z = Math.PI / 2;
+      prioBtn.position.set(side === 'capt' ? 0.034 : -0.034, 0.2, 0);
+      pivot.add(prioBtn);
+
+      // Typenschild auf der Seitenkonsole
+      const lblCv = document.createElement('canvas');
+      lblCv.width = 256; lblCv.height = 64;
+      const lc = lblCv.getContext('2d');
+      lc.fillStyle = '#0a0a0a'; lc.fillRect(0, 0, 256, 64);
+      lc.fillStyle = '#c8c8bc'; lc.font = 'bold 18px Arial'; lc.textAlign = 'center';
+      lc.fillText(side === 'capt' ? 'CAPT' : 'F/O', 128, 26);
+      lc.font = 'bold 14px Arial';
+      lc.fillText('SIDESTICK', 128, 48);
+      const tex = new THREE.CanvasTexture(lblCv); tex.colorSpace = THREE.SRGBColorSpace;
+      const lbl = new THREE.Mesh(
+        new THREE.PlaneGeometry(0.08, 0.02),
+        new THREE.MeshBasicMaterial({ map: tex, toneMapped: false })
+      );
+      lbl.position.set(0, 0.014, 0.06);
+      lbl.rotation.x = -Math.PI / 2;
+      g.add(lbl);
+
+      // Klickbar für AP-Disc (Kapitänsstick)
+      if (side === 'capt') {
+        apDisc.userData.clickable = true;
+        apDisc.userData.action = { type: 'mcpBtn', key: 'autopilot' };
+        this.clickables.push(apDisc);
       }
+
+      this.parts.sidesticks[side] = { pivot, apDisc };
     }
-
-    // Emblem / Stall-Warn LED
-    const emblem = new THREE.Mesh(
-      new THREE.CircleGeometry(0.02, 20),
-      new THREE.MeshStandardMaterial({ color: 0x441010 })
-    );
-    emblem.position.set(0, 0, 0.175);
-    rollPivot.add(emblem);
-    this.parts.yokeEmblem = emblem;
-
-    // Yoke-Typenschild
-    const lblCv = document.createElement('canvas');
-    lblCv.width = 256; lblCv.height = 64;
-    const lc = lblCv.getContext('2d');
-    lc.fillStyle = '#0a0a0a'; lc.fillRect(0, 0, 256, 64);
-    lc.fillStyle = '#c8c8b8'; lc.font = 'bold 22px Arial'; lc.textAlign = 'center';
-    lc.fillText('FLUGSIM.COM', 128, 40);
-    const lblTex = new THREE.CanvasTexture(lblCv);
-    lblTex.colorSpace = THREE.SRGBColorSpace;
-    const lbl = new THREE.Mesh(
-      new THREE.PlaneGeometry(0.14, 0.022),
-      new THREE.MeshBasicMaterial({ map: lblTex, toneMapped: false })
-    );
-    lbl.position.set(0, -0.04, 0.175);
-    rollPivot.add(lbl);
-
-    this._animateYoke();
+    this._animateSidestick();
   }
 
-  _animateYoke() {
-    if (!this.parts.yokePitch) return;
-    this.parts.yokePitch.position.z = THREE.MathUtils.clamp(-this.input.pitch * 0.08, -0.1, 0.1);
-    this.parts.yokePitch.rotation.x = THREE.MathUtils.clamp(-this.input.pitch * 0.28, -0.45, 0.45);
-    this.parts.yokeRoll.rotation.z = THREE.MathUtils.clamp(this.input.roll * 0.75, -1.2, 1.2);
+  _animateSidestick() {
+    const ss = this.parts.sidesticks;
+    if (!ss) return;
+    // Captain-Sidestick bewegt sich mit Input
+    const capt = ss.capt?.pivot;
+    if (capt) {
+      capt.rotation.x = THREE.MathUtils.clamp(-this.input.pitch * 0.35, -0.45, 0.45);
+      capt.rotation.z = THREE.MathUtils.clamp(this.input.roll * 0.35, -0.45, 0.45);
+    }
+    // F/O-Sidestick bleibt still (Cross-coupling in echt: nein; visuell ruhig)
   }
 
   _animatePedals() {
@@ -1406,13 +1635,12 @@ export class Cockpit3D {
       }
     }
 
-    // Toggle-Schalter-LEDs
-    const toggles = this.parts.toggles || {};
-    for (const key of Object.keys(toggles)) {
-      const t = toggles[key];
-      const on = !!this.s[key];
-      t.lever.rotation.x = on ? 0 : 0.55;
-      this._setLed(t.led, on);
+    // Airbus-Pushbuttons neu zeichnen, wenn Zustand sich geändert hat
+    const pbs = this.parts.pbs || {};
+    for (const pb of Object.values(pbs)) {
+      if (!pb || !pb.draw) continue;
+      const on = !!this.s[pb.key];
+      if (pb._lastOn !== on) { pb.draw(on); pb._lastOn = on; }
     }
 
     // Guarded Schalter
@@ -1437,11 +1665,16 @@ export class Cockpit3D {
       set('apAppr',    this.s.apAppr,         0xff9933);
     }
 
-    // Yoke Stall-LED
-    if (this.parts.yokeEmblem) {
-      const m = this.parts.yokeEmblem.material;
-      m.emissive.setHex(this.flight.stallWarning ? 0xff0000 : 0x000000);
-      m.emissiveIntensity = this.flight.stallWarning ? 0.8 : 0;
+    // Sidestick AP-Disc-Button bei Stall blinken
+    if (this.parts.sidesticks?.capt?.apDisc) {
+      const m = this.parts.sidesticks.capt.apDisc.material;
+      if (this.flight.stallWarning) {
+        m.emissive.setHex(0xff0000);
+        m.emissiveIntensity = (Math.sin(Date.now() / 120) * 0.5 + 0.7);
+      } else {
+        m.emissive.setHex(0x330000);
+        m.emissiveIntensity = 1;
+      }
     }
 
     // Master Warning/Caution Leuchten
@@ -2047,7 +2280,7 @@ export class Cockpit3D {
     switch (a.type) {
       case 'toggle':
         this.s[a.key] = !this.s[a.key];
-        if (['landingL','taxiL','navL','strobe','beacon','logoL'].includes(a.key)) {
+        if (['landingL','landingR','taxiL','noseL','navL','strobe','beacon','logoL','wingL','rwyTurn'].includes(a.key)) {
           this.onAction('lights');
         }
         this._updateDynamic();
