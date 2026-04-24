@@ -717,6 +717,10 @@ wss.on('connection', (ws) => {
         const preset = WEATHER_PRESETS[msg.preset];
         if (preset) { currentWeather = { ...preset }; broadcast({ type: 'weather', weather: currentWeather }); }
       }
+      if (msg.type === 'chat') {
+        const text = String(msg.text || '').trim().slice(0, 200);
+        if (text) broadcast({ type: 'chat', id, name: player.pilotName || 'Unknown', text, ts: Date.now() });
+      }
       if (msg.type === 'respawn') {
         const { aircraftType, airline, airport, phys, spawn } = player;
         const pname = player.pilotName;

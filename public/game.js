@@ -206,6 +206,77 @@ function showToast(text, cls = '') {
   }, 3200);
 }
 
+let notifCount = 0;
+const notifs = [];
+
+function addNotif(text, type = 'info') {
+  notifs.unshift({ text, type, time: new Date() });
+  if (notifs.length > 50) notifs.pop();
+  renderNotifs();
+}
+function renderNotifs() {
+  const list = document.getElementById('notif-list');
+  if (!list) return;
+  if (notifs.length === 0) { list.innerHTML = '<div class="notif-empty">Keine Benachrichtigungen</div>'; return; }
+  list.innerHTML = notifs.map(n => `
+    <div class="notif-item">
+      <div class="notif-dot ${n.type}"></div>
+      <div>
+        <div class="notif-text">${n.text}</div>
+        <div class="notif-time">${n.time.toLocaleTimeString('de', { hour: '2-digit', minute: '2-digit' })}</div>
+      </div>
+    </div>`).join('');
+}
+
+function renderFriendsList(players) {
+  const list = document.getElementById('friends-list');
+  if (!list) return;
+  if (!players || players.length === 0) {
+    list.innerHTML = '<div class="notif-empty">Keine Spieler online</div>'; return;
+  }
+  list.innerHTML = players.map(p => `
+    <div class="friend-item">
+      <div class="friend-avatar">${(p.pilotName || '?')[0].toUpperCase()}</div>
+      <div class="friend-info">
+        <div class="friend-name">${p.pilotName || 'Unbekannt'}</div>
+        <div class="friend-status">${p.aircraft || 'Am Boden'}</div>
+      </div>
+      <div class="${p.alive !== false ? 'online-dot' : 'offline-dot'}"></div>
+    </div>`).join('');
+}
+
+let chatMessages = [];
+function addChatMsg(name, text, self = false, ts = Date.now()) {
+  chatMessages.push({ name, text, self, ts });
+  if (chatMessages.length > 100) chatMessages.shift();
+  renderChat();
+}
+function renderChat() {
+  const box = document.getElementById('chat-messages');
+  if (!box) return;
+  box.innerHTML = chatMessages.map(m => {
+    const time = new Date(m.ts).toLocaleTimeString('de', { hour: '2-digit', minute: '2-digit' });
+    return `<div class="chat-msg ${m.self ? 'self' : ''}"><span class="cm-name">${m.name}</span><span class="cm-text">${m.text}</span><span class="cm-time">${time}</span></div>`;
+  }).join('');
+  box.scrollTop = box.scrollHeight;
+}
+function togglePanel(id) {
+  const panel = document.getElementById(id);
+  if (!panel) return;
+  const was = !panel.classList.contains('hidden');
+  document.querySelectorAll('.side-panel').forEach(p => p.classList.add('hidden'));
+  if (!was) panel.classList.remove('hidden');
+}
+function sendChat() {
+  const input = document.getElementById('chat-input');
+  if (!input) return;
+  const text = input.value.trim();
+  if (!text) return;
+  input.value = '';
+  if (ws?.readyState === 1) ws.send(JSON.stringify({ type: 'chat', text }));
+  addChatMsg(pilotName, text, true);
+}
+
 function renderCareer() {
   const s = careerState;
   const stage = Career.currentStage(s);
@@ -1735,8 +1806,11 @@ function connectWS() {
       latestState = msg.players;
       myState = latestState.find(p => p.id === myId) || null;
       if (myState && !myState.alive) showCrash();
+      renderFriendsList(msg.players || []);
     }
-    if (msg.type === 'playerLeft') removePlayerMesh(msg.id);
+    if (msg.type === 'playerLeft') { removePlayerMesh(msg.id); addNotif(`${msg.name || 'Spieler'} hat die Sitzung verlassen`, 'warn'); }
+    if (msg.type === 'playerJoined') { addNotif(`${msg.name || 'Spieler'} ist beigetreten`, 'ok'); renderFriendsList(latestState || []); }
+    if (msg.type === 'chat') { addChatMsg(msg.name, msg.text, msg.id === myId, msg.ts); }
   });
   ws.addEventListener('close', () => setTimeout(connectWS, 2000));
 }
@@ -2017,9 +2091,13 @@ function initDashboard() {
   });
 
   document.querySelector('[data-dash-icon="settings"]')?.addEventListener('click', () => showSetup('settings'));
-  document.querySelector('[data-dash-icon="bell"]')?.addEventListener('click', () => showToast('Benachrichtigungen — bald verfügbar', 3000));
-  document.querySelector('[data-dash-icon="friends"]')?.addEventListener('click', () => showToast('Freundesliste — bald verfügbar', 3000));
-  document.querySelector('[data-dash-icon="chat"]')?.addEventListener('click', () => showToast('Chat — bald verfügbar', 3000));
+  document.querySelector('[data-dash-icon="bell"]')?.addEventListener('click', () => togglePanel('notif-panel'));
+  document.querySelector('[data-dash-icon="friends"]')?.addEventListener('click', () => { renderFriendsList(latestState || []); togglePanel('friends-panel'); });
+  document.querySelector('[data-dash-icon="chat"]')?.addEventListener('click', () => togglePanel('chat-panel'));
+  document.querySelector('[data-menu-icon="bell"]')?.addEventListener('click', () => togglePanel('notif-panel'));
+  document.querySelector('[data-menu-icon="friends"]')?.addEventListener('click', () => { renderFriendsList(latestState || []); togglePanel('friends-panel'); });
+  document.querySelector('[data-menu-icon="chat"]')?.addEventListener('click', () => togglePanel('chat-panel'));
+  document.querySelector('[data-menu-icon="settings"]')?.addEventListener('click', () => showSetup('settings'));
   document.getElementById('topbar-back')?.addEventListener('click', showDash);
   document.getElementById('market-close')?.addEventListener('click', closeMarketplace);
   document.getElementById('marketplace-screen')?.addEventListener('click', (e) => {
@@ -2037,6 +2115,20 @@ function initDashboard() {
       tab.classList.add('active');
       document.getElementById(`c-panel-${tab.dataset.cTab}`).classList.add('active');
     });
+  });
+
+  // Side panel close buttons
+  document.querySelectorAll('.sp-close').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const panelId = btn.dataset.close;
+      if (panelId) document.getElementById(panelId)?.classList.add('hidden');
+    });
+  });
+
+  // Chat send
+  document.getElementById('chat-send')?.addEventListener('click', sendChat);
+  document.getElementById('chat-input')?.addEventListener('keydown', (e) => {
+    if (e.code === 'Enter') sendChat();
   });
 
   document.getElementById('dash-pilot-name').textContent = pilotName;
