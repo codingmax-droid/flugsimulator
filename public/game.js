@@ -2017,6 +2017,9 @@ function initDashboard() {
   });
 
   document.querySelector('[data-dash-icon="settings"]')?.addEventListener('click', () => showSetup('settings'));
+  document.querySelector('[data-dash-icon="bell"]')?.addEventListener('click', () => showToast('Benachrichtigungen — bald verfügbar', 3000));
+  document.querySelector('[data-dash-icon="friends"]')?.addEventListener('click', () => showToast('Freundesliste — bald verfügbar', 3000));
+  document.querySelector('[data-dash-icon="chat"]')?.addEventListener('click', () => showToast('Chat — bald verfügbar', 3000));
   document.getElementById('topbar-back')?.addEventListener('click', showDash);
   document.getElementById('market-close')?.addEventListener('click', closeMarketplace);
   document.getElementById('marketplace-screen')?.addEventListener('click', (e) => {
