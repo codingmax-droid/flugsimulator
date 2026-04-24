@@ -228,21 +228,122 @@ function renderNotifs() {
     </div>`).join('');
 }
 
+// ============================================================
+// FRIENDS
+// ============================================================
+const friendState = { list: [], pending: [] };
+let friendChatWindows = {}; // friendName → { msgs: [], open: bool }
+
+function getOnlinePlayer(name) {
+  return latestState?.find(p => (p.pilotName || '').toLowerCase() === name.toLowerCase());
+}
+
 function renderFriendsList(players) {
   const list = document.getElementById('friends-list');
+  const pendingList = document.getElementById('friend-pending-list');
   if (!list) return;
-  if (!players || players.length === 0) {
-    list.innerHTML = '<div class="notif-empty">Keine Spieler online</div>'; return;
+
+  // Pending requests
+  if (pendingList) {
+    if (friendState.pending.length === 0) {
+      pendingList.innerHTML = '<div class="notif-empty" style="font-size:11px;padding:6px 0">Keine offenen Anfragen</div>';
+    } else {
+      pendingList.innerHTML = friendState.pending.map(p => `
+        <div class="friend-pending-item">
+          <div class="fp-avatar">${(p.from || '?')[0].toUpperCase()}</div>
+          <div class="fp-info">
+            <div class="fp-name">${p.from}</div>
+            <div class="fp-time">${new Date(p.ts).toLocaleTimeString('de', { hour: '2-digit', minute: '2-digit' })}</div>
+          </div>
+          <div class="fp-actions">
+            <button class="fp-btn accept" data-accept="${p.from}">✓</button>
+            <button class="fp-btn decline" data-decline="${p.from}">✗</button>
+          </div>
+        </div>`).join('');
+      pendingList.querySelectorAll('[data-accept]').forEach(b => b.addEventListener('click', () => {
+        ws?.readyState === 1 && ws.send(JSON.stringify({ type: 'friendAccept', from: b.dataset.accept }));
+      }));
+      pendingList.querySelectorAll('[data-decline]').forEach(b => b.addEventListener('click', () => {
+        ws?.readyState === 1 && ws.send(JSON.stringify({ type: 'friendDecline', from: b.dataset.decline }));
+      }));
+    }
   }
-  list.innerHTML = players.map(p => `
-    <div class="friend-item">
-      <div class="friend-avatar">${(p.pilotName || '?')[0].toUpperCase()}</div>
-      <div class="friend-info">
-        <div class="friend-name">${p.pilotName || 'Unbekannt'}</div>
-        <div class="friend-status">${p.aircraft || 'Am Boden'}</div>
-      </div>
-      <div class="${p.alive !== false ? 'online-dot' : 'offline-dot'}"></div>
-    </div>`).join('');
+
+  // Friends list
+  if (friendState.list.length === 0) {
+    list.innerHTML = '<div class="notif-empty">Noch keine Freunde. Füge Spieler oben hinzu!</div>';
+  } else {
+    list.innerHTML = friendState.list.map(name => {
+      const online = getOnlinePlayer(name);
+      return `
+      <div class="friend-item">
+        <div class="friend-avatar">${(name || '?')[0].toUpperCase()}</div>
+        <div class="friend-info">
+          <div class="friend-name">${name}</div>
+          <div class="friend-status">${online ? (online.aircraft || 'In der Luft') : 'Offline'}</div>
+        </div>
+        <div class="${online ? 'online-dot' : 'offline-dot'}"></div>
+        <button class="friend-chat-btn" data-chat="${name}">Chat</button>
+        <button class="friend-remove-btn" data-remove="${name}">✗</button>
+      </div>`;
+    }).join('');
+    list.querySelectorAll('[data-chat]').forEach(b => b.addEventListener('click', () => openFriendChat(b.dataset.chat)));
+    list.querySelectorAll('[data-remove]').forEach(b => b.addEventListener('click', () => {
+      ws?.readyState === 1 && ws.send(JSON.stringify({ type: 'friendRemove', to: b.dataset.remove }));
+    }));
+  }
+}
+
+function sendFriendRequest() {
+  const input = document.getElementById('friend-add-input');
+  if (!input) return;
+  const name = input.value.trim();
+  if (!name || name.length < 3) { addNotif('Mindestens 3 Zeichen nötig', 'warn'); return; }
+  if (ws?.readyState === 1) ws.send(JSON.stringify({ type: 'friendRequest', to: name }));
+  input.value = '';
+}
+
+function openFriendChat(name) {
+  if (friendChatWindows[name]) return; // already open
+  friendChatWindows[name] = { msgs: [] };
+  renderFriendChatWindow(name);
+}
+
+function handleFriendChat(fromName, text, ts, isEcho) {
+  const name = isEcho ? fromName : fromName;
+  if (!friendChatWindows[name]) {
+    friendChatWindows[name] = { msgs: [] };
+    renderFriendChatWindow(name);
+  }
+  friendChatWindows[name].msgs.push({ text, self: isEcho, ts });
+  renderFriendChatMessages(name);
+}
+
+function renderFriendChatMessages(name) {
+  const safeName = name.replace(/\s+/g,'_');
+  const box = document.getElementById(`fcw-msgs-${safeName}`);
+  if (!box || !friendChatWindows[name]) return;
+  box.innerHTML = friendChatWindows[name].msgs.map(m => {
+    const time = new Date(m.ts).toLocaleTimeString('de', { hour: '2-digit', minute: '2-digit' });
+    return `<div class="fcw-msg ${m.self ? 'self' : ''}"><span class="fcw-text">${m.text}</span><span class="fcw-time">${time}</span></div>`;
+  }).join('');
+  box.scrollTop = box.scrollHeight;
+}
+
+function sendFriendChatMsg(name) {
+  const safeName = name.replace(/\s+/g,'_');
+  const input = document.getElementById(`fcw-inp-${safeName}`);
+  if (!input) return;
+  const text = input.value.trim();
+  if (!text) return;
+  input.value = '';
+  if (ws?.readyState === 1) ws.send(JSON.stringify({ type: 'friendChat', to: name, text }));
+}
+
+function closeFriendChat(name) {
+  const safeName = name.replace(/\s+/g,'_');
+  document.getElementById(`fcw-${safeName}`)?.remove();
+  delete friendChatWindows[name];
 }
 
 let chatMessages = [];
@@ -2132,6 +2233,12 @@ function initDashboard() {
       const panelId = btn.dataset.close;
       if (panelId) document.getElementById(panelId)?.classList.add('hidden');
     });
+  });
+
+  // Friend add button
+  document.getElementById('friend-add-btn')?.addEventListener('click', sendFriendRequest);
+  document.getElementById('friend-add-input')?.addEventListener('keydown', (e) => {
+    if (e.code === 'Enter') sendFriendRequest();
   });
 
   // Chat send

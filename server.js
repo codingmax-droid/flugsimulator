@@ -55,6 +55,8 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 const crypto = require('crypto');
 const ACCESS_FILE = path.join(__dirname, 'access-codes.json');
+const FRIENDS_FILE = path.join(__dirname, 'friends.json');
+let friendsData = {};
 // Key = Benutzername (kleingeschrieben). Passwort = Early-Access-Code.
 const DEFAULT_USERS = {
   admin:   { role: 'admin',  label: 'Admin',    password: 'MFs-Admin', deviceId: null, boundAt: null, lastSeen: null },
@@ -446,9 +448,7 @@ let currentWeather = { ...WEATHER_PRESETS.fewClouds };
 // FRIENDS
 // ============================================================
 
-const FRIENDS_FILE = path.join(__dirname, 'friends.json');
 // Structure: { "username": { friends: ["friendName", ...], pendingIn: [{from:"name", ts:123}, ...], pendingOut: ["name", ...] } }
-let friendsData = {};
 
 function loadFriends() {
   try { friendsData = JSON.parse(fs.readFileSync(FRIENDS_FILE, 'utf8')); } catch { friendsData = {}; }
