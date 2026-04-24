@@ -454,8 +454,16 @@
       <span>FRIENDS</span>
       <button class="sp-close" data-close="friends-panel">&#10005;</button>
     </div>
+    <div class="friend-add-row">
+      <input type="text" id="friend-add-input" class="friend-add-input" placeholder="Pilotname eingeben…" maxlength="20" autocomplete="off" spellcheck="false">
+      <button class="friend-add-btn" id="friend-add-btn">+</button>
+    </div>
+    <div class="friend-pending-list" id="friend-pending-list"></div>
     <div class="friends-list" id="friends-list"></div>
   </div>
+
+  <!-- Friend chat windows (floating) -->
+  <div id="friend-chat-windows"></div>
 
   <!-- ==================== CHAT PANEL ==================== -->
   <div id="chat-panel" class="side-panel hidden">

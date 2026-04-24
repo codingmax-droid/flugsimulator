@@ -1811,6 +1811,15 @@ function connectWS() {
     if (msg.type === 'playerLeft') { removePlayerMesh(msg.id); addNotif(`${msg.name || 'Spieler'} hat die Sitzung verlassen`, 'warn'); }
     if (msg.type === 'playerJoined') { addNotif(`${msg.name || 'Spieler'} ist beigetreten`, 'ok'); renderFriendsList(latestState || []); }
     if (msg.type === 'chat') { addChatMsg(msg.name, msg.text, msg.id === myId, msg.ts); }
+    // Friends
+    if (msg.type === 'friendsUpdate') { friendState.list = msg.friends || []; friendState.pending = msg.pending || []; renderFriendsList(latestState || []); }
+    if (msg.type === 'friendInvite') { addNotif(`${msg.from} möchte befreundet sein`, 'ok'); friendState.pending.push({ from: msg.from, ts: Date.now() }); renderFriendsList(latestState || []); }
+    if (msg.type === 'friendRequestSent') { addNotif(`Freundesanfrage an ${msg.to} gesendet`, 'ok'); }
+    if (msg.type === 'friendAccepted') { addNotif(`${msg.by} hat die Freundesanfrage angenommen`, 'ok'); renderFriendsList(latestState || []); }
+    if (msg.type === 'friendDeclined') { addNotif(`${msg.by} hat die Freundesanfrage abgelehnt`, 'warn'); renderFriendsList(latestState || []); }
+    if (msg.type === 'friendRemoved') { addNotif(`${msg.by} hat dich aus der Freundesliste entfernt`, 'warn'); renderFriendsList(latestState || []); }
+    if (msg.type === 'friendChat') { handleFriendChat(msg.from, msg.text, msg.ts, false); }
+    if (msg.type === 'friendChatEcho') { handleFriendChat(msg.to, msg.text, msg.ts, true); }
   });
   ws.addEventListener('close', () => setTimeout(connectWS, 2000));
 }

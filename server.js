@@ -60,8 +60,10 @@ const DEFAULT_USERS = {
   admin:   { role: 'admin',  label: 'Admin',    password: 'MFs-Admin', deviceId: null, boundAt: null, lastSeen: null },
   tester:  { role: 'tester', label: 'Tester',   password: 'FS-TEST-5N8V-H2J4-6DB9',  deviceId: null, boundAt: null, lastSeen: null },
   tester2: { role: 'tester', label: 'Tester 2', password: 'FS-TEST2-7W4C-P9Y3-R6K1', deviceId: null, boundAt: null, lastSeen: null },
+  dani:    { role: 'tester', label: 'Dani',    password: 'dani',               deviceId: null, boundAt: null, lastSeen: null },
 };
 let accessUsers = loadAccessUsers();
+loadFriends();
 
 function loadAccessUsers() {
   try {
@@ -441,6 +443,48 @@ const WEATHER_PRESETS = {
 let currentWeather = { ...WEATHER_PRESETS.fewClouds };
 
 // ============================================================
+// FRIENDS
+// ============================================================
+
+const FRIENDS_FILE = path.join(__dirname, 'friends.json');
+// Structure: { "username": { friends: ["friendName", ...], pendingIn: [{from:"name", ts:123}, ...], pendingOut: ["name", ...] } }
+let friendsData = {};
+
+function loadFriends() {
+  try { friendsData = JSON.parse(fs.readFileSync(FRIENDS_FILE, 'utf8')); } catch { friendsData = {}; }
+  // Ensure every user entry has all fields
+  for (const k of Object.keys(friendsData)) {
+    if (!Array.isArray(friendsData[k].friends)) friendsData[k].friends = [];
+    if (!Array.isArray(friendsData[k].pendingIn)) friendsData[k].pendingIn = [];
+    if (!Array.isArray(friendsData[k].pendingOut)) friendsData[k].pendingOut = [];
+  }
+}
+function saveFriends() {
+  try { fs.writeFileSync(FRIENDS_FILE, JSON.stringify(friendsData, null, 2)); } catch (e) { console.error('friends save failed:', e.message); }
+}
+function getFriendsEntry(name) {
+  const n = name.toLowerCase();
+  if (!friendsData[n]) friendsData[n] = { friends: [], pendingIn: [], pendingOut: [] };
+  return friendsData[n];
+}
+function isOnline(name) {
+  for (const p of players.values()) if ((p.pilotName || '').toLowerCase() === name.toLowerCase()) return p;
+  return null;
+}
+function sendToPlayer(name, msg) {
+  const n = name.toLowerCase();
+  for (const ws of wss.clients) {
+    const p = ws._player;
+    if (p && (p.pilotName || '').toLowerCase() === n) { ws.send(JSON.stringify(msg)); return; }
+  }
+}
+function friendsUpdateFor(name) {
+  const n = name.toLowerCase();
+  const entry = getFriendsEntry(n);
+  sendToPlayer(n, { type: 'friendsUpdate', friends: entry.friends, pending: entry.pendingIn });
+}
+
+// ============================================================
 // PLAYERS
 // ============================================================
 
@@ -652,6 +696,7 @@ function getState() {
 wss.on('connection', (ws) => {
   const id = nextId++;
   const player = createPlayer(id);
+  ws._player = player;
   players.set(id, player);
 
   stats.totalConnections++;
@@ -679,7 +724,88 @@ wss.on('connection', (ws) => {
         if (name.length >= 3) {
           player.pilotName = name;
           addEvent('join', `${name} (Spieler #${id}) eingeloggt`);
+          // Send current friends state to the newly logged-in player
+          const entry = getFriendsEntry(name);
+          ws.send(JSON.stringify({ type: 'friendsUpdate', friends: entry.friends, pending: entry.pendingIn }));
         }
+      }
+      // Friend operations
+      if (msg.type === 'friendRequest') {
+        const target = String(msg.to || '').trim().toLowerCase().slice(0, 20);
+        const fromName = player.pilotName || '';
+        if (!target || target === fromName.toLowerCase() || target.length < 3) { /* ignore */ }
+        else {
+          const fromEntry = getFriendsEntry(fromName);
+          // Already friends or already sent?
+          if (fromEntry.friends.includes(target)) { /* already friends */ }
+          else if (fromEntry.pendingOut.includes(target)) { /* already sent */ }
+          else {
+            fromEntry.pendingOut.push(target);
+            const toEntry = getFriendsEntry(target);
+            toEntry.pendingIn.push({ from: fromName, ts: Date.now() });
+            saveFriends();
+            // Notify target if online
+            sendToPlayer(target, { type: 'friendInvite', from: fromName });
+            // Confirm to sender
+            ws.send(JSON.stringify({ type: 'friendRequestSent', to: target }));
+          }
+        }
+      }
+      if (msg.type === 'friendAccept') {
+        const fromName = String(msg.from || '').trim();
+        const myName = player.pilotName || '';
+        if (!fromName || fromName === myName) return;
+        const myEntry = getFriendsEntry(myName);
+        const fromEntry = getFriendsEntry(fromName);
+        // Remove from pendingIn, add to friends both ways
+        myEntry.pendingIn = myEntry.pendingIn.filter(p => p.from !== fromName);
+        fromEntry.pendingOut = fromEntry.pendingOut.filter(n => n !== myName.toLowerCase());
+        if (!myEntry.friends.includes(fromName)) myEntry.friends.push(fromName);
+        if (!fromEntry.friends.includes(myName)) fromEntry.friends.push(myName);
+        saveFriends();
+        friendsUpdateFor(myName);
+        friendsUpdateFor(fromName);
+        // Notify the other player
+        sendToPlayer(fromName, { type: 'friendAccepted', by: myName });
+      }
+      if (msg.type === 'friendDecline') {
+        const fromName = String(msg.from || '').trim();
+        const myName = player.pilotName || '';
+        if (!fromName || fromName === myName) return;
+        const myEntry = getFriendsEntry(myName);
+        const fromEntry = getFriendsEntry(fromName);
+        myEntry.pendingIn = myEntry.pendingIn.filter(p => p.from !== fromName);
+        fromEntry.pendingOut = fromEntry.pendingOut.filter(n => n !== myName.toLowerCase());
+        saveFriends();
+        friendsUpdateFor(myName);
+        // Notify the other player
+        sendToPlayer(fromName, { type: 'friendDeclined', by: myName });
+      }
+      if (msg.type === 'friendRemove') {
+        const target = String(msg.to || '').trim();
+        const myName = player.pilotName || '';
+        if (!target || target === myName) return;
+        const myEntry = getFriendsEntry(myName);
+        const targetEntry = getFriendsEntry(target);
+        myEntry.friends = myEntry.friends.filter(f => f !== target);
+        targetEntry.friends = targetEntry.friends.filter(f => f !== myName);
+        saveFriends();
+        friendsUpdateFor(myName);
+        friendsUpdateFor(target);
+        sendToPlayer(target, { type: 'friendRemoved', by: myName });
+      }
+      if (msg.type === 'friendChat') {
+        const target = String(msg.to || '').trim().toLowerCase();
+        const text = String(msg.text || '').trim().slice(0, 200);
+        const fromName = player.pilotName || '';
+        if (!target || !text || target === fromName.toLowerCase()) return;
+        // Only send if they are friends
+        const myEntry = getFriendsEntry(fromName);
+        if (!myEntry.friends.map(f => f.toLowerCase()).includes(target)) return;
+        // Deliver to target and echo back to sender with id
+        const ts = Date.now();
+        sendToPlayer(target, { type: 'friendChat', from: fromName, text, ts });
+        ws.send(JSON.stringify({ type: 'friendChatEcho', to: target, text, ts }));
       }
       if (msg.type === 'selectAircraft') {
         if (AIRCRAFT_PHYSICS[msg.aircraft]) {
