@@ -116,7 +116,7 @@ app.post('/api/access', (req, res) => {
   if (!timingSafeEq(password, entry.password || '')) {
     return res.json({ ok: false, error: 'bad-password' });
   }
-  if (entry.deviceId && entry.deviceId !== deviceId) {
+  if (entry.role !== 'admin' && entry.deviceId && entry.deviceId !== deviceId) {
     return res.json({ ok: false, error: 'bound-other-device' });
   }
   if (!entry.deviceId) {
