@@ -383,37 +383,41 @@ app.get('/api/stats', (req, res) => {
 // AIRCRAFT PHYSICS PROFILES
 // ============================================================
 
+// Realistische Steuerkurse (degree/s für ~30° Anstellwinkel bei max Ausschlag)
+// Für Airliner: langsam aber präzise, für Fighter: schnell und reaktiv
 const AIRCRAFT_PHYSICS = {
-  // --- JET AIRLINERS BESTAND ---
-  a320:  { mass: 64000,  wingArea: 122.6, liftCoeff: 1.4,  dragCoeff: 0.028, thrustMax: 240000,  stallSpeed: 54,  pitchRate: 1.5, rollRate: 2.0, yawRate: 0.8 },
-  a330:  { mass: 180000, wingArea: 361.6, liftCoeff: 1.5,  dragCoeff: 0.026, thrustMax: 640000,  stallSpeed: 58,  pitchRate: 1.2, rollRate: 1.5, yawRate: 0.6 },
-  a340:  { mass: 245000, wingArea: 439.4, liftCoeff: 1.5,  dragCoeff: 0.027, thrustMax: 604000,  stallSpeed: 62,  pitchRate: 1.0, rollRate: 1.3, yawRate: 0.5 },
-  a350:  { mass: 195000, wingArea: 443,   liftCoeff: 1.55, dragCoeff: 0.024, thrustMax: 748000,  stallSpeed: 56,  pitchRate: 1.3, rollRate: 1.6, yawRate: 0.7 },
-  a380:  { mass: 390000, wingArea: 845,   liftCoeff: 1.6,  dragCoeff: 0.025, thrustMax: 1244000, stallSpeed: 64,  pitchRate: 0.8, rollRate: 1.0, yawRate: 0.4 },
-  b737:  { mass: 62000,  wingArea: 124.6, liftCoeff: 1.35, dragCoeff: 0.029, thrustMax: 242800,  stallSpeed: 53,  pitchRate: 1.6, rollRate: 2.2, yawRate: 0.9 },
-  b747:  { mass: 285000, wingArea: 541.2, liftCoeff: 1.5,  dragCoeff: 0.026, thrustMax: 1009600, stallSpeed: 60,  pitchRate: 0.9, rollRate: 1.1, yawRate: 0.5 },
-  b757:  { mass: 84000,  wingArea: 185.3, liftCoeff: 1.45, dragCoeff: 0.027, thrustMax: 383400,  stallSpeed: 55,  pitchRate: 1.4, rollRate: 1.8, yawRate: 0.8 },
-  b777:  { mass: 240000, wingArea: 427.8, liftCoeff: 1.55, dragCoeff: 0.025, thrustMax: 1027800, stallSpeed: 58,  pitchRate: 1.1, rollRate: 1.4, yawRate: 0.6 },
-  b787:  { mass: 181000, wingArea: 377,   liftCoeff: 1.5,  dragCoeff: 0.023, thrustMax: 640000,  stallSpeed: 56,  pitchRate: 1.3, rollRate: 1.6, yawRate: 0.7 },
+  // --- JET AIRLINER ---
+  // Realistische Rollraten: A320 ~13°/s, A380 ~7°/s (体型越大，转弯越慢)
+  a320:  { mass: 64000,  wingArea: 122.6, liftCoeff: 1.4,  dragCoeff: 0.028, thrustMax: 240000,  stallSpeed: 54,  pitchRate: 3.5, rollRate: 4.0, yawRate: 1.5 },
+  a330:  { mass: 180000, wingArea: 361.6, liftCoeff: 1.5,  dragCoeff: 0.026, thrustMax: 640000,  stallSpeed: 58,  pitchRate: 2.8, rollRate: 3.0, yawRate: 1.0 },
+  a340:  { mass: 245000, wingArea: 439.4, liftCoeff: 1.5,  dragCoeff: 0.027, thrustMax: 604000,  stallSpeed: 62,  pitchRate: 2.3, rollRate: 2.6, yawRate: 0.8 },
+  a350:  { mass: 195000, wingArea: 443,   liftCoeff: 1.55, dragCoeff: 0.024, thrustMax: 748000,  stallSpeed: 56,  pitchRate: 3.0, rollRate: 3.2, yawRate: 1.2 },
+  a380:  { mass: 390000, wingArea: 845,   liftCoeff: 1.6,  dragCoeff: 0.025, thrustMax: 1244000, stallSpeed: 64,  pitchRate: 1.8, rollRate: 2.0, yawRate: 0.6 },
+  b737:  { mass: 62000,  wingArea: 124.6, liftCoeff: 1.35, dragCoeff: 0.029, thrustMax: 242800,  stallSpeed: 53,  pitchRate: 3.8, rollRate: 4.5, yawRate: 1.6 },
+  b747:  { mass: 285000, wingArea: 541.2, liftCoeff: 1.5,  dragCoeff: 0.026, thrustMax: 1009600, stallSpeed: 60,  pitchRate: 2.0, rollRate: 2.5, yawRate: 0.8 },
+  b757:  { mass: 84000,  wingArea: 185.3, liftCoeff: 1.45, dragCoeff: 0.027, thrustMax: 383400,  stallSpeed: 55,  pitchRate: 3.2, rollRate: 3.8, yawRate: 1.4 },
+  b777:  { mass: 240000, wingArea: 427.8, liftCoeff: 1.55, dragCoeff: 0.025, thrustMax: 1027800, stallSpeed: 58,  pitchRate: 2.5, rollRate: 2.8, yawRate: 1.0 },
+  b787:  { mass: 181000, wingArea: 377,   liftCoeff: 1.5,  dragCoeff: 0.023, thrustMax: 640000,  stallSpeed: 56,  pitchRate: 3.0, rollRate: 3.5, yawRate: 1.2 },
 
-  // --- AIRBUS NEU ---
-  a220:  { mass: 45000,  wingArea: 112,   liftCoeff: 1.4,  dragCoeff: 0.028, thrustMax: 184000,  stallSpeed: 50,  pitchRate: 1.7, rollRate: 2.1, yawRate: 0.9 },
-  a300:  { mass: 130000, wingArea: 260,   liftCoeff: 1.45, dragCoeff: 0.028, thrustMax: 500000,  stallSpeed: 56,  pitchRate: 1.3, rollRate: 1.6, yawRate: 0.7 },
-  a321:  { mass: 75000,  wingArea: 122.6, liftCoeff: 1.4,  dragCoeff: 0.028, thrustMax: 293000,  stallSpeed: 56,  pitchRate: 1.4, rollRate: 1.9, yawRate: 0.8 },
+  // --- REGIONAL ---
+  a220:  { mass: 45000,  wingArea: 112,   liftCoeff: 1.4,  dragCoeff: 0.028, thrustMax: 184000,  stallSpeed: 50,  pitchRate: 4.0, rollRate: 4.5, yawRate: 1.8 },
+  a300:  { mass: 130000, wingArea: 260,   liftCoeff: 1.45, dragCoeff: 0.028, thrustMax: 500000,  stallSpeed: 56,  pitchRate: 3.0, rollRate: 3.5, yawRate: 1.2 },
+  a321:  { mass: 75000,  wingArea: 122.6, liftCoeff: 1.4,  dragCoeff: 0.028, thrustMax: 293000,  stallSpeed: 56,  pitchRate: 3.5, rollRate: 4.0, yawRate: 1.5 },
 
-  // --- BOEING NEU ---
-  b707:  { mass: 117000, wingArea: 283,   liftCoeff: 1.4,  dragCoeff: 0.029, thrustMax: 320000,  stallSpeed: 58,  pitchRate: 1.2, rollRate: 1.5, yawRate: 0.7 },
-  b717:  { mass: 49000,  wingArea: 93,    liftCoeff: 1.35, dragCoeff: 0.030, thrustMax: 170000,  stallSpeed: 52,  pitchRate: 1.6, rollRate: 2.0, yawRate: 0.9 },
-  b727:  { mass: 86000,  wingArea: 157.9, liftCoeff: 1.4,  dragCoeff: 0.029, thrustMax: 213000,  stallSpeed: 56,  pitchRate: 1.3, rollRate: 1.7, yawRate: 0.8 },
-  b767:  { mass: 155000, wingArea: 283.3, liftCoeff: 1.5,  dragCoeff: 0.027, thrustMax: 560000,  stallSpeed: 56,  pitchRate: 1.3, rollRate: 1.6, yawRate: 0.7 },
+  // --- CLASSIC JETS ---
+  b707:  { mass: 117000, wingArea: 283,   liftCoeff: 1.4,  dragCoeff: 0.029, thrustMax: 320000,  stallSpeed: 58,  pitchRate: 2.8, rollRate: 3.2, yawRate: 1.0 },
+  b717:  { mass: 49000,  wingArea: 93,    liftCoeff: 1.35, dragCoeff: 0.030, thrustMax: 170000,  stallSpeed: 52,  pitchRate: 4.0, rollRate: 4.8, yawRate: 1.8 },
+  b727:  { mass: 86000,  wingArea: 157.9, liftCoeff: 1.4,  dragCoeff: 0.029, thrustMax: 213000,  stallSpeed: 56,  pitchRate: 3.2, rollRate: 3.8, yawRate: 1.4 },
+  b767:  { mass: 155000, wingArea: 283.3, liftCoeff: 1.5,  dragCoeff: 0.027, thrustMax: 560000,  stallSpeed: 56,  pitchRate: 3.0, rollRate: 3.5, yawRate: 1.2 },
 
   // --- KAMPFJETS ---
-  // Hohes Schub-Gewicht-Verhältnis + hohe Rollraten + niedrige Flächenbelastung verträgt.
-  f16:     { mass: 8570,  wingArea: 27.87, liftCoeff: 1.55, dragCoeff: 0.022, thrustMax: 131000, stallSpeed: 67, pitchRate: 4.5, rollRate: 6.0, yawRate: 2.0 },
-  f22:     { mass: 19700, wingArea: 78.04, liftCoeff: 1.6,  dragCoeff: 0.021, thrustMax: 312000, stallSpeed: 72, pitchRate: 5.0, rollRate: 6.5, yawRate: 2.2 },
-  f35:     { mass: 13199, wingArea: 42.7,  liftCoeff: 1.55, dragCoeff: 0.022, thrustMax: 191000, stallSpeed: 69, pitchRate: 4.2, rollRate: 5.5, yawRate: 1.9 },
-  typhoon: { mass: 11000, wingArea: 51.2,  liftCoeff: 1.6,  dragCoeff: 0.022, thrustMax: 180000, stallSpeed: 65, pitchRate: 4.8, rollRate: 6.2, yawRate: 2.1 },
-  rafale:  { mass: 10300, wingArea: 45.7,  liftCoeff: 1.6,  dragCoeff: 0.022, thrustMax: 151200, stallSpeed: 64, pitchRate: 4.6, rollRate: 6.0, yawRate: 2.0 },
+  // Realistische Steuerkurse: F-16 ~15°/s Roll, F-22 ~20°/s
+  // Höheres Thrust-Weight ratio für bessere Beschleunigung
+  f16:     { mass: 8570,  wingArea: 27.87, liftCoeff: 1.55, dragCoeff: 0.022, thrustMax: 131000, stallSpeed: 67, pitchRate: 8.0, rollRate: 12.0, yawRate: 4.0 },
+  f22:     { mass: 19700, wingArea: 78.04, liftCoeff: 1.6,  dragCoeff: 0.021, thrustMax: 312000, stallSpeed: 72, pitchRate: 9.0, rollRate: 14.0, yawRate: 4.5 },
+  f35:     { mass: 13199, wingArea: 42.7,  liftCoeff: 1.55, dragCoeff: 0.022, thrustMax: 191000, stallSpeed: 69, pitchRate: 7.5, rollRate: 11.0, yawRate: 3.8 },
+  typhoon: { mass: 11000, wingArea: 51.2,  liftCoeff: 1.6,  dragCoeff: 0.022, thrustMax: 180000, stallSpeed: 65, pitchRate: 8.5, rollRate: 12.5, yawRate: 4.2 },
+  rafale:  { mass: 10300, wingArea: 45.7,  liftCoeff: 1.6,  dragCoeff: 0.022, thrustMax: 151200, stallSpeed: 64, pitchRate: 8.0, rollRate: 12.0, yawRate: 4.0 },
 };
 const DEFAULT_PHYSICS = AIRCRAFT_PHYSICS.a320;
 
@@ -525,19 +529,21 @@ function createPlayer(id, aircraftType = 'a320', spawnOpts = {}) {
 }
 
 // Maximale gewünschte Stick-Deflection in Radiant
-const MAX_PITCH_CMD = 0.42;  // ~24° Pitch
-const MAX_ROLL_CMD  = 1.05;  // ~60° Bank
-const ROT_FACTOR    = 1.1;   // Rotations­geschwindigkeit ≈ 1.1 × stallSpeed
+const MAX_PITCH_CMD = 0.50;  // ~29° Pitch (realistischer für Kunstflug)
+const MAX_ROLL_CMD  = 1.26;  // ~72° Bank (volle Capability)
+const MAX_YAW_CMD   = 0.35;  // ~20° Seitenruder-Ausschlag
+const ROT_FACTOR    = 1.0;   // Rotations­geschwindigkeit ≈ stallSpeed
 
 function updatePhysics(p) {
   if (!p.alive) return;
   const input = p.input;
   const ph = p.phys;
 
-  // Steuerwirksamkeit skaliert mit Anströmgeschwindigkeit:
-  // unter ~60 kt IAS mushy, bei Reiseflug scharf
+  // Steuerwirksamkeit: unter stallSpeed mushy, über cruise speed voll
+  // Realistisch: unter ~1.3× stall Speed wird's träge, bei normal Reiseflug (200+ kt) voll präzise
   const vKt = p.speed * 1.944;
-  const ctrlEff = clamp(vKt / 70, 0.2, 1.3);
+  const stallFactor = vKt / Math.max(p.phys.stallSpeed, 1);
+  const ctrlEff = clamp(stallFactor * 0.35, 0.08, 1.8);
 
   // ── ATTITUDE COMMAND (Ziel-Lage statt Ratensteuerung) ──
   // input = Stick-Position in [-1,1]; das Flugzeug lerpt Richtung
@@ -547,9 +553,11 @@ function updatePhysics(p) {
   p.pitch += (tgtPitch - p.pitch) * ph.pitchRate * ctrlEff * DT;
   p.roll  += (tgtRoll  - p.roll ) * ph.rollRate  * ctrlEff * DT;
 
-  // Yaw: Seitenruder-Kommando + Turn-Coordination aus Bank
+  // Yaw: Seitenruder + Turn-Coordination aus Bank
+  // Realistische Seitenruder-Wirkung: proportional zum Schub, coordinated turn
   const coordYawRate = p.speed > 25 ? (GRAVITY * Math.tan(p.roll)) / Math.max(p.speed, 30) : 0;
-  p.yaw += (input.yaw * ph.yawRate * ctrlEff + coordYawRate) * DT;
+  const yawCmd = clamp(input.yaw, -1, 1) * MAX_YAW_CMD;
+  p.yaw += (yawCmd * ph.yawRate * ctrlEff + coordYawRate) * DT;
 
   // Ground-Lock: am Boden und unter Rotationsgeschwindigkeit sind
   // Pitch/Roll passiv — keine ungewollten Aufbäumer beim Taxiing.
@@ -562,7 +570,10 @@ function updatePhysics(p) {
 
   p.pitch = clamp(p.pitch, -Math.PI / 3, Math.PI / 3);
   p.roll  = clamp(p.roll,  -Math.PI / 2.2, Math.PI / 2.2);
-  p.throttle = clamp(p.throttle + input.throttle * DT * 0.6, 0, 1);
+  // Throttle: Realistische Engine-Spool-Up/Down (träger als input)
+  // Jet engines brauchen ~3-5s von idle到vollschub, daher der langsame factor
+  const tgtThrottle = clamp(p.throttle + input.throttle * DT * 0.6, 0, 1);
+  p.throttle += (tgtThrottle - p.throttle) * DT * 1.8; // Träge Annäherung
   p.fuelPercent = Math.max(0, p.fuelPercent - p.throttle * 0.002 * DT);
   const fuelMult = p.fuelPercent > 0 ? 1 : 0;
 
