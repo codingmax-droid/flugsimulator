@@ -2650,6 +2650,8 @@ function updateDepAircraft() {
 
 function initCockpit() {
   // 3D-Cockpit (in der Szene, folgt dem Flugzeug)
+  // Aircraft-type specific cockpit: Fighters get different layout
+  const acType = selectedAircraft || 'a320';
   cockpit3d = new Cockpit3D(scene, (type, data) => {
     if (!ws || ws.readyState !== 1) return;
     switch (type) {

@@ -26,9 +26,11 @@ const COL = {
 };
 
 export class Cockpit3D {
-  constructor(scene, onAction) {
+  constructor(scene, onAction, aircraftType = 'a320') {
     this.scene = scene;
     this.onAction = onAction;
+    this.aircraftType = aircraftType;
+    this.isFighter = ['f16', 'f22', 'f35', 'typhoon', 'rafale'].includes(aircraftType);
 
     this.group = new THREE.Group();
     this.group.visible = false;
@@ -138,6 +140,12 @@ export class Cockpit3D {
     this.s.masterCaut = this.flight.fuel < 0.15 && this.flight.fuel >= 0.05;
 
     this._updateDynamic();
+    if (this.isFighter) {
+      this._renderHUD();
+      this._renderMFDLeft();
+      this._renderMFDRight();
+      this._renderDED();
+    }
   }
 
   setInput(pitch, roll, yaw) {
@@ -153,17 +161,25 @@ export class Cockpit3D {
   // ============================================================
 
   _build() {
-    this._buildShell();
-    this._buildGlareshield();
-    this._buildMainPanel();
-    this._buildFCU();
-    this._buildCenterPedestal();
-    this._buildMCDUandRadio();
-    this._buildOverhead();
-    this._buildSidesticks();
-    this._buildRudderPedals();
-    this._buildSeats();
-    this._buildChronoAndWarnings();
+    if (this.isFighter) {
+      this._buildFighterShell();
+      this._buildFighterPanel();
+      this._buildFighterSideSticks();
+      this._buildFighterCenterConsole();
+      this._buildFighterOverhead();
+    } else {
+      this._buildShell();
+      this._buildGlareshield();
+      this._buildMainPanel();
+      this._buildFCU();
+      this._buildCenterPedestal();
+      this._buildMCDUandRadio();
+      this._buildOverhead();
+      this._buildSidesticks();
+      this._buildRudderPedals();
+      this._buildSeats();
+      this._buildChronoAndWarnings();
+    }
     this._buildCockpitLighting();
   }
 
@@ -1417,7 +1433,12 @@ export class Cockpit3D {
       capt.rotation.x = THREE.MathUtils.clamp(-this.input.pitch * 0.35, -0.45, 0.45);
       capt.rotation.z = THREE.MathUtils.clamp(this.input.roll * 0.35, -0.45, 0.45);
     }
-    // F/O-Sidestick bleibt still (Cross-coupling in echt: nein; visuell ruhig)
+    // Fighter side stick
+    const fStick = this.parts.sideStick;
+    if (fStick && this.isFighter) {
+      fStick.rotation.x = THREE.MathUtils.clamp(-this.input.pitch * 0.4, -0.5, 0.5);
+      fStick.rotation.z = THREE.MathUtils.clamp(this.input.roll * 0.4, -0.5, 0.5);
+    }
   }
 
   _animatePedals() {
@@ -2327,5 +2348,377 @@ export class Cockpit3D {
         break;
       }
     }
+  }
+
+  // ============================================================
+  // FIGHTER COCKPIT BUILD METHODS
+  // ============================================================
+
+  _buildFighterShell() {
+    const col = { shell: 0x1a1a1e, sidewall: 0x252528, floor: 0x0f0f10, ceiling: 0x181820 };
+    const shellMat = new THREE.MeshStandardMaterial({ color: col.shell, roughness: 0.85, metalness: 0.05 });
+    const sideMat = new THREE.MeshStandardMaterial({ color: col.sidewall, roughness: 0.9 });
+    const floorMat = new THREE.MeshStandardMaterial({ color: col.floor, roughness: 0.95 });
+    const ceilMat = new THREE.MeshStandardMaterial({ color: col.ceiling, roughness: 0.85 });
+
+    const floor = new THREE.Mesh(new THREE.BoxGeometry(2.0, 0.05, 2.2), floorMat);
+    floor.position.set(0, 0.02, 0.2);
+    this.group.add(floor);
+
+    const ceil = new THREE.Mesh(new THREE.BoxGeometry(2.0, 0.05, 2.2), ceilMat);
+    ceil.position.set(0, 1.85, 0.2);
+    this.group.add(ceil);
+
+    const back = new THREE.Mesh(new THREE.BoxGeometry(2.0, 1.85, 0.08), shellMat);
+    back.position.set(0, 0.95, -0.85);
+    this.group.add(back);
+
+    for (const side of [-1, 1]) {
+      const wall = new THREE.Mesh(new THREE.BoxGeometry(0.08, 1.85, 2.2), sideMat);
+      wall.position.set(0.96 * side, 0.95, 0.2);
+      this.group.add(wall);
+    }
+
+    // Canopy Rahmen
+    for (let i = -1; i <= 1; i++) {
+      const seg = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.12, 0.1), shellMat);
+      seg.position.set(i * 0.55, 1.78 + Math.abs(i) * -0.04, 1.3);
+      seg.rotation.z = i * 0.06;
+      this.group.add(seg);
+    }
+    for (const side of [-1, 1]) {
+      const pillar = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.7, 0.08), shellMat);
+      pillar.position.set(side * 0.95, 1.45, 1.3);
+      pillar.rotation.z = side * 0.1;
+      this.group.add(pillar);
+    }
+    const centerPillar = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.6, 0.07), shellMat);
+    centerPillar.position.set(0, 1.5, 1.3);
+    this.group.add(centerPillar);
+  }
+
+  _buildFighterPanel() {
+    // Fighter HUD statt mehrere Displays
+    const hudBezel = new THREE.Mesh(
+      new THREE.BoxGeometry(0.65, 0.25, 0.05),
+      new THREE.MeshStandardMaterial({ color: 0x0a0a0c, roughness: 0.7, metalness: 0.2 })
+    );
+    hudBezel.position.set(0, 1.35, 0.9);
+    hudBezel.rotation.x = -0.15;
+    this.group.add(hudBezel);
+
+    this.parts.hudCanvas = document.createElement('canvas');
+    this.parts.hudCanvas.width = 512; this.parts.hudCanvas.height = 200;
+    const hudCtx = this.parts.hudCanvas.getContext('2d');
+    this.textures.hud = new THREE.CanvasTexture(this.parts.hudCanvas);
+    this.textures.hud.colorSpace = THREE.SRGBColorSpace;
+    const hudScreen = new THREE.Mesh(
+      new THREE.PlaneGeometry(0.62, 0.22),
+      new THREE.MeshBasicMaterial({ map: this.textures.hud, toneMapped: false })
+    );
+    hudScreen.position.set(0, 1.35, 0.92);
+    hudScreen.rotation.x = -0.15;
+    this.group.add(hudScreen);
+
+    // LEFT MFD (Stores / Weapon)
+    this.parts.mfdLeft = this._addDisplay(this.group, -0.55, 0.02, 0.88, 0.22, 0.18, 'mfdL', 512);
+    // RIGHT MFD (Radar / Info)
+    this.parts.mfdRight = this._addDisplay(this.group, 0.55, 0.02, 0.88, 0.22, 0.18, 'mfdR', 512);
+
+    // DED (Data Entry Display) unter links MFD
+    this.parts.ded = this._addDisplay(this.group, -0.55, -0.17, 0.88, 0.18, 0.12, 'ded', 512);
+    // UFC (Up Front Controller) Tastenfeld daneben
+    this._buildUFCPanel();
+
+    this._renderHUD();
+    this._renderMFDLeft();
+    this._renderMFDRight();
+    this._renderDED();
+  }
+
+  _buildUFCPanel() {
+    const ufc = new THREE.Group();
+    ufc.position.set(-0.28, 0.92, 0.88);
+    ufc.rotation.x = -0.3;
+    this.group.add(ufc);
+
+    const body = new THREE.Mesh(
+      new THREE.BoxGeometry(0.28, 0.1, 0.06),
+      new THREE.MeshStandardMaterial({ color: 0x1a1a20, roughness: 0.7 })
+    );
+    ufc.add(body);
+
+    // 4×3 Tasten-Matrix
+    const btnColors = [0x222230, 0x222230, 0x223322, 0x222230, 0x222230, 0x223322, 0x222230, 0x222230, 0x223322, 0x222230, 0x222230, 0x332222];
+    let idx = 0;
+    for (let row = 0; row < 4; row++) {
+      for (let col = 0; col < 3; col++) {
+        const btn = new THREE.Mesh(
+          new THREE.BoxGeometry(0.05, 0.025, 0.008),
+          new THREE.MeshStandardMaterial({ color: btnColors[idx], emissive: 0x111122, emissiveIntensity: 0.2 })
+        );
+        btn.position.set(-0.09 + col * 0.06, 0.03 - row * 0.022, 0.032);
+        btn.userData.clickable = true;
+        btn.userData.action = { type: 'ufcBtn', index: idx };
+        this.clickables.push(btn);
+        ufc.add(btn);
+        idx++;
+      }
+    }
+  }
+
+  _renderHUD() {
+    const ctx = this.parts.hudCanvas.getContext('2d');
+    ctx.clearRect(0, 0, 512, 200);
+    ctx.fillStyle = '#001122';
+    ctx.fillRect(0, 0, 512, 200);
+
+    const cx = 256, cy = 100;
+    ctx.strokeStyle = '#00ff88';
+    ctx.lineWidth = 1.5;
+
+    // Flight path marker
+    ctx.beginPath();
+    ctx.moveTo(cx, cy - 20); ctx.lineTo(cx - 15, cy + 10); ctx.lineTo(cx, cy + 5); ctx.lineTo(cx + 15, cy + 10);
+    ctx.closePath(); ctx.stroke();
+
+    // Heading tape segments
+    ctx.font = '11px monospace';
+    ctx.fillStyle = '#00ff88';
+    const hdg = this.flight.heading || 0;
+    for (let d = -30; d <= 30; d += 10) {
+      const tickHdg = ((hdg + d + 360) % 360);
+      const x = cx + d * 3;
+      ctx.beginPath(); ctx.moveTo(x, cy + 25); ctx.lineTo(x, cy + 30); ctx.stroke();
+      if (d % 20 === 0) ctx.fillText(String(tickHdg).padStart(3, '0'), x - 12, cy + 42);
+    }
+
+    // Speed ladder
+    ctx.fillStyle = '#00ff88';
+    const spd = Math.round(this.flight.speed * 1.944);
+    for (let d = -4; d <= 4; d++) {
+      const y = cy + d * 18;
+      ctx.beginPath(); ctx.moveTo(cx - 60, y); ctx.lineTo(cx - 50, y); ctx.stroke();
+      if (d === 0) ctx.fillText(String(spd), cx - 80, y + 4);
+    }
+
+    // Altitude tape
+    const alt = Math.round(this.flight.altitude * 3.281);
+    ctx.fillText(String(alt).padStart(5, '0'), cx + 55, cy + 4);
+
+    // G-Force display
+    const g = this.flight.gLoad?.toFixed(2) || '1.00';
+    ctx.fillStyle = Math.abs(this.flight.gLoad) > 3.5 ? '#ff4444' : '#00ff88';
+    ctx.font = 'bold 13px monospace';
+    ctx.fillText(`G:${g}`, 20, 25);
+
+    // Throttle percent
+    const thr = Math.round((this.flight.throttle || 0) * 100);
+    ctx.fillStyle = '#ffcc00';
+    ctx.fillText(`THR:${thr}%`, 20, 45);
+
+    // Stall warning
+    if (this.flight.stallWarning) {
+      ctx.fillStyle = '#ff0000';
+      ctx.font = 'bold 16px monospace';
+      ctx.fillText('!! STALL !!', cx - 45, 60);
+    }
+  }
+
+  _renderMFDLeft() {
+    const ctx = this.mfdLCtx;
+    if (!ctx) return;
+    ctx.clearRect(0, 0, 512, 360);
+    ctx.fillStyle = '#001108';
+    ctx.fillRect(0, 0, 512, 360);
+    ctx.strokeStyle = '#00ff44';
+    ctx.lineWidth = 1;
+    ctx.font = '12px monospace';
+
+    // Weapon stores status
+    ctx.fillStyle = '#00ff44';
+    ctx.fillText('STORES', 20, 25);
+    ctx.fillStyle = '#88ff88';
+    ctx.fillText('AIM-9X [2]', 20, 50);
+    ctx.fillText('AIM-120D [4]', 20, 70);
+    ctx.fillText('CBU-97 [2]', 20, 90);
+    ctx.fillText('FUEL: ' + Math.round(this.flight.fuel * 100) + '%', 20, 120);
+
+    // Master mode
+    ctx.fillStyle = '#ffaa00';
+    ctx.font = 'bold 14px monospace';
+    ctx.fillText('A/A', 400, 30);
+    ctx.strokeRect(395, 15, 40, 20);
+  }
+
+  _renderMFDRight() {
+    const ctx = this.mfdRCtx;
+    if (!ctx) return;
+    ctx.clearRect(0, 0, 512, 360);
+    ctx.fillStyle = '#001108';
+    ctx.fillRect(0, 0, 512, 360);
+    ctx.strokeStyle = '#00ff44';
+    ctx.lineWidth = 1;
+    ctx.font = '12px monospace';
+
+    ctx.fillStyle = '#00ff44';
+    ctx.fillText('RADAR', 20, 25);
+    ctx.fillStyle = '#88ff88';
+    ctx.fillText('TGT: ---', 20, 50);
+    ctx.fillText('RANGE: 20 NM', 20, 70);
+    ctx.fillText('ALT: ' + Math.round(this.flight.altitude) + 'M', 20, 90);
+
+    ctx.fillStyle = '#00ff44';
+    ctx.fillText('HSI', 400, 25);
+    ctx.strokeRect(395, 15, 40, 20);
+  }
+
+  _renderDED() {
+    const ctx = this.dedCtx;
+    if (!ctx) return;
+    ctx.clearRect(0, 0, 512, 360);
+    ctx.fillStyle = '#001108';
+    ctx.fillRect(0, 0, 512, 360);
+    ctx.fillStyle = '#ffaa00';
+    ctx.font = '14px monospace';
+    ctx.fillText('DED', 10, 25);
+    ctx.fillStyle = '#00ff44';
+    ctx.fillText('TOS: 00:00:00', 10, 50);
+    ctx.fillText('WPT: --', 10, 75);
+  }
+
+  _buildFighterSideSticks() {
+    const stickMat = new THREE.MeshStandardMaterial({ color: 0x1c1c1e, metalness: 0.4, roughness: 0.6 });
+    const rubberMat = new THREE.MeshStandardMaterial({ color: 0x0a0a0a, roughness: 0.95 });
+
+    for (const side of ['left']) {
+      const x = side === 'left' ? -0.32 : 0.32;
+      const stickGroup = new THREE.Group();
+      stickGroup.position.set(x, 0.95, 0.35);
+      this.group.add(stickGroup);
+      this.parts.sideStick = stickGroup;
+
+      const grip = new THREE.Mesh(new THREE.BoxGeometry(0.045, 0.08, 0.12), rubberMat);
+      grip.position.set(0, 0.12, 0.05);
+      stickGroup.add(grip);
+
+      const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.018, 0.18, 12), stickMat);
+      shaft.position.set(0, 0.02, -0.02);
+      stickGroup.add(shaft);
+
+      // Trigger button
+      const trigger = new THREE.Mesh(
+        new THREE.BoxGeometry(0.02, 0.025, 0.01),
+        new THREE.MeshStandardMaterial({ color: 0x882222, emissive: 0x441111 })
+      );
+      trigger.position.set(0, 0.06, 0.11);
+      trigger.userData.clickable = true;
+      trigger.userData.action = { type: 'weaponTrigger' };
+      this.clickables.push(trigger);
+      stickGroup.add(trigger);
+
+      // Weapon pickle button (top of grip)
+      const pickle = new THREE.Mesh(
+        new THREE.BoxGeometry(0.015, 0.02, 0.015),
+        new THREE.MeshStandardMaterial({ color: 0x228822, emissive: 0x114411 })
+      );
+      pickle.position.set(0, 0.15, 0.02);
+      pickle.userData.clickable = true;
+      pickle.userData.action = { type: 'weaponPickle' };
+      this.clickables.push(pickle);
+      stickGroup.add(pickle);
+    }
+
+    // Throttle Handle
+    const throttleGroup = new THREE.Group();
+    throttleGroup.position.set(-0.55, 0.65, 0.25);
+    this.group.add(throttleGroup);
+    this.parts.fighterThrottle = throttleGroup;
+
+    const tHandle = new THREE.Mesh(
+      new THREE.BoxGeometry(0.04, 0.14, 0.08),
+      new THREE.MeshStandardMaterial({ color: 0x151518, metalness: 0.3, roughness: 0.5 })
+    );
+    throttleGroup.add(tHandle);
+
+    // Target designation hat (mini hat switch on throttle)
+    const hat = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.018, 0.018, 0.008, 12),
+      new THREE.MeshStandardMaterial({ color: 0x1a1a1a })
+    );
+    hat.position.set(0, 0.08, 0);
+    throttleGroup.add(hat);
+    hat.userData.clickable = true;
+    hat.userData.action = { type: 'targetDesignator' };
+    this.clickables.push(hat);
+  }
+
+  _buildFighterCenterConsole() {
+    // Schmaleres Center Pedestal für Fighter
+    const pedMat = new THREE.MeshStandardMaterial({ color: 0x252528, roughness: 0.8 });
+    const pedestal = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.45, 0.65), pedMat);
+    pedestal.position.set(0, 0.57, 0.25);
+    this.group.add(pedestal);
+
+    const topPlate = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.015, 0.65), pedMat);
+    topPlate.position.set(0, 0.8, 0.25);
+    this.group.add(topPlate);
+
+    // ECM / EW panel
+    const ecmCanvas = document.createElement('canvas');
+    ecmCanvas.width = 128; ecmCanvas.height = 256;
+    const ecmCtx = ecmCanvas.getContext('2d');
+    ecmCtx.fillStyle = '#0a0a0f'; ecmCtx.fillRect(0, 0, 128, 256);
+    ecmCtx.fillStyle = '#ff8800'; ecmCtx.font = 'bold 11px monospace'; ecmCtx.fillText('ECM', 10, 20);
+    ecmCtx.fillStyle = '#00ff88'; ecmCtx.fillText('RWR: ---', 10, 45);
+    ecmCtx.fillText('FLARE: 30', 10, 65);
+    ecmCtx.fillText('CHAFF: 30', 10, 85);
+    const ecmTex = new THREE.CanvasTexture(ecmCanvas);
+    ecmTex.colorSpace = THREE.SRGBColorSpace;
+    const ecmPanel = new THREE.Mesh(
+      new THREE.PlaneGeometry(0.12, 0.2),
+      new THREE.MeshBasicMaterial({ map: ecmTex, toneMapped: false })
+    );
+    ecmPanel.position.set(0, 0.72, 0.1);
+    ecmPanel.rotation.x = -0.3;
+    this.group.add(ecmPanel);
+  }
+
+  _buildFighterOverhead() {
+    const overhead = new THREE.Mesh(
+      new THREE.BoxGeometry(1.9, 0.04, 0.8),
+      new THREE.MeshStandardMaterial({ color: 0x1e1e22, roughness: 0.85 })
+    );
+    overhead.position.set(0, 1.78, 0.1);
+    this.group.add(overhead);
+
+    // Warning lights panel
+    const warnPanel = new THREE.Group();
+    warnPanel.position.set(-0.6, 1.75, 0.4);
+    this.group.add(warnPanel);
+    this.parts.warnLights = [];
+
+    const warnLabels = ['MASTER\nCAUTION', 'MASTER\nWARNING', 'ENG\nFIRE', 'HYD'];
+    const warnColors = [0xaaaa00, 0xff4444, 0xff2200, 0x00ff44];
+    for (let i = 0; i < 4; i++) {
+      const light = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.015, 0.015, 0.003, 16),
+        new THREE.MeshStandardMaterial({ color: warnColors[i], emissive: warnColors[i], emissiveIntensity: 0.5 })
+      );
+      light.rotation.x = Math.PI / 2;
+      light.position.set(i * 0.06 - 0.09, 0, 0.02);
+      warnPanel.add(light);
+      this.parts.warnLights.push(light);
+    }
+
+    // Anti-G seats
+    const seatMat = new THREE.MeshStandardMaterial({ color: 0x252530, roughness: 0.9 });
+    const seat = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.12, 0.35), seatMat);
+    seat.position.set(0, 0.5, -0.15);
+    this.group.add(seat);
+    const seatBack = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.5, 0.08), seatMat);
+    seatBack.position.set(0, 0.8, -0.28);
+    seatBack.rotation.x = 0.15;
+    this.group.add(seatBack);
   }
 }
