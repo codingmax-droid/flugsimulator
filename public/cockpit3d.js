@@ -1726,125 +1726,222 @@ export class Cockpit3D {
     const W = 512, H = 512;
     ctx.fillStyle = '#000'; ctx.fillRect(0, 0, W, H);
 
-    // FMA-Bar oben (Airbus: 5 grüne/weiße Spalten)
-    const fma = [
-      { t: this.flight.autopilot ? 'CLB' : '', c: '#22ee44' },
-      { t: this.s.apHdgHold ? 'HDG' : 'HDG', c: '#22ee44' },
-      { t: this.s.apAltHold ? 'ALT' : '', c: '#22ee44' },
-      { t: this.s.apLoc ? 'LOC' : '', c: '#ffffff' },
-      { t: this.flight.autopilot ? 'AP1' : '', c: '#ffffff' },
+    // FMA-Bar (Airbus Style - 5 columns)
+    ctx.fillStyle = '#111'; ctx.fillRect(5, 5, W - 10, 32);
+    ctx.strokeStyle = '#333'; ctx.strokeRect(5, 5, W - 10, 32);
+    const fmaCols = [
+      { t: this.flight.autopilot ? 'CLB' : '', color: '#33ff66' },
+      { t: 'HDG', color: this.s.apHdgHold ? '#33ff66' : '#33ff66' },
+      { t: 'ALT', color: this.s.apAltHold ? '#33ff66' : '#33ff66' },
+      { t: this.s.apLoc ? 'LOC' : '', color: '#ffffff' },
+      { t: this.flight.autopilot ? 'AP1' : '', color: '#ffffff' },
     ];
-    ctx.fillStyle = '#0a0a0e'; ctx.fillRect(5, 5, W - 10, 34);
-    ctx.strokeStyle = '#444'; ctx.strokeRect(5, 5, W - 10, 34);
-    ctx.font = 'bold 18px monospace'; ctx.textAlign = 'center';
     const cw = (W - 10) / 5;
-    fma.forEach((f, i) => {
-      ctx.fillStyle = f.c;
-      ctx.fillText(f.t, 5 + cw * i + cw / 2, 28);
+    ctx.font = 'bold 16px monospace'; ctx.textAlign = 'center';
+    fmaCols.forEach((f, i) => {
+      ctx.fillStyle = f.color;
+      ctx.fillText(f.t, 5 + cw * i + cw / 2, 27);
     });
 
-    // Attitude-Indikator (Mittelbereich)
-    const cx = W / 2, cy = H / 2 + 30;
+    // Main Attitude Area
+    const cx = W / 2, cy = H / 2 + 25;
+
+    // Sky/Brown background (pitch-sensitive)
     ctx.save();
-    ctx.beginPath(); ctx.rect(90, 60, W - 180, H - 160); ctx.clip();
+    ctx.beginPath(); ctx.rect(70, 55, W - 140, H - 140); ctx.clip();
     ctx.translate(cx, cy);
     ctx.rotate(-this.flight.roll);
-    const horizon = this.flight.pitch * 280;
-    ctx.fillStyle = '#0e5a92'; ctx.fillRect(-500, -600 + horizon, 1000, 600);
-    ctx.fillStyle = '#6e4722'; ctx.fillRect(-500, horizon, 1000, 600);
-    ctx.strokeStyle = '#fff'; ctx.lineWidth = 2.5;
-    ctx.beginPath(); ctx.moveTo(-500, horizon); ctx.lineTo(500, horizon); ctx.stroke();
-    ctx.strokeStyle = '#fff'; ctx.fillStyle = '#fff';
-    ctx.font = 'bold 13px monospace'; ctx.textAlign = 'center';
-    for (let p = -60; p <= 60; p += 10) {
+    const pitchOff = this.flight.pitch * 7; // 1° pitch = 7 pixels
+    ctx.fillStyle = '#0055a5'; ctx.fillRect(-300, -350 + pitchOff, 600, 350);
+    ctx.fillStyle = '#8b6914'; ctx.fillRect(-300, pitchOff, 600, 350);
+    ctx.restore();
+
+    // Pitch ladder lines (every 5°, labeled every 10°)
+    ctx.save();
+    ctx.beginPath(); ctx.rect(70, 55, W - 140, H - 140); ctx.clip();
+    ctx.translate(cx, cy);
+    ctx.rotate(-this.flight.roll);
+    ctx.strokeStyle = '#ffffff'; ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 11px monospace';
+    ctx.lineWidth = 1;
+    for (let p = -60; p <= 60; p += 5) {
       if (p === 0) continue;
-      const y = horizon - p * 6;
-      const w = p % 20 === 0 ? 80 : 40;
-      ctx.lineWidth = 1.5;
-      ctx.beginPath(); ctx.moveTo(-w/2, y); ctx.lineTo(w/2, y); ctx.stroke();
-      if (p % 20 === 0) {
-        ctx.fillText(`${Math.abs(p)}`, -w/2 - 14, y + 4);
-        ctx.fillText(`${Math.abs(p)}`, w/2 + 14, y + 4);
+      const y = -p * 7 + this.flight.pitch * 7;
+      const w = p % 10 === 0 ? 70 : 35;
+      ctx.beginPath();
+      if (p > 0) { ctx.moveTo(-w, y); ctx.lineTo(w, y); }
+      else { ctx.moveTo(-w, y); ctx.lineTo(w, y); }
+      ctx.stroke();
+      if (p % 10 === 0) {
+        ctx.textAlign = 'right';
+        ctx.fillText(`${Math.abs(p)}`, -w - 5, y + 4);
+        ctx.textAlign = 'left';
+        ctx.fillText(`${Math.abs(p)}`, w + 5, y + 4);
+      }
+    }
+    // Horizon line (solid)
+    ctx.strokeStyle = '#fff'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(-200, this.flight.pitch * 7); ctx.lineTo(200, this.flight.pitch * 7); ctx.stroke();
+    ctx.restore();
+
+    // Bank angle scale (top arc)
+    ctx.save();
+    ctx.translate(cx, cy - 150);
+    ctx.strokeStyle = '#fff'; ctx.lineWidth = 2;
+    // Scale: ±10°, ±20°, ±30°, ±45°, ±60°
+    const bankAngles = [-60, -45, -30, -20, -10, 0, 10, 20, 30, 45, 60];
+    for (const ba of bankAngles) {
+      ctx.save();
+      ctx.rotate(ba * DEG);
+      ctx.beginPath(); ctx.moveTo(0, -130); ctx.lineTo(0, -130 + (Math.abs(ba) % 30 === 0 ? 16 : 10)); ctx.stroke();
+      ctx.restore();
+    }
+    // Bank pointer (triangle at bottom)
+    ctx.rotate(-this.flight.roll);
+    ctx.fillStyle = '#ffcc00';
+    ctx.beginPath(); ctx.moveTo(0, -130); ctx.lineTo(-9, -115); ctx.lineTo(9, -115); ctx.closePath(); ctx.fill();
+    ctx.restore();
+
+    // Aircraft symbol (fixed, centered)
+    ctx.strokeStyle = '#ffcc00'; ctx.lineWidth = 4; ctx.fillStyle = '#ffcc00';
+    ctx.beginPath(); ctx.moveTo(cx - 80, cy); ctx.lineTo(cx - 25, cy); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(cx + 25, cy); ctx.lineTo(cx + 80, cy); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(cx - 25, cy); ctx.lineTo(cx - 25, cy + 12); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(cx + 25, cy); ctx.lineTo(cx + 25, cy + 12); ctx.stroke();
+    ctx.fillRect(cx - 6, cy - 6, 12, 12);
+
+    // Slip indicator
+    ctx.fillStyle = '#222'; ctx.fillRect(cx - 55, cy + 138, 110, 12);
+    ctx.strokeStyle = '#666'; ctx.strokeRect(cx - 55, cy + 138, 110, 12);
+    const slipX = cx + THREE.MathUtils.clamp(this.flight.roll * 45, -45, 45);
+    ctx.fillStyle = '#ffcc00'; ctx.beginPath(); ctx.arc(slipX, cy + 144, 6, 0, Math.PI * 2); ctx.fill();
+
+    // === LEFT SIDE: Speed Tape ===
+    const spd = this.flight.speed * 1.944;
+    const spdTapeX = 14;
+    ctx.fillStyle = '#000'; ctx.fillRect(spdTapeX, 45, 70, H - 90);
+    ctx.strokeStyle = '#444'; ctx.strokeRect(spdTapeX, 45, 70, H - 90);
+
+    ctx.font = 'bold 11px monospace'; ctx.fillStyle = '#aaa';
+    ctx.textAlign = 'right';
+    ctx.fillText('KT', spdTapeX + 66, 58);
+
+    ctx.font = 'bold 18px monospace'; ctx.fillStyle = '#fff';
+    ctx.textAlign = 'center';
+    const targetSpd = Math.round(spd / 10) * 10;
+    for (let d = -5; d <= 5; d++) {
+      const v = targetSpd + d * 10;
+      if (v < 50 || v > 500) continue;
+      const ty = cy + (targetSpd - v) * 2.2;
+      if (ty < 55 || ty > H - 35) continue;
+      ctx.fillStyle = v === targetSpd ? '#fff' : '#888';
+      ctx.fillText(`${v}`, spdTapeX + 35, ty + 5);
+      ctx.strokeStyle = '#555'; ctx.lineWidth = 1;
+      ctx.beginPath();
+      if (v % 20 === 0) { ctx.moveTo(spdTapeX, ty); ctx.lineTo(spdTapeX + 14, ty); }
+      else { ctx.moveTo(spdTapeX + 8, ty); ctx.lineTo(spdTapeX + 14, ty); }
+      ctx.stroke();
+    }
+    // Speed window
+    ctx.fillStyle = '#000'; ctx.fillRect(spdTapeX - 2, cy - 20, 74, 40);
+    ctx.strokeStyle = '#ffcc00'; ctx.lineWidth = 2; ctx.strokeRect(spdTapeX - 2, cy - 20, 74, 40);
+    ctx.font = 'bold 22px monospace'; ctx.fillStyle = '#fff'; ctx.textAlign = 'center';
+    ctx.fillText(`${Math.round(spd)}`, spdTapeX + 35, cy + 8);
+    // V/S bug on speed tape
+    if (this.flight.vs > 100) { ctx.fillStyle = '#33ff66'; ctx.fillText('▲', spdTapeX + 62, cy - 5); }
+    if (this.flight.vs < -100) { ctx.fillStyle = '#ff4444'; ctx.fillText('▼', spdTapeX + 62, cy + 15); }
+
+    // === RIGHT SIDE: Altitude Tape ===
+    const alt = this.flight.altitude * 3.281;
+    const altTapeX = W - 84;
+    ctx.fillStyle = '#000'; ctx.fillRect(altTapeX, 45, 70, H - 90);
+    ctx.strokeStyle = '#444'; ctx.strokeRect(altTapeX, 45, 70, H - 90);
+
+    ctx.font = 'bold 11px monospace'; ctx.fillStyle = '#aaa';
+    ctx.textAlign = 'left';
+    ctx.fillText('FT', altTapeX + 4, 58);
+
+    ctx.font = 'bold 18px monospace'; ctx.fillStyle = '#fff';
+    ctx.textAlign = 'center';
+    const targetAlt = Math.round(alt / 100) * 100;
+    for (let d = -5; d <= 5; d++) {
+      const v = targetAlt + d * 100;
+      if (v < 0) continue;
+      const ty = cy + (targetAlt - v) * 0.5;
+      if (ty < 55 || ty > H - 35) continue;
+      ctx.fillStyle = v === targetAlt ? '#fff' : '#888';
+      ctx.fillText(`${v}`, altTapeX + 35, ty + 5);
+      ctx.strokeStyle = '#555'; ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(altTapeX + 56, ty); ctx.lineTo(altTapeX + 70, ty); ctx.stroke();
+    }
+    // Altitude window
+    ctx.fillStyle = '#000'; ctx.fillRect(altTapeX - 2, cy - 20, 74, 40);
+    ctx.strokeStyle = '#ffcc00'; ctx.lineWidth = 2; ctx.strokeRect(altTapeX - 2, cy - 20, 74, 40);
+    ctx.font = 'bold 22px monospace'; ctx.fillStyle = '#fff'; ctx.textAlign = 'center';
+    ctx.fillText(`${Math.round(alt)}`, altTapeX + 35, cy + 8);
+
+    // === V/S Indicator (right edge) ===
+    const vsFpm = this.flight.vs * 196.85;
+    ctx.fillStyle = '#000'; ctx.fillRect(W - 14, 80, 12, H - 170);
+    const vy = cy - THREE.MathUtils.clamp(vsFpm / 1500, -1, 1) * 120;
+    ctx.fillStyle = '#33ff66';
+    ctx.fillRect(W - 16, vy - 2, 16, 5);
+
+    // === Heading Tape (bottom) ===
+    ctx.fillStyle = '#000'; ctx.fillRect(80, H - 65, W - 160, 50);
+    ctx.strokeStyle = '#fff'; ctx.lineWidth = 1; ctx.strokeRect(80, H - 65, W - 160, 50);
+
+    ctx.save();
+    ctx.beginPath(); ctx.rect(80, H - 65, W - 160, 50); ctx.clip();
+    ctx.translate(cx - this.flight.heading * 3, 0);
+    ctx.font = 'bold 12px monospace';
+    ctx.textAlign = 'center';
+    for (let d = -45; d <= 45; d += 5) {
+      const v = ((Math.round(this.flight.heading / 10) * 10 + d) % 360 + 360) % 360;
+      const x = cx + d * 6;
+      ctx.fillStyle = '#fff';
+      const label = v === 0 ? 'N' : v === 90 ? 'E' : v === 180 ? 'S' : v === 270 ? 'W' : `${v}`;
+      ctx.fillText(label, x, H - 50);
+      if (v % 30 === 0) {
+        ctx.strokeStyle = '#888'; ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.moveTo(x, H - 38); ctx.lineTo(x, H - 32); ctx.stroke();
       }
     }
     ctx.restore();
 
-    // Roll-Indikator oben (Skala bis 60°)
-    ctx.save();
-    ctx.translate(cx, cy);
-    ctx.strokeStyle = '#fff'; ctx.lineWidth = 2;
-    for (let r = -60; r <= 60; r += 10) {
-      ctx.save();
-      ctx.rotate(r * DEG);
-      const big = r % 30 === 0;
-      ctx.beginPath();
-      ctx.moveTo(0, -150);
-      ctx.lineTo(0, -150 + (big ? 14 : 7));
-      ctx.stroke();
-      ctx.restore();
-    }
-    // Roll-Zeiger (invertierter Pfeil)
-    ctx.rotate(-this.flight.roll);
-    ctx.fillStyle = '#ffd000';
-    ctx.beginPath(); ctx.moveTo(0, -150); ctx.lineTo(-8, -136); ctx.lineTo(8, -136); ctx.closePath(); ctx.fill();
-    ctx.restore();
+    // Heading window
+    ctx.fillStyle = '#000'; ctx.fillRect(cx - 38, H - 25, 76, 22);
+    ctx.strokeStyle = '#ffcc00'; ctx.lineWidth = 2; ctx.strokeRect(cx - 38, H - 25, 76, 22);
+    ctx.fillStyle = '#ffcc00'; ctx.font = 'bold 18px monospace';
+    ctx.textAlign = 'center';
+    const hdgLabel = ['N','N','E','SE','S','SW','W','NW'][Math.round(this.flight.heading / 45) % 8];
+    ctx.fillText(`${hdgLabel} ${Math.round(this.flight.heading).toString().padStart(3,'0')}°`, cx, H - 8);
 
-    // Flugzeug-Marker
-    ctx.strokeStyle = '#ffd000'; ctx.lineWidth = 4;
-    ctx.beginPath();
-    ctx.moveTo(cx - 70, cy); ctx.lineTo(cx - 24, cy);
-    ctx.moveTo(cx + 24, cy); ctx.lineTo(cx + 70, cy);
-    ctx.moveTo(cx - 24, cy); ctx.lineTo(cx - 24, cy + 8);
-    ctx.moveTo(cx + 24, cy); ctx.lineTo(cx + 24, cy + 8);
-    ctx.stroke();
-    ctx.fillStyle = '#ffd000';
-    ctx.fillRect(cx - 5, cy - 5, 10, 10);
-
-    // Slip-Indikator (Kugel unter Attitude)
-    ctx.fillStyle = '#111'; ctx.fillRect(cx - 50, H/2 + 130, 100, 10);
-    ctx.strokeStyle = '#888'; ctx.strokeRect(cx - 50, H/2 + 130, 100, 10);
-    ctx.fillStyle = '#ffd000';
-    const slipX = cx + THREE.MathUtils.clamp(-this.flight.roll * 100, -40, 40);
-    ctx.beginPath(); ctx.arc(slipX, H/2 + 135, 5, 0, Math.PI * 2); ctx.fill();
-
-    // Speed-Tape links
-    this._drawTape(ctx, 16, 50, 72, H - 100, this.flight.speed * 1.944, 10, 'KT');
-
-    // Alt-Tape rechts
-    this._drawTape(ctx, W - 88, 50, 72, H - 100, this.flight.altitude * 3.281, 100, 'FT', true);
-
-    // VS-Anzeige ganz rechts
-    const vsFpm = this.flight.vs * 196.85;
-    ctx.fillStyle = '#0a0a0a'; ctx.fillRect(W - 12, 80, 10, H - 180);
-    const vy = H/2 - THREE.MathUtils.clamp(vsFpm / 2000, -1, 1) * 130;
-    ctx.fillStyle = '#33ff55';
-    ctx.fillRect(W - 14, vy - 2, 14, 4);
-
-    // Heading-Tape unten
-    ctx.fillStyle = '#0a0a0a'; ctx.fillRect(88, H - 62, W - 176, 48);
-    ctx.strokeStyle = '#fff'; ctx.lineWidth = 1; ctx.strokeRect(88, H - 62, W - 176, 48);
-    const hdg = this.flight.heading;
-    ctx.textAlign = 'center'; ctx.font = 'bold 12px monospace';
-    for (let d = -30; d <= 30; d += 10) {
-      const v = ((Math.round(hdg / 10) * 10 + d) % 360 + 360) % 360;
-      const x = cx + d * 6;
-      ctx.fillStyle = '#fff';
-      ctx.fillText(`${v === 0 ? 'N' : v === 90 ? 'E' : v === 180 ? 'S' : v === 270 ? 'W' : v.toString().padStart(3,'0')}`, x, H - 44);
-      ctx.strokeStyle = '#888'; ctx.beginPath();
-      ctx.moveTo(x, H - 32); ctx.lineTo(x, H - 26); ctx.stroke();
-    }
-    // Heading-Marker
-    ctx.fillStyle = '#0a0a0a'; ctx.fillRect(cx - 34, H - 22, 68, 18);
-    ctx.strokeStyle = '#ffd000'; ctx.lineWidth = 2; ctx.strokeRect(cx - 34, H - 22, 68, 18);
-    ctx.fillStyle = '#ffd000'; ctx.font = 'bold 16px monospace';
-    ctx.fillText(`${Math.round(hdg).toString().padStart(3, '0')}°`, cx, H - 8);
-
-    // ILS/VOR (wenn APPR aktiv)
+    // ILS indicator
     if (this.s.apAppr) {
       ctx.strokeStyle = '#00ff00'; ctx.lineWidth = 1.5;
-      ctx.strokeRect(W - 88, 70, 80, 20);
-      ctx.fillStyle = '#00ff00'; ctx.font = 'bold 11px monospace'; ctx.textAlign = 'left';
-      ctx.fillText('ILS 109.50', W - 84, 84);
+      ctx.strokeRect(W - 88, 70, 80, 22);
+      ctx.fillStyle = '#00ff00'; ctx.font = 'bold 10px monospace'; ctx.textAlign = 'left';
+      ctx.fillText('ILS', W - 84, 82);
+    }
+
+    // G-Force display (bottom left corner)
+    ctx.fillStyle = Math.abs(this.flight.gLoad) > 3.5 ? '#ff4444' : '#aaa';
+    ctx.font = 'bold 11px monospace';
+    ctx.fillText(`G ${this.flight.gLoad.toFixed(2)}`, 18, H - 18);
+
+    // Radio Alt (bottom left area)
+    if (this.flight.altitude < 2500) {
+      const radioAlt = Math.max(0, this.flight.altitude - 2).toFixed(0);
+      ctx.fillStyle = '#ffcc00'; ctx.font = 'bold 12px monospace';
+      ctx.fillText(`RA ${radioAlt}`, 18, 75);
+    }
+
+    // Landing gear indication
+    if (!this.flight.gear && this.flight.altitude < 1000) {
+      ctx.fillStyle = '#ff4444'; ctx.font = 'bold 14px monospace';
+      ctx.fillText('GEAR UP', cx - 30, cy - 100);
     }
 
     this.textures.pfd.needsUpdate = true;
@@ -1884,205 +1981,284 @@ export class Cockpit3D {
     const W = 512, H = 512;
     ctx.fillStyle = '#000'; ctx.fillRect(0, 0, W, H);
 
-    // Modus-Header (Airbus: ROSE / ARC / PLAN)
-    ctx.fillStyle = '#00cc66'; ctx.font = 'bold 14px monospace'; ctx.textAlign = 'left';
-    ctx.fillText(`ARC 80 NM`, 20, 25);
-    ctx.textAlign = 'right';
-    ctx.fillStyle = '#ffffff';
-    ctx.fillText(`GS ${Math.round(this.flight.speed * 1.944)}`, W - 20, 25);
-    ctx.fillText(`TAS ${Math.round(this.flight.speed * 1.944)}`, W - 20, 45);
+    // Mode selector
+    ctx.fillStyle = '#00cc66'; ctx.font = 'bold 12px monospace'; ctx.textAlign = 'left';
+    ctx.fillText('ARC  80', 15, 22);
+    ctx.textAlign = 'right'; ctx.fillStyle = '#888';
+    ctx.font = '11px monospace';
+    ctx.fillText(`GS ${Math.round(this.flight.speed * 1.944)} kt`, W - 15, 22);
+    ctx.fillText(`TAS ${Math.round(this.flight.speed * 1.944 * 0.98)} kt`, W - 15, 36);
 
-    // Kompass-Rose (halbrund, Airbus ARC-Modus)
-    const cx = W / 2, cy = H / 2 + 120;
+    const cx = W / 2, cy = H / 2 + 100;
+
+    // Compass rose with rotating frame
     ctx.save();
     ctx.translate(cx, cy);
     ctx.rotate(-this.flight.heading * DEG);
-    ctx.strokeStyle = '#cccccc';
-    // Range-Ringe
-    for (let r = 80; r <= 240; r += 80) {
-      ctx.lineWidth = 1;
-      ctx.beginPath(); ctx.arc(0, 0, r, -Math.PI + 0.5, -0.5); ctx.stroke();
-    }
-    // Äußerer Ring mit Ticks
-    ctx.lineWidth = 1.5;
-    ctx.beginPath(); ctx.arc(0, 0, 240, -Math.PI, 0); ctx.stroke();
-    ctx.fillStyle = '#ffffff'; ctx.font = 'bold 14px monospace'; ctx.textAlign = 'center';
-    for (let d = 0; d < 360; d += 5) {
-      ctx.save();
-      ctx.rotate(d * DEG);
-      const big = d % 30 === 0;
-      const med = d % 10 === 0;
-      ctx.strokeStyle = '#ffffff';
-      ctx.beginPath();
-      ctx.moveTo(0, -240);
-      ctx.lineTo(0, -240 + (big ? 16 : med ? 10 : 5));
-      ctx.stroke();
-      if (big) {
-        const lbl = d === 0 ? 'N' : d === 90 ? 'E' : d === 180 ? 'S' : d === 270 ? 'W' : `${(d/10).toString()}`;
-        ctx.fillStyle = (d === 0) ? '#ffff00' : '#ffffff';
-        ctx.fillText(lbl, 0, -258);
-      }
-      ctx.restore();
-    }
-    ctx.restore();
 
-    // Flugzeug-Symbol (fest in Mitte)
-    ctx.save();
-    ctx.translate(cx, cy);
-    ctx.fillStyle = '#ffff00';
-    ctx.beginPath();
-    ctx.moveTo(0, -20); ctx.lineTo(-14, 12); ctx.lineTo(0, 4); ctx.lineTo(14, 12); ctx.closePath();
-    ctx.fill();
-    ctx.restore();
+    // Range rings (80, 40, 20 NM if scale is 80)
+    ctx.strokeStyle = '#2a2a2a'; ctx.lineWidth = 1;
+    for (const r of [60, 120, 180]) {
+      ctx.beginPath(); ctx.arc(0, 0, r, -Math.PI * 0.8, -Math.PI * 0.2); ctx.stroke();
+    }
 
-    // Track-Linie (vorwärts)
-    ctx.strokeStyle = '#00ff00'; ctx.setLineDash([4, 4]);
-    ctx.lineWidth = 2;
-    ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx, cy - 240); ctx.stroke();
+    // Outer compass arc with ticks
+    ctx.strokeStyle = '#fff'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(0, 0, 200, -Math.PI * 0.8, -Math.PI * 0.2); ctx.stroke();
+
+    // Heading ticks and labels
+    ctx.font = 'bold 12px monospace'; ctx.textAlign = 'center';
+    for (let h = -90; h <= 90; h += 10) {
+      const rad = (90 + h) * DEG;
+      const px = Math.sin(rad) * 200, py = -Math.cos(rad) * 200;
+      const px2 = Math.sin(rad) * 215, py2 = -Math.cos(rad) * 215;
+      if (h === 0) continue;
+      ctx.strokeStyle = '#666'; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(px, py); ctx.lineTo(px2, py2); ctx.stroke();
+    }
+
+    // N/E/S/W labels
+    ctx.fillStyle = '#fff';
+    ctx.fillText('N', 0, -220); ctx.fillText('E', 220, 0); ctx.fillText('S', 0, 220); ctx.fillText('W', -220, 0);
+
+    // Track line (dashed cyan line showing actual track)
+    ctx.strokeStyle = '#00ffff'; ctx.lineWidth = 2; ctx.setLineDash([6, 4]);
+    ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(0, -180); ctx.stroke();
     ctx.setLineDash([]);
 
-    // Heading-Bug
-    ctx.save();
-    ctx.translate(cx, cy);
-    ctx.rotate((this.s.apHdg - this.flight.heading) * DEG);
-    ctx.fillStyle = '#ff00ff';
-    ctx.beginPath();
-    ctx.moveTo(-8, -240); ctx.lineTo(8, -240); ctx.lineTo(0, -230); ctx.closePath();
-    ctx.fill();
+    // Weather radar if stormy (red blobs)
+    if (currentWeather?.turbulence > 0.3) {
+      ctx.fillStyle = 'rgba(255, 100, 0, 0.3)';
+      ctx.beginPath(); ctx.arc(60, -40, 30, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(-30, 20, 25, 0, Math.PI * 2); ctx.fill();
+    }
+
     ctx.restore();
 
-    // Heading-Zeiger (gelb nach oben)
-    ctx.strokeStyle = '#ffff00'; ctx.lineWidth = 2;
-    ctx.beginPath(); ctx.moveTo(cx, cy - 238); ctx.lineTo(cx, cy - 252); ctx.stroke();
+    // Navigation beacons (VOR/NDB)
+    ctx.fillStyle = '#00ffff'; ctx.font = '10px monospace';
+    ctx.fillText('VOR', cx + 40, cy - 80);
+    ctx.fillStyle = '#ffaa00';
+    ctx.fillText('NDB', cx - 70, cy + 30);
 
-    // Wind-Pfeil oben links
-    ctx.fillStyle = '#00ffff'; ctx.font = 'bold 14px monospace'; ctx.textAlign = 'left';
-    ctx.fillText('WIND 270° / 12', 20, H - 30);
-
-    // Range-Ring-Labels
-    ctx.fillStyle = '#cccccc'; ctx.font = '11px monospace'; ctx.textAlign = 'center';
-    ctx.fillText('40', cx, cy - 75); ctx.fillText('80', cx, cy - 155);
+    // Ground track vector (short line ahead of aircraft)
+    ctx.strokeStyle = '#00ff88'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(cx, cy + 10); ctx.lineTo(cx, cy - 30); ctx.stroke();
 
     this.textures.nd.needsUpdate = true;
   }
 
-  _renderEWD() {
-    const ctx = this.ewdCtx;
-    const W = 512, H = 512;
-    ctx.fillStyle = '#0a0a0a'; ctx.fillRect(0, 0, W, H);
-    ctx.strokeStyle = '#444'; ctx.strokeRect(6, 6, W - 12, H - 12);
-
-    const thr = Math.round(this.flight.throttle * 100);
-    // N1-Kreise (Airbus-Style)
-    for (let i = 0; i < 2; i++) {
-      const x = W/2 - 90 + i * 180;
-      const y = 110;
-      ctx.strokeStyle = '#fff'; ctx.lineWidth = 3;
-      ctx.beginPath(); ctx.arc(x, y, 55, Math.PI * 0.75, Math.PI * 2.25); ctx.stroke();
-      // Fill-Bogen
-      const frac = THREE.MathUtils.clamp(thr / 100, 0, 1);
-      ctx.strokeStyle = thr > 95 ? '#ff3333' : thr > 85 ? '#ffaa33' : '#33ff55';
-      ctx.lineWidth = 8;
-      ctx.beginPath();
-      ctx.arc(x, y, 55, Math.PI * 0.75, Math.PI * 0.75 + Math.PI * 1.5 * frac); ctx.stroke();
-      // Digit
-      ctx.fillStyle = '#fff'; ctx.font = 'bold 30px monospace'; ctx.textAlign = 'center';
-      ctx.fillText(`${thr}`, x, y + 10);
-      ctx.font = 'bold 12px monospace'; ctx.fillStyle = '#aaa';
-      ctx.fillText('N1', x, y - 25);
-      ctx.fillText(`ENG ${i+1}`, x, y + 78);
-    }
-
-    // EGT
-    ctx.fillStyle = '#fff'; ctx.font = 'bold 14px monospace'; ctx.textAlign = 'center';
-    for (let i = 0; i < 2; i++) {
-      const x = W/2 - 90 + i * 180;
-      ctx.fillText(`EGT  ${Math.round(420 + thr * 4)}°C`, x, 230);
-      ctx.fillText(`FF   ${Math.round(thr * 20)} KG/M`, x, 250);
-      ctx.fillText(`N2   ${Math.round(thr * 0.95)}%`, x, 270);
-    }
-
-    // Trennlinie
-    ctx.strokeStyle = '#444'; ctx.beginPath(); ctx.moveTo(20, 290); ctx.lineTo(W - 20, 290); ctx.stroke();
-
-    // Fuel
-    ctx.fillStyle = '#fff'; ctx.font = 'bold 16px monospace'; ctx.textAlign = 'left';
-    ctx.fillText('FUEL', 20, 320);
-    ctx.fillStyle = '#1a1a1a'; ctx.fillRect(20, 328, W - 40, 22);
-    ctx.strokeStyle = '#666'; ctx.strokeRect(20, 328, W - 40, 22);
-    const fu = THREE.MathUtils.clamp(this.flight.fuel, 0, 1);
-    ctx.fillStyle = fu < 0.15 ? '#ff4444' : fu < 0.3 ? '#ffaa33' : '#33bbff';
-    ctx.fillRect(20, 328, (W - 40) * fu, 22);
-    ctx.fillStyle = '#fff'; ctx.textAlign = 'right'; ctx.font = 'bold 13px monospace';
-    ctx.fillText(`${Math.round(fu * 100)}%`, W - 26, 344);
-
-    // Flaps/Gear/Spoiler/Parking-Zeile
-    ctx.font = 'bold 13px monospace'; ctx.textAlign = 'left';
-    let yy = 380;
-    const row = (label, on, offColor, onColor) => {
-      ctx.fillStyle = on ? onColor : offColor;
-      ctx.fillText(label, 20, yy);
-      yy += 20;
-    };
-    row(`FLAPS  ${this.flight.flaps}`, this.flight.flaps > 0, '#888', '#33ff55');
-    row(`GEAR   ${this.flight.gear ? 'DOWN' : 'UP'}`, this.flight.gear, '#ffaa33', '#33ff55');
-    row(`SPLR   ${this.flight.spoilers ? 'ARM' : 'OFF'}`, !this.flight.spoilers, '#ff8833', '#888');
-    row(`PARK   ${this.flight.parkingBrake ? 'SET' : 'REL'}`, !this.flight.parkingBrake, '#ff3333', '#888');
-    row(`G     ${this.flight.gLoad.toFixed(1)}`, Math.abs(this.flight.gLoad) > 3, '#888', '#ff3333');
-
-    // Warning messages (rechts)
-    ctx.textAlign = 'right';
-    if (this.flight.stallWarning) {
-      ctx.fillStyle = '#ff0000'; ctx.fillText('STALL', W - 20, 380);
-    }
-    if (this.flight.fuel < 0.15) {
-      ctx.fillStyle = '#ffaa00'; ctx.fillText('LOW FUEL', W - 20, 400);
-    }
-    if (!this.flight.gear && this.flight.altitude < 300 && this.flight.speed * 1.944 < 180) {
-      ctx.fillStyle = '#ff0000'; ctx.fillText('GEAR NOT DOWN', W - 20, 420);
-    }
-
-    this.textures.ewd.needsUpdate = true;
-  }
-
   _renderSD() {
     const ctx = this.sdCtx;
-    const W = 512, H = this.sdCanvas.height;
-    ctx.fillStyle = '#0a0a0a'; ctx.fillRect(0, 0, W, H);
-    ctx.strokeStyle = '#444'; ctx.strokeRect(6, 6, W - 12, H - 12);
+    const W = 512, H = 450;
+    ctx.fillStyle = '#000'; ctx.fillRect(0, 0, W, H);
+    ctx.strokeStyle = '#222'; ctx.strokeRect(5, 5, W - 10, H - 10);
 
-    // System-Display: Hydraulics-Status
-    ctx.fillStyle = '#d8d8c8'; ctx.font = 'bold 14px monospace'; ctx.textAlign = 'center';
-    ctx.fillText('HYD', W/2, 30);
-    const hyd = [
-      { k: 'hydG', label: 'GREEN', x: W/2 - 100 },
-      { k: 'hydB', label: 'BLUE',  x: W/2 },
-      { k: 'hydY', label: 'YELLOW',x: W/2 + 100 },
-    ];
-    for (const h of hyd) {
-      ctx.fillStyle = this.s[h.k] ? '#33ff55' : '#666';
-      ctx.font = 'bold 11px monospace';
-      ctx.fillText(h.label, h.x, 60);
-      ctx.strokeStyle = this.s[h.k] ? '#33ff55' : '#666';
-      ctx.beginPath(); ctx.moveTo(h.x - 20, 80); ctx.lineTo(h.x + 20, 80);
-      ctx.lineTo(h.x + 20, 100); ctx.lineTo(h.x - 20, 100); ctx.closePath();
-      ctx.stroke();
-      const p = this.s[h.k] ? Math.round(2800 + Math.random() * 200) : 0;
-      ctx.fillText(`${p} PSI`, h.x, 95);
+    // === HYDRAULIC SYSTEMS ===
+    ctx.fillStyle = '#ccc'; ctx.font = 'bold 13px monospace'; ctx.textAlign = 'center';
+    ctx.fillText('HYDRAULIC', W / 2, 30);
+
+    const hydColors = { G: '#33ff55', B: '#3366ff', Y: '#ffcc00' };
+    const hydPress = { G: 2850, B: 2800, Y: 2750 };
+    const hydX = [W / 2 - 130, W / 2, W / 2 + 130];
+    for (let i = 0; i < 3; i++) {
+      const sys = ['G', 'B', 'Y'][i];
+      ctx.fillStyle = hydColors[sys]; ctx.font = 'bold 12px monospace';
+      ctx.fillText(sys + ' SYS', hydX[i], 55);
+      // Reservoir shape
+      ctx.strokeStyle = hydColors[sys]; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(hydX[i] - 25, 65); ctx.lineTo(hydX[i] + 25, 65);
+      ctx.lineTo(hydX[i] + 20, 100); ctx.lineTo(hydX[i] - 20, 100); ctx.closePath(); ctx.stroke();
+      // Pressure value
+      ctx.fillStyle = '#fff'; ctx.font = 'bold 16px monospace';
+      ctx.fillText(`${hydPress[sys]} PSI`, hydX[i], 90);
     }
 
-    // Fuel-Tanks
-    ctx.fillStyle = '#d8d8c8'; ctx.font = 'bold 14px monospace';
-    ctx.fillText('FUEL', W/2, 135);
-    const kg = Math.round(this.flight.fuel * 18500);
-    ctx.fillStyle = '#33ff55'; ctx.font = 'bold 13px monospace';
-    ctx.fillText(`${kg} KG`, W/2, 160);
-    // Tank-Bar
-    ctx.fillStyle = '#1a1a1a'; ctx.fillRect(40, 172, W - 80, 14);
-    ctx.strokeStyle = '#666'; ctx.strokeRect(40, 172, W - 80, 14);
-    ctx.fillStyle = '#33bbff'; ctx.fillRect(40, 172, (W - 80) * this.flight.fuel, 14);
+    // === FUEL SYSTEM ===
+    ctx.fillStyle = '#ccc'; ctx.font = 'bold 13px monospace'; ctx.textAlign = 'center';
+    ctx.fillText('FUEL', W / 2, 130);
+
+    const fuelKg = Math.round(this.flight.fuel * 18000);
+    ctx.fillStyle = '#fff'; ctx.font = 'bold 14px monospace';
+    ctx.fillText(`${fuelKg} KG`, W / 2, 150);
+
+    // Fuel tank visualization
+    const tanks = [
+      { label: 'L', x: 80, w: 60 },
+      { label: 'C', x: W / 2 - 30, w: 60 },
+      { label: 'R', x: W - 140, w: 60 },
+    ];
+    ctx.fillStyle = '#222'; ctx.fillRect(60, 160, W - 120, 20);
+    ctx.strokeStyle = '#444'; ctx.strokeRect(60, 160, W - 120, 20);
+    const totalFuel = this.flight.fuel;
+    let fillX = 60;
+    for (const t of tanks) {
+      const fW = (W - 120) / 3 * totalFuel;
+      ctx.fillStyle = '#3399ff'; ctx.fillRect(fillX, 160, fW, 20);
+      fillX += (W - 120) / 3;
+    }
+    ctx.fillStyle = '#888'; ctx.font = '10px monospace';
+    ctx.fillText('L', 80, 195); ctx.fillText('C', W / 2, 195); ctx.fillText('R', W - 80, 195);
+
+    // === ELECTRICAL ===
+    ctx.fillStyle = '#ccc'; ctx.font = 'bold 13px monospace'; ctx.textAlign = 'center';
+    ctx.fillText('ELECTRICAL', W / 2, 220);
+
+    const genStates = [
+      { label: 'GEN 1', on: this.s.gen1, x: 80 },
+      { label: 'GEN 2', on: this.s.gen2, x: W / 2 },
+      { label: 'APU GEN', on: this.s.apuGen, x: W - 80 },
+    ];
+    for (const g of genStates) {
+      ctx.fillStyle = g.on ? '#33ff55' : '#444'; ctx.font = 'bold 11px monospace';
+      ctx.fillText(g.label, g.x, 240);
+      ctx.fillText(g.on ? 'ON' : 'OFF', g.x, 255);
+    }
+
+    // === ANTI-ICE ===
+    ctx.fillStyle = '#ccc'; ctx.font = 'bold 13px monospace'; ctx.textAlign = 'center';
+    ctx.fillText('ANTI-ICE', W / 2, 285);
+
+    const iceItems = [
+      { label: 'WING', on: this.s.wingAntiIce, x: 90 },
+      { label: 'ENG 1', on: this.s.eng1AntiIce, x: W / 2 - 60 },
+      { label: 'ENG 2', on: this.s.eng2AntiIce, x: W / 2 + 60 },
+      { label: 'PROBE', on: this.s.probeHeat, x: W - 90 },
+    ];
+    for (const item of iceItems) {
+      ctx.fillStyle = item.on ? '#33ff55' : '#444'; ctx.font = 'bold 11px monospace';
+      ctx.fillText(item.label, item.x, 305);
+      ctx.fillStyle = item.on ? '#33ff55' : '#555';
+      ctx.fillRect(item.x - 18, 310, 36, 8);
+    }
+
+    // === PRESSURIZATION ===
+    ctx.fillStyle = '#ccc'; ctx.font = 'bold 13px monospace'; ctx.textAlign = 'left';
+    ctx.fillText('CABIN', 30, 345);
+    ctx.fillStyle = '#fff'; ctx.font = 'bold 14px monospace';
+    ctx.fillText('1013 HPA', 30, 365);
+    ctx.fillStyle = '#888'; ctx.font = '11px monospace';
+    ctx.fillText('AUTO', 30, 385);
+
+    // === ENGINE FIRE ===
+    ctx.fillStyle = this.s.eng1Master ? '#ff3333' : '#333'; ctx.font = 'bold 11px monospace';
+    ctx.fillText('ENG 1', 30, 415);
+    ctx.fillStyle = this.s.eng2Master ? '#ff3333' : '#333';
+    ctx.fillText('ENG 2', 90, 415);
+
+    // === WEIGHT/BALANCE hint ===
+    ctx.fillStyle = '#888'; ctx.font = '10px monospace'; ctx.textAlign = 'right';
+    ctx.fillText('GW 64000 KG', W - 20, 415);
 
     this.textures.sd.needsUpdate = true;
+  }
+
+  _renderStandby() {
+    const ctx = this.sbyCtx;
+    const W = 512, H = 512;
+    ctx.fillStyle = '#000'; ctx.fillRect(0, 0, W, H);
+    ctx.strokeStyle = '#222'; ctx.lineWidth = 1; ctx.strokeRect(5, 5, W - 10, H - 10);
+
+    // === ENGINE N1 GAUGES (Airbus style circular) ===
+    const thr = this.flight.throttle || 0;
+    const n1 = Math.round(50 + thr * 50 + (Math.random() - 0.5) * 2); // realistic N1 spool
+    const egt = Math.round(200 + thr * 600 + (Math.random() - 0.5) * 20); // EGT varies with thrust
+
+    for (let i = 0; i < 2; i++) {
+      const x = W / 2 - 120 + i * 240;
+      const y = 110;
+
+      // Outer ring
+      ctx.strokeStyle = '#333'; ctx.lineWidth = 3;
+      ctx.beginPath(); ctx.arc(x, y, 60, Math.PI * 0.7, Math.PI * 2.3); ctx.stroke();
+
+      // N1 arc (color-coded)
+      const n1Frac = THREE.MathUtils.clamp((n1 - 50) / 50, 0, 1);
+      const arcEnd = Math.PI * 0.7 + Math.PI * 1.6 * n1Frac;
+      ctx.strokeStyle = n1 > 95 ? '#ff3333' : n1 > 85 ? '#ffaa33' : '#33ff55';
+      ctx.lineWidth = 10;
+      ctx.beginPath(); ctx.arc(x, y, 60, Math.PI * 0.7, arcEnd); ctx.stroke();
+
+      // N1 digital readout
+      ctx.fillStyle = '#fff'; ctx.font = 'bold 32px monospace'; ctx.textAlign = 'center';
+      ctx.fillText(`${n1}`, x, y + 12);
+
+      // N1 label
+      ctx.fillStyle = '#888'; ctx.font = 'bold 12px monospace';
+      ctx.fillText('N1', x, y - 22);
+      ctx.fillText(`ENG ${i + 1}`, x, y + 38);
+      ctx.fillStyle = '#666'; ctx.font = '11px monospace';
+      ctx.fillText('%', x, y - 8);
+
+      // EGT below
+      ctx.fillStyle = '#fff'; ctx.font = 'bold 12px monospace';
+      ctx.fillText(`EGT ${egt}°C`, x, y + 60);
+    }
+
+    // === FUEL QUANTITY ===
+    const fuelKg = Math.round(this.flight.fuel * 18000);
+    ctx.fillStyle = '#888'; ctx.font = 'bold 12px monospace'; ctx.textAlign = 'left';
+    ctx.fillText('FUEL', 25, 230);
+    ctx.fillStyle = '#333'; ctx.fillRect(25, 240, W - 50, 18);
+    ctx.strokeStyle = '#444'; ctx.strokeRect(25, 240, W - 50, 18);
+    const fu = THREE.MathUtils.clamp(this.flight.fuel, 0, 1);
+    ctx.fillStyle = fu < 0.15 ? '#ff4444' : fu < 0.3 ? '#ffaa33' : '#33bbff';
+    ctx.fillRect(25, 240, (W - 50) * fu, 18);
+    ctx.fillStyle = '#fff'; ctx.textAlign = 'right'; ctx.font = 'bold 11px monospace';
+    ctx.fillText(`${fuelKg} KG`, W - 25, 254);
+
+    // === ENGINE PARAMETERS ROW ===
+    ctx.fillStyle = '#888'; ctx.font = 'bold 10px monospace'; ctx.textAlign = 'left';
+    ctx.fillText('N2', 25, 290); ctx.fillText('FF', 130, 290); ctx.fillText('OIL', 230, 290); ctx.fillText('VIB', 300, 290);
+    ctx.fillStyle = '#fff'; ctx.font = 'bold 11px monospace';
+    ctx.fillText(`${Math.round(90 + thr * 10)}%`, 25, 305);
+    ctx.fillText(`${Math.round(2 + thr * 8)} t/h`, 130, 305);
+    ctx.fillText(`${Math.round(15 + thr * 20)} PSI`, 230, 305);
+    ctx.fillText(`${(Math.random() * 0.4).toFixed(1)}`, 300, 305);
+
+    // === STATUS INDICATORS ===
+    ctx.fillStyle = '#333'; ctx.fillRect(20, 325, W - 40, 150);
+    ctx.strokeStyle = '#444'; ctx.strokeRect(20, 325, W - 40, 150);
+
+    ctx.font = 'bold 11px monospace'; ctx.textAlign = 'left';
+    const statusY = [345, 365, 385, 405, 425];
+    const status = [
+      { label: 'FLAPS', val: `${[0,1,2,3,5][this.flight.flaps] || 0}`, ok: this.flight.flaps >= 0 },
+      { label: 'GEAR', val: this.flight.gear ? 'DOWN' : 'UP', ok: this.flight.gear },
+      { label: 'SPOILER', val: this.flight.spoilers ? 'ARM' : 'OFF', ok: !this.flight.spoilers },
+      { label: 'PARK BRK', val: this.flight.parkingBrake ? 'SET' : 'OFF', ok: !this.flight.parkingBrake },
+      { label: 'G', val: this.flight.gLoad.toFixed(1), ok: Math.abs(this.flight.gLoad) < 3.5 },
+    ];
+    status.forEach((s, i) => {
+      ctx.fillStyle = '#888'; ctx.fillText(s.label, 30, statusY[i]);
+      ctx.fillStyle = s.ok ? '#33ff55' : '#ff4444';
+      ctx.fillText(s.val, 110, statusY[i]);
+    });
+
+    // === WARNINGS ===
+    ctx.textAlign = 'right';
+    if (this.flight.stallWarning) {
+      ctx.fillStyle = '#ff0000'; ctx.font = 'bold 14px monospace';
+      ctx.fillText('!! STALL !!', W - 25, 345);
+    }
+    if (this.flight.fuel < 0.15) {
+      ctx.fillStyle = '#ffaa00'; ctx.font = 'bold 12px monospace';
+      ctx.fillText('LOW FUEL', W - 25, 365);
+    }
+    if (!this.flight.gear && this.flight.altitude < 500) {
+      ctx.fillStyle = '#ff4444'; ctx.font = 'bold 12px monospace';
+      ctx.fillText('GEAR UP', W - 25, 385);
+    }
+
+    // === ANTI-ICE / BLEED ===
+    ctx.fillStyle = '#888'; ctx.font = 'bold 10px monospace'; ctx.textAlign = 'left';
+    ctx.fillText('ANTI-ICE', 350, 290);
+    ctx.fillStyle = this.s.antiIce ? '#33ff55' : '#444';
+    ctx.fillText('WING', 350, 305);
+    ctx.fillStyle = this.s.pitotHeat ? '#33ff55' : '#444';
+    ctx.fillText('PITOT', 410, 305);
+
+    this.textures.ewd.needsUpdate = true;
   }
 
   _renderStandby() {
@@ -2114,29 +2290,57 @@ export class Cockpit3D {
   _renderFCU() {
     const ctx = this.fcuCtx;
     const W = 1024, H = 120;
-    ctx.fillStyle = '#12120e'; ctx.fillRect(0, 0, W, H);
-    ctx.strokeStyle = '#333'; ctx.strokeRect(4, 4, W - 8, H - 8);
+    ctx.fillStyle = '#0d0d0a'; ctx.fillRect(0, 0, W, H);
+    ctx.strokeStyle = '#333'; ctx.lineWidth = 1; ctx.strokeRect(3, 3, W - 6, H - 6);
 
-    const cols = [
-      { label: 'SPD', value: `${Math.round(this.s.apSpeed).toString().padStart(3, '0')}`, unit: 'KT' },
-      { label: 'HDG', value: `${Math.round(this.s.apHdg).toString().padStart(3, '0')}`, unit: '°'  },
-      { label: 'ALT', value: `${Math.round(this.s.apAlt).toString().padStart(5, '0')}`, unit: 'FT' },
-      { label: 'V/S', value: `${this.s.apVs >= 0 ? '+' : ''}${Math.round(this.s.apVs).toString().padStart(4, '0')}`, unit: 'FPM' },
-    ];
+    // Speed / Heading / Altitude / V/S columns
     const colW = W / 4;
+    const fcuData = [
+      { label: 'SPD', value: `${String(Math.round(this.s.apSpeed)).padStart(3, '0')}`, unit: 'KT',
+        active: this.s.apHdgHold, preview: false },
+      { label: 'HDG', value: `${String(Math.round(this.s.apHdg)).padStart(3, '0')}`, unit: '°',
+        active: this.s.apHdgHold, preview: true },
+      { label: 'ALT', value: `${String(Math.round(this.s.apAlt)).padStart(5, '0')}`, unit: 'FT',
+        active: this.s.apAltHold, preview: false },
+      { label: 'V/S', value: `${this.s.apVs >= 0 ? '+' : ''}${String(Math.round(this.s.apVs)).padStart(4, '0')}`, unit: 'FPM',
+        active: this.s.apVnav, preview: false },
+    ];
+
     ctx.textAlign = 'center';
-    cols.forEach((c, i) => {
+    fcuData.forEach((c, i) => {
       const cx = i * colW + colW / 2;
-      ctx.fillStyle = '#aaa'; ctx.font = 'bold 14px monospace';
-      ctx.fillText(c.label, cx, 25);
-      ctx.fillStyle = '#ffcc33'; ctx.font = 'bold 44px "JetBrains Mono",monospace';
-      ctx.fillText(c.value, cx, 82);
-      ctx.fillStyle = '#888'; ctx.font = '12px monospace';
-      ctx.fillText(c.unit, cx, 104);
-      if (i < 3) { ctx.strokeStyle = '#333'; ctx.beginPath(); ctx.moveTo((i+1) * colW, 10); ctx.lineTo((i+1) * colW, H - 10); ctx.stroke(); }
+
+      // Label
+      ctx.fillStyle = '#777'; ctx.font = 'bold 12px monospace';
+      ctx.fillText(c.label, cx, 18);
+
+      // Value display (LED-style)
+      ctx.fillStyle = c.active ? '#00dd00' : '#004400';
+      ctx.font = 'bold 36px "Courier New", monospace';
+      ctx.fillText(c.value, cx, 72);
+
+      // Active indicator dot
+      if (c.active) {
+        ctx.fillStyle = '#00ff00';
+        ctx.beginPath(); ctx.arc(cx, 90, 4, 0, Math.PI * 2); ctx.fill();
+      }
+
+      // Unit
+      ctx.fillStyle = '#555'; ctx.font = '10px monospace';
+      ctx.fillText(c.unit, cx, 100);
     });
 
-    this.textures.fcu.needsUpdate = true;
+    // AP engaged indicator
+    if (this.flight.autopilot) {
+      ctx.fillStyle = '#00ff00'; ctx.font = 'bold 14px monospace';
+      ctx.fillText('AP ENGAGED', W - 80, 20);
+    }
+
+    // Speed intervention (A/THR)
+    if (this.s.autoThrust) {
+      ctx.fillStyle = '#ffcc00'; ctx.font = 'bold 12px monospace';
+      ctx.fillText('A/THR', 80, 20);
+    }
   }
 
   _renderMCDU() {
