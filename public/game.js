@@ -2962,6 +2962,7 @@ function initLogin() {
     document.getElementById('menu-pilot-name').textContent = pilotName;
 
     initMenu();
+    connectWS();
     refreshMarketState();
     maybeHandleCheckoutReturn();
   }
